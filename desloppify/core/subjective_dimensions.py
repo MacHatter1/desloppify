@@ -6,13 +6,14 @@ import logging
 from collections.abc import Callable
 from functools import lru_cache
 
-from desloppify.core.text_api import is_numeric
+from desloppify.core.text.text_api import is_numeric
 from desloppify.intelligence.review.dimensions.data import (
     load_dimensions as _load_dimensions,
 )
 from desloppify.intelligence.review.dimensions.data import (
     load_dimensions_for_lang as _load_dimensions_for_lang,
 )
+from desloppify.intelligence.review.dimensions.metadata import extract_prompt_meta
 from desloppify.languages import available_langs as _available_langs
 
 logger = logging.getLogger(__name__)
@@ -57,6 +58,7 @@ _LEGACY_SUBJECTIVE_WEIGHTS_BY_DISPLAY: dict[str, float] = {
     "error consistency": 3.0,
     "naming quality": 2.0,
     "ai generated debt": 1.0,
+    "design coherence": 10.0,
 }
 
 _LEGACY_RESET_ON_SCAN_DIMENSIONS: frozenset[str] = frozenset(
@@ -97,32 +99,6 @@ def _normalize_lang_name(lang_name: str | None) -> str | None:
         return None
     cleaned = lang_name.strip().lower()
     return cleaned or None
-
-
-def _extract_prompt_meta(entry: object) -> dict[str, object]:
-    if not isinstance(entry, dict):
-        return {}
-    meta = entry.get("meta")
-    if not isinstance(meta, dict):
-        return {}
-    out: dict[str, object] = {}
-
-    if isinstance(meta.get("display_name"), str) and meta["display_name"].strip():
-        out["display_name"] = meta["display_name"].strip()
-
-    weight = meta.get("weight")
-    if is_numeric(weight):
-        out["weight"] = max(0.0, float(weight))
-
-    enabled = meta.get("enabled_by_default")
-    if isinstance(enabled, bool):
-        out["enabled_by_default"] = enabled
-
-    reset_on_scan = meta.get("reset_on_scan")
-    if isinstance(reset_on_scan, bool):
-        out["reset_on_scan"] = reset_on_scan
-
-    return out
 
 
 def _merge_prompt_display_and_weights(
@@ -186,7 +162,7 @@ def _merge_dimension_meta(
             continue
 
         payload = target.setdefault(dim, {})
-        prompt_meta = _extract_prompt_meta(entry)
+        prompt_meta = extract_prompt_meta(entry)
         _merge_prompt_display_and_weights(
             payload,
             prompt_meta=prompt_meta,

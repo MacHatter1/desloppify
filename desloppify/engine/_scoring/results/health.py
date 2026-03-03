@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from desloppify.core.text_api import is_numeric
+from desloppify.core.text.text_api import is_numeric
 from desloppify.engine._scoring.policy.core import (
     MECHANICAL_DIMENSION_WEIGHTS,
     MECHANICAL_WEIGHT_FRACTION,

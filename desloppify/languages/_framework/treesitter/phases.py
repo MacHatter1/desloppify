@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from desloppify.languages._framework.base.types import DetectorPhase
 from desloppify.state import make_issue
-from desloppify.core.output_api import log
+from desloppify.core.output import log
 
 # ── Phase factories ────────────────────────────────────────
 

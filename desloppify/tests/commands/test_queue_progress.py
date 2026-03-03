@@ -82,7 +82,7 @@ def test_plan_aware_queue_count_delegates_to_build_work_queue():
     mock_items = [{"id": f"f{i}", "kind": "issue"} for i in range(5)]
     mock_result = {"total": 5, "items": mock_items}
     with patch(
-        "desloppify.engine.work_queue.build_work_queue",
+        "desloppify.engine._work_queue.core.build_work_queue",
         return_value=mock_result,
     ) as mock_build:
         count = plan_aware_queue_count({"issues": {}}, plan={"queue_order": []})
@@ -259,7 +259,7 @@ def test_plan_aware_queue_breakdown_basic():
         "skipped": {"c": {"kind": "temporary"}},
     }
     with patch(
-        "desloppify.engine.work_queue.build_work_queue",
+        "desloppify.engine._work_queue.core.build_work_queue",
         return_value=mock_result,
     ):
         breakdown = plan_aware_queue_breakdown({"issues": {}}, plan=plan)
@@ -276,7 +276,7 @@ def test_plan_aware_queue_breakdown_no_plan():
         "items": mock_items,
     }
     with patch(
-        "desloppify.engine.work_queue.build_work_queue",
+        "desloppify.engine._work_queue.core.build_work_queue",
         return_value=mock_result,
     ):
         breakdown = plan_aware_queue_breakdown({"issues": {}})
@@ -309,7 +309,7 @@ def test_plan_aware_queue_breakdown_with_focus():
         },
     }
     with patch(
-        "desloppify.engine.work_queue.build_work_queue",
+        "desloppify.engine._work_queue.core.build_work_queue",
         return_value=mock_result,
     ):
         breakdown = plan_aware_queue_breakdown(state, plan=plan)

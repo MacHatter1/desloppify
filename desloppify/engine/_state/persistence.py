@@ -14,7 +14,7 @@ __all__ = [
     "save_state",
 ]
 
-from desloppify.core.text_api import is_numeric
+from desloppify.core.text.text_api import is_numeric
 from desloppify.engine._state.schema import (
     CURRENT_VERSION,
     STATE_FILE,

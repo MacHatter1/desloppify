@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import json
 from pathlib import Path
 from typing import Any
@@ -45,6 +46,49 @@ class ImportPayloadLoadError(ValueError):
         self.errors = cleaned
         message = "; ".join(cleaned) if cleaned else "import payload validation failed"
         super().__init__(message)
+
+
+@dataclass(frozen=True)
+class ImportLoadConfig:
+    """Config bundle for import payload parsing/validation options."""
+
+    lang_name: str | None = None
+    allow_partial: bool = False
+    trusted_assessment_source: bool = False
+    trusted_assessment_label: str | None = None
+    attested_external: bool = False
+    manual_override: bool = False
+    manual_attest: str | None = None
+    assessment_override: bool = False
+    assessment_note: str | None = None
+
+
+def _coerce_import_load_config(
+    *,
+    config: ImportLoadConfig | None,
+    lang_name: str | None,
+    allow_partial: bool,
+    trusted_assessment_source: bool,
+    trusted_assessment_label: str | None,
+    attested_external: bool,
+    manual_override: bool,
+    manual_attest: str | None,
+    assessment_override: bool,
+    assessment_note: str | None,
+) -> ImportLoadConfig:
+    if config is not None:
+        return config
+    return ImportLoadConfig(
+        lang_name=lang_name,
+        allow_partial=allow_partial,
+        trusted_assessment_source=trusted_assessment_source,
+        trusted_assessment_label=trusted_assessment_label,
+        attested_external=attested_external,
+        manual_override=manual_override,
+        manual_attest=manual_attest,
+        assessment_override=assessment_override,
+        assessment_note=assessment_note,
+    )
 
 
 def _normalize_import_payload_shape(
@@ -121,6 +165,7 @@ def _normalize_import_payload_shape(
 def _parse_and_validate_import(
     import_file: str,
     *,
+    config: ImportLoadConfig | None = None,
     lang_name: str | None = None,
     allow_partial: bool = False,
     trusted_assessment_source: bool = False,
@@ -136,6 +181,18 @@ def _parse_and_validate_import(
     Returns ``(data, errors)`` where *data* is the normalized payload on
     success, or ``None`` when errors prevent import.
     """
+    options = _coerce_import_load_config(
+        config=config,
+        lang_name=lang_name,
+        allow_partial=allow_partial,
+        trusted_assessment_source=trusted_assessment_source,
+        trusted_assessment_label=trusted_assessment_label,
+        attested_external=attested_external,
+        manual_override=manual_override,
+        manual_attest=manual_attest,
+        assessment_override=assessment_override,
+        assessment_note=assessment_note,
+    )
     issues_path = Path(import_file)
     if not issues_path.exists():
         return None, [f"file not found: {import_file}"]
@@ -160,21 +217,21 @@ def _parse_and_validate_import(
     assert normalized_issues_data is not None
 
     override_enabled, override_attest = resolve_override_context(
-        manual_override=manual_override,
-        manual_attest=manual_attest,
-        assessment_override=assessment_override,
-        assessment_note=assessment_note,
+        manual_override=options.manual_override,
+        manual_attest=options.manual_attest,
+        assessment_override=options.assessment_override,
+        assessment_note=options.assessment_note,
     )
-    if attested_external and override_enabled:
+    if options.attested_external and override_enabled:
         return None, [
             "--attested-external cannot be combined with --manual-override"
         ]
-    if attested_external and allow_partial:
+    if options.attested_external and options.allow_partial:
         return None, [
             "--attested-external cannot be combined with --allow-partial; "
             "attested score imports require fully valid issues payloads"
         ]
-    if override_enabled and allow_partial:
+    if override_enabled and options.allow_partial:
         return None, [
             "--manual-override cannot be combined with --allow-partial; "
             "manual score imports require fully valid issues payloads"
@@ -182,12 +239,12 @@ def _parse_and_validate_import(
     issues_data, policy_errors = apply_assessment_import_policy(
         normalized_issues_data,
         import_file=import_file,
-        attested_external=attested_external,
+        attested_external=options.attested_external,
         attested_attest=override_attest,
         manual_override=override_enabled,
         manual_attest=override_attest,
-        trusted_assessment_source=trusted_assessment_source,
-        trusted_assessment_label=trusted_assessment_label,
+        trusted_assessment_source=options.trusted_assessment_source,
+        trusted_assessment_label=options.trusted_assessment_label,
     )
     if policy_errors:
         return None, policy_errors
@@ -221,9 +278,9 @@ def _parse_and_validate_import(
 
     schema_errors = _validate_holistic_issues_schema(
         issues_data,
-        lang_name=lang_name,
+        lang_name=options.lang_name,
     )
-    if schema_errors and not allow_partial:
+    if schema_errors and not options.allow_partial:
         visible_errors = schema_errors[:10]
         remaining = len(schema_errors) - len(visible_errors)
         errors = [
@@ -241,6 +298,7 @@ def _parse_and_validate_import(
 def load_import_issues_data(
     import_file: str,
     *,
+    config: ImportLoadConfig | None = None,
     colorize_fn=None,
     lang_name: str | None = None,
     allow_partial: bool = False,
@@ -256,8 +314,9 @@ def load_import_issues_data(
 
     Raises ``ImportPayloadLoadError`` when validation fails.
     """
-    data, errors = _parse_and_validate_import(
-        import_file,
+    _ = colorize_fn
+    options = _coerce_import_load_config(
+        config=config,
         lang_name=lang_name,
         allow_partial=allow_partial,
         trusted_assessment_source=trusted_assessment_source,
@@ -267,6 +326,10 @@ def load_import_issues_data(
         manual_attest=manual_attest,
         assessment_override=assessment_override,
         assessment_note=assessment_note,
+    )
+    data, errors = _parse_and_validate_import(
+        import_file,
+        config=options,
     )
     if errors:
         raise ImportPayloadLoadError(errors)
@@ -375,6 +438,7 @@ def print_assessment_policy_notice(
 
 
 __all__ = [
+    "ImportLoadConfig",
     "ImportPayloadLoadError",
     "assessment_mode_label",
     "assessment_policy_model_from_payload",

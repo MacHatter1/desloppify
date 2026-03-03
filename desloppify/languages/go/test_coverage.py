@@ -38,7 +38,7 @@ def has_testable_logic(_filepath: str, content: str) -> bool:
 
 
 def resolve_import_spec(
-    spec: str, _test_path: str, production_files: set[str]
+    spec: str, test_path: str, production_files: set[str]
 ) -> str | None:
     """Best-effort Go import-path to source-file resolution for direct imports."""
     normalized = spec.strip().strip("\"'`").replace("\\", "/").strip("/")
@@ -58,7 +58,7 @@ def resolve_import_spec(
         candidates.append(f"{tail}.go")
         candidates.append(f"{tail}/{leaf}.go")
 
-    test_path = _test_path.replace("\\", "/").strip()
+    test_path = test_path.replace("\\", "/").strip()
     if test_path:
         test_dir = os.path.dirname(test_path)
         leaf = segments[-1]

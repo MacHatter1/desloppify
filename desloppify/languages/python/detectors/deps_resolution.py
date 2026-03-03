@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from desloppify.core.text_api import PROJECT_ROOT
+from desloppify.core.text.text_api import get_project_root
 
 
 def resolve_python_from_import(
@@ -17,7 +17,7 @@ def resolve_python_from_import(
     source = (
         Path(source_file)
         if Path(source_file).is_absolute()
-        else PROJECT_ROOT / source_file
+        else get_project_root() / source_file
     )
     source_dir = source.parent
     scan_root_path = Path(scan_root) if not isinstance(scan_root, Path) else scan_root
@@ -76,7 +76,7 @@ def resolve_python_import(
     source = (
         Path(source_file)
         if Path(source_file).is_absolute()
-        else PROJECT_ROOT / source_file
+        else get_project_root() / source_file
     )
     source_dir = source.parent
     scan_root_path = Path(scan_root) if not isinstance(scan_root, Path) else scan_root
@@ -116,7 +116,7 @@ def resolve_absolute_import(module_path: str, scan_root: Path) -> str | None:
     if resolved:
         return resolved
 
-    target_base = PROJECT_ROOT
+    target_base = get_project_root()
     for part in parts:
         target_base = target_base / part
     return try_resolve_path(target_base)

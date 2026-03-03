@@ -11,6 +11,7 @@ from typing import Any
 
 from desloppify.app.output._viz_cmd_context import load_cmd_context
 from desloppify.app.output.tree_text import render_tree_lines
+from desloppify.core.discovery_api import find_source_files
 from desloppify.core.file_paths import resolve_scan_file
 from desloppify.core.fallbacks import (
     log_best_effort_failure,
@@ -19,8 +20,9 @@ from desloppify.core.fallbacks import (
 )
 from desloppify.core.output_contract import OutputResult
 from desloppify.core.discovery_api import rel, safe_write_text
-from desloppify.state import get_objective_score, get_overall_score, get_strict_score
-from desloppify.core.output_api import colorize
+import desloppify.languages as lang_api
+from desloppify.state import score_snapshot
+from desloppify.core.output import colorize
 
 D3_CDN_URL = "https://d3js.org/d3.v7.min.js"
 logger = logging.getLogger(__name__)
@@ -41,14 +43,13 @@ def _resolve_visualization_lang(path: Path, lang):
     """Resolve language config for visualization if not already provided."""
     if lang:
         return lang
-    from desloppify.languages import auto_detect_lang, get_lang
 
     search_roots = [path if path.is_dir() else path.parent]
     search_roots.extend(search_roots[0].parents)
     warned = False
     for root in search_roots:
         try:
-            detected = auto_detect_lang(root)
+            detected = lang_api.auto_detect_lang(root)
         except _RECOVERABLE_LANG_RESOLUTION_ERRORS as exc:
             log_best_effort_failure(
                 logger,
@@ -64,7 +65,7 @@ def _resolve_visualization_lang(path: Path, lang):
             continue
         if detected:
             try:
-                return get_lang(detected)
+                return lang_api.get_lang(detected)
             except _RECOVERABLE_LANG_RESOLUTION_ERRORS as exc:
                 log_best_effort_failure(
                     logger,
@@ -83,14 +84,11 @@ def _resolve_visualization_lang(path: Path, lang):
 
 def _fallback_source_files(path: Path) -> list[str]:
     """Collect source files using extensions from all registered language plugins."""
-    from desloppify.core.discovery_api import find_source_files
-    from desloppify.languages import available_langs, get_lang
-
     extensions: set[str] = set()
     warned = False
-    for lang_name in available_langs():
+    for lang_name in lang_api.available_langs():
         try:
-            cfg = get_lang(lang_name)
+            cfg = lang_api.get_lang(lang_name)
         except _RECOVERABLE_LANG_RESOLUTION_ERRORS as exc:
             log_best_effort_failure(
                 logger,
@@ -257,13 +255,14 @@ def generate_visualization(
             1 for fs in issues_by_file.values() for f in fs if f.get("status") == "open"
         )
         if state:
-            overall_score = get_overall_score(state)
-            objective_score = get_objective_score(state)
-            strict_score = get_strict_score(state)
+            scores = score_snapshot(state)
+            overall_score = scores.overall
+            objective_score = scores.objective
+            strict_score = scores.strict
         else:
             overall_score = objective_score = strict_score = None
 
-        def fmt_score(value):
+        def _fmt_viz_score(value):
             return f"{value:.1f}" if isinstance(value, int | float) else "N/A"
 
         replacements = {
@@ -273,9 +272,9 @@ def generate_visualization(
             "__TOTAL_LOC__": f"{total_loc:,}",
             "__TOTAL_ISSUES__": str(total_issues),
             "__OPEN_ISSUES__": str(open_issues),
-            "__OVERALL_SCORE__": fmt_score(overall_score),
-            "__OBJECTIVE_SCORE__": fmt_score(objective_score),
-            "__STRICT_SCORE__": fmt_score(strict_score),
+            "__OVERALL_SCORE__": _fmt_viz_score(overall_score),
+            "__OBJECTIVE_SCORE__": _fmt_viz_score(objective_score),
+            "__STRICT_SCORE__": _fmt_viz_score(strict_score),
         }
         html = _get_html_template()
         for placeholder, value in replacements.items():

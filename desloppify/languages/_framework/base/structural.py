@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from desloppify.core.text_api import PROJECT_ROOT
+from desloppify.core.text.text_api import get_project_root
 from desloppify.core.discovery_api import resolve_path
+from desloppify.core.file_paths import count_lines
 from desloppify.state import Issue, make_issue
 
 
@@ -39,9 +40,9 @@ def merge_structural_signals(
         if "loc" not in data["detail"]:
             try:
                 p = (
-                    Path(filepath) if Path(filepath).is_absolute() else PROJECT_ROOT / filepath
+                    Path(filepath) if Path(filepath).is_absolute() else get_project_root() / filepath
                 )
-                data["detail"]["loc"] = len(p.read_text().splitlines())
+                data["detail"]["loc"] = count_lines(p)
             except (OSError, UnicodeDecodeError):
                 data["detail"]["loc"] = 0
 

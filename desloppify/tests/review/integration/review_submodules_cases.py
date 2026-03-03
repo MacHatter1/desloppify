@@ -14,7 +14,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from desloppify.intelligence.review._prepare.remediation_engine import (
-    empty_plan as _empty_plan,
+    render_empty_remediation_plan as _empty_plan,
 )
 from desloppify.intelligence.review.importing.holistic import (
     import_holistic_issues,
@@ -25,7 +25,7 @@ from desloppify.intelligence.review.importing.per_file import (
     parse_per_file_import_payload,
     update_review_cache,
 )
-from desloppify.intelligence.review.importing.shared import (
+from desloppify.intelligence.review.importing.helpers import (
     extract_reviewed_files,
     store_assessments,
 )

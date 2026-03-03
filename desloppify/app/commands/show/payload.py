@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -15,15 +16,15 @@ class ShowPayloadMeta:
 
 
 def build_show_payload(
-    matches: list[dict],
+    matches: list[dict[str, Any]],
     pattern: str,
     status_filter: str,
     meta: ShowPayloadMeta | None = None,
-) -> dict:
+) -> dict[str, Any]:
     """Build the structured JSON payload shared by query file and --output."""
     resolved_meta = meta or ShowPayloadMeta()
 
-    by_file: dict[str, list] = defaultdict(list)
+    by_file: dict[str, list[dict[str, Any]]] = defaultdict(list)
     by_detector: dict[str, int] = defaultdict(int)
     by_tier: dict[int, int] = defaultdict(int)
     for issue in matches:

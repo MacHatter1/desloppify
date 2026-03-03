@@ -4,24 +4,27 @@ from __future__ import annotations
 
 import pytest
 
-from desloppify.scoring import (
+from desloppify.engine._scoring.policy.core import (
     CONFIDENCE_WEIGHTS,
     DIMENSIONS,
-    DISPLAY_NAMES,
     MIN_SAMPLE,
     SUBJECTIVE_CHECKS,
     TIER_WEIGHTS,
     Dimension,
+)
+from desloppify.engine._scoring.subjective.core import DISPLAY_NAMES
+from desloppify.engine._scoring.results.core import (
     compute_dimension_scores,
     compute_health_breakdown,
     compute_health_score,
     compute_score_bundle,
     compute_score_impact,
-    detector_pass_rate,
     get_dimension_for_detector,
+)
+from desloppify.engine._scoring.detection import (
+    detector_pass_rate,
     merge_potentials,
 )
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -825,7 +828,10 @@ class TestReviewScoringExclusion:
 
     def test_multiplier_constant_still_defined(self):
         """HOLISTIC_MULTIPLIER still exists for display/priority purposes."""
-        from desloppify.scoring import HOLISTIC_MULTIPLIER, HOLISTIC_POTENTIAL
+        from desloppify.engine._scoring.policy.core import (
+            HOLISTIC_MULTIPLIER,
+            HOLISTIC_POTENTIAL,
+        )
 
         assert HOLISTIC_MULTIPLIER == 10.0
         assert HOLISTIC_POTENTIAL == 10
@@ -1047,7 +1053,7 @@ class TestSubjectiveScoring:
         at the configured SUBJECTIVE_WEIGHT_FRACTION ratio,
         regardless of how many subjective dimensions there are.
         """
-        from desloppify.scoring import SUBJECTIVE_WEIGHT_FRACTION
+        from desloppify.engine._scoring.policy.core import SUBJECTIVE_WEIGHT_FRACTION
 
         # Build a full-weight mechanical dimension alongside subjective assessments
         potentials = {"unused": MIN_SAMPLE}  # full weight: tier 3, sample_factor 1.0

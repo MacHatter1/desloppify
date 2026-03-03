@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from desloppify.engine._state.schema import StateModel
 import hashlib
 from pathlib import Path
 from typing import Any
@@ -11,7 +12,7 @@ from desloppify.intelligence.review.importing.contracts import (
     ReviewIssuePayload,
     ReviewImportPayload,
 )
-from desloppify.intelligence.review.importing.shared import (
+from desloppify.intelligence.review.importing.helpers import (
     _lang_potentials,
     auto_resolve_review_issues,
     normalize_review_confidence,
@@ -53,7 +54,7 @@ def _resolve_per_file_project_root(project_root: Path | str | None) -> Path:
 
 def import_review_issues(
     issues_data: ReviewImportPayload,
-    state: dict[str, Any],
+    state: StateModel,
     lang_name: str,
     *,
     project_root: Path | str | None = None,
@@ -192,7 +193,7 @@ def import_review_issues(
 
 
 def update_review_cache(
-    state: dict[str, Any],
+    state: StateModel,
     issues_data: list[ReviewIssuePayload],
     *,
     reviewed_files: list[str] | None = None,

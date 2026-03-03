@@ -118,6 +118,7 @@ def migrate_epics_to_clusters(plan: dict[str, Any]) -> None:
 
 def migrate_v5_to_v6(plan: dict[str, Any]) -> None:
     """Migrate v5 → v6: unified queue system."""
+    # cycle-break: schema_migrations.py ↔ schema.py (via stale_dimensions.py)
     from desloppify.engine._plan.stale_dimensions import (
         TRIAGE_STAGE_IDS,
         WORKFLOW_CREATE_PLAN_ID,
@@ -211,4 +212,3 @@ __all__ = [
     "migrate_v5_to_v6",
     "normalize_cluster_defaults",
 ]
-

@@ -21,7 +21,7 @@ from desloppify.app.commands.move.move_planning import (
 from desloppify.app.commands.move.move_reporting import print_directory_move_plan
 from desloppify.core.discovery_api import rel
 from desloppify.core.exception_sets import CommandError
-from desloppify.core.output_api import colorize
+from desloppify.core.output import colorize
 
 
 def run_directory_move(args, source_abs: str, resolve_path_fn) -> None:

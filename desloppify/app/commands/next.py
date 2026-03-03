@@ -28,18 +28,18 @@ from desloppify.engine.planning.scorecard_projection import (
     scorecard_dimensions_payload,
 )
 from desloppify.engine.plan import load_plan
-from desloppify.engine.work_queue import (
+from desloppify.engine._work_queue.core import (
     QueueBuildOptions,
     build_work_queue,
-    queue_context,
 )
+from desloppify.engine._work_queue.context import queue_context
 from desloppify.core.exception_sets import PLAN_LOAD_EXCEPTIONS
-from desloppify.core.output_api import colorize
+from desloppify.core.output import colorize
 from desloppify.core.skill_docs import check_skill_version
 from desloppify.core.tooling import check_config_staleness
 from desloppify.core.discovery_api import safe_write_text
 from desloppify.intelligence.narrative import NarrativeContext, compute_narrative
-from desloppify.scoring import merge_potentials
+from desloppify.engine._scoring.detection import merge_potentials
 
 
 def _scorecard_subjective(
@@ -118,9 +118,10 @@ def _build_next_payload(
     payload = next_output_mod.build_query_payload(
         queue, items, command="next", narrative=narrative, plan=plan_data
     )
-    payload["overall_score"] = state_mod.get_overall_score(state)
-    payload["objective_score"] = state_mod.get_objective_score(state)
-    payload["strict_score"] = state_mod.get_strict_score(state)
+    scores = state_mod.score_snapshot(state)
+    payload["overall_score"] = scores.overall
+    payload["objective_score"] = scores.objective
+    payload["strict_score"] = scores.strict
     payload["scorecard_dimensions"] = scorecard_dimensions_payload(
         state,
         dim_scores=state.get("dimension_scores", {}),
@@ -260,7 +261,7 @@ def _get_items(args, state: dict, config: dict) -> None:
     queue_total = breakdown.queue_total if breakdown else 0
 
     _render_queue_header(queue, explain)
-    strict_score = state_mod.get_strict_score(state)
+    strict_score = state_mod.score_snapshot(state).strict
     if _show_empty_queue(
         queue,
         strict_score,

@@ -12,7 +12,7 @@ from desloppify.engine.planning.scorecard_projection import (
 from desloppify.intelligence.integrity import (
     unassessed_subjective_dimensions,
 )
-from desloppify.scoring import DISPLAY_NAMES
+from desloppify.engine._scoring.subjective.core import DISPLAY_NAMES
 
 from desloppify.engine._work_queue.helpers import (
     detail_dict,

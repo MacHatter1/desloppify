@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import ast
 
-from desloppify.languages.python.detectors.smells_ast._shared import (
+from desloppify.languages.python.detectors.smells_ast._helpers import (
     _is_docstring,
     _is_log_or_print,
     _is_return_none,
@@ -21,6 +21,7 @@ from desloppify.languages.python.detectors.smells_ast._tree_quality_detectors_ty
 __all__ = [
     "_detect_annotation_quality",
     "_detect_constant_return",
+    "_detect_del_param",
     "_detect_noop_function",
     "_detect_optional_param_sprawl",
     "_detect_unreachable_code",
@@ -206,4 +207,40 @@ def _detect_noop_function(
                     "content": f"{node.name}() — {len(body)} statements, all trivial (pass/return/log)",
                 }
             )
+    return results
+
+
+def _detect_del_param(
+    filepath: str,
+    tree: ast.Module,
+    *,
+    all_nodes: tuple[ast.AST, ...] | None = None,
+) -> list[dict]:
+    """Flag functions that ``del`` a parameter in the first 3 body statements.
+
+    ``del param`` immediately after receiving it means the parameter shouldn't
+    be in the signature at all — the caller shouldn't be passing it.
+    """
+    results: list[dict] = []
+    for node in _iter_nodes(tree, all_nodes, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        param_names = {
+            a.arg
+            for a in node.args.args + node.args.posonlyargs + node.args.kwonlyargs
+        }
+        if not param_names:
+            continue
+
+        # Only check first 3 body statements (del is typically early cleanup).
+        for stmt in node.body[:3]:
+            if not isinstance(stmt, ast.Delete):
+                continue
+            for target in stmt.targets:
+                if isinstance(target, ast.Name) and target.id in param_names:
+                    results.append(
+                        {
+                            "file": filepath,
+                            "line": stmt.lineno,
+                            "content": f"del {target.id} — remove from function signature",
+                        }
+                    )
     return results

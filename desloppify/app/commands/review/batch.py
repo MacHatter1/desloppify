@@ -10,20 +10,35 @@ from pathlib import Path
 from desloppify.app.commands.helpers.query import write_query_best_effort
 from . import batch_core as batch_core_mod
 from . import batches as review_batches_mod
-from . import runner_helpers as runner_helpers_mod
 from desloppify.core.coercions_api import coerce_positive_int
-from desloppify.core.exception_sets import CommandError
+from desloppify.core.exception_sets import CommandError, PacketValidationError
 from desloppify.core.discovery_api import safe_write_text
 from desloppify.intelligence import narrative as narrative_mod
 from desloppify.intelligence import review as review_mod
 from desloppify.intelligence.review.feedback_contract import (
     max_batch_issues_for_dimension_count,
 )
-from desloppify.core.output_api import colorize, log
+from desloppify.core.output import colorize, log
 
 from .helpers import parse_dimensions
 from .import_cmd import do_import as _do_import
 from .packet_policy import coerce_review_batch_file_limit, redacted_review_config
+from .runner_failures import print_failures, print_failures_and_raise
+from .runner_packets import (
+    build_batch_import_provenance,
+    build_blind_packet,
+    prepare_run_artifacts,
+    run_stamp,
+    selected_batch_indexes,
+    write_packet_snapshot,
+)
+from .runner_parallel import collect_batch_results, execute_batches
+from .runner_process import (
+    CodexBatchRunnerDeps,
+    FollowupScanDeps,
+    run_codex_batch,
+    run_followup_scan,
+)
 from .runtime import setup_lang_concrete as _setup_lang
 from .runtime_paths import (
     blind_packet_path as _blind_packet_path,
@@ -83,13 +98,13 @@ def _load_or_prepare_packet(
     if packet_override:
         packet_path = Path(packet_override)
         if not packet_path.exists():
-            raise CommandError(f"packet not found: {packet_override}", exit_code=1)
+            raise PacketValidationError(f"packet not found: {packet_override}", exit_code=1)
         try:
             packet = json.loads(packet_path.read_text())
         except (OSError, json.JSONDecodeError) as exc:
-            raise CommandError(f"reading packet: {exc}", exit_code=1) from exc
+            raise PacketValidationError(f"reading packet: {exc}", exit_code=1) from exc
         blind_path = _blind_packet_path()
-        blind_packet = runner_helpers_mod.build_blind_packet(packet)
+        blind_packet = build_blind_packet(packet)
         safe_write_text(blind_path, json.dumps(blind_packet, indent=2) + "\n")
         print(colorize(f"  Immutable packet: {packet_path}", "dim"))
         print(colorize(f"  Blind packet: {blind_path}", "dim"))
@@ -144,7 +159,7 @@ def _load_or_prepare_packet(
         packet,
         context="review packet query update",
     )
-    packet_path, blind_saved = runner_helpers_mod.write_packet_snapshot(
+    packet_path, blind_saved = write_packet_snapshot(
         packet,
         stamp=stamp,
         review_packet_dir=_review_packet_dir(),
@@ -174,7 +189,7 @@ def _do_run_batches(args, state, lang, state_file, config: dict | None = None) -
     batch_stall_kill_seconds = policy.stall_kill_seconds
 
     def _prepare_run_artifacts(*, stamp, selected_indexes, batches, packet_path, run_root, repo_root):
-        return runner_helpers_mod.prepare_run_artifacts(
+        return prepare_run_artifacts(
             stamp=stamp,
             selected_indexes=selected_indexes,
             batches=batches,
@@ -187,7 +202,7 @@ def _do_run_batches(args, state, lang, state_file, config: dict | None = None) -
         )
 
     def _collect_batch_results(*, selected_indexes, failures, output_files, allowed_dims):
-        return runner_helpers_mod.collect_batch_results(
+        return collect_batch_results(
             selected_indexes=selected_indexes,
             failures=failures,
             output_files=output_files,
@@ -209,21 +224,21 @@ def _do_run_batches(args, state, lang, state_file, config: dict | None = None) -
         lang,
         state_file,
         config=config,
-        run_stamp_fn=runner_helpers_mod.run_stamp,
+        run_stamp_fn=run_stamp,
         load_or_prepare_packet_fn=_load_or_prepare_packet,
-        selected_batch_indexes_fn=lambda args, *, batch_count: runner_helpers_mod.selected_batch_indexes(
+        selected_batch_indexes_fn=lambda args, *, batch_count: selected_batch_indexes(
             raw_selection=getattr(args, "only_batches", None),
             batch_count=batch_count,
             parse_fn=batch_core_mod.parse_batch_selection,
             colorize_fn=colorize,
         ),
         prepare_run_artifacts_fn=_prepare_run_artifacts,
-        run_codex_batch_fn=lambda *, prompt, repo_root, output_file, log_file: runner_helpers_mod.run_codex_batch(
+        run_codex_batch_fn=lambda *, prompt, repo_root, output_file, log_file: run_codex_batch(
             prompt=prompt,
             repo_root=repo_root,
             output_file=output_file,
             log_file=log_file,
-            deps=runner_helpers_mod.CodexBatchRunnerDeps(
+            deps=CodexBatchRunnerDeps(
                 timeout_seconds=batch_timeout_seconds,
                 subprocess_run=subprocess.run,
                 timeout_error=subprocess.TimeoutExpired,
@@ -236,17 +251,17 @@ def _do_run_batches(args, state, lang, state_file, config: dict | None = None) -
                 retry_backoff_seconds=batch_retry_backoff_seconds,
             ),
         ),
-        execute_batches_fn=runner_helpers_mod.execute_batches,
+        execute_batches_fn=execute_batches,
         collect_batch_results_fn=_collect_batch_results,
-        print_failures_fn=runner_helpers_mod.print_failures,
-        print_failures_and_raise_fn=runner_helpers_mod.print_failures_and_raise,
+        print_failures_fn=print_failures,
+        print_failures_and_raise_fn=print_failures_and_raise,
         merge_batch_results_fn=_merge_batch_results,
-        build_import_provenance_fn=runner_helpers_mod.build_batch_import_provenance,
+        build_import_provenance_fn=build_batch_import_provenance,
         do_import_fn=_do_import,
-        run_followup_scan_fn=lambda *, lang_name, scan_path: runner_helpers_mod.run_followup_scan(
+        run_followup_scan_fn=lambda *, lang_name, scan_path: run_followup_scan(
             lang_name=lang_name,
             scan_path=scan_path,
-            deps=runner_helpers_mod.FollowupScanDeps(
+            deps=FollowupScanDeps(
                 project_root=runtime_project_root,
                 timeout_seconds=FOLLOWUP_SCAN_TIMEOUT_SECONDS,
                 python_executable=sys.executable,
@@ -285,12 +300,12 @@ def _validate_run_dir(run_dir: Path) -> tuple[dict, Path, str]:
     if not successful:
         raise CommandError("no successful batches in run summary.", exit_code=1)
     if not blind_packet_path.exists():
-        raise CommandError(f"blind packet not found: {blind_packet_path}", exit_code=1)
+        raise PacketValidationError(f"blind packet not found: {blind_packet_path}", exit_code=1)
 
     try:
         packet = json.loads(Path(immutable_packet_path).read_text())
     except (OSError, json.JSONDecodeError) as exc:
-        raise CommandError(f"Error reading immutable packet: {exc}", exit_code=1) from exc
+        raise PacketValidationError(f"Error reading immutable packet: {exc}", exit_code=1) from exc
 
     summary["_packet"] = packet
     return summary, blind_packet_path, immutable_packet_path
@@ -334,7 +349,7 @@ def do_import_run(
     if missing:
         raise CommandError(f"missing result files for batches: {missing}", exit_code=1)
 
-    batch_results, failures = runner_helpers_mod.collect_batch_results(
+    batch_results, failures = collect_batch_results(
         selected_indexes=selected_indexes,
         failures=[],
         output_files=output_files,
@@ -360,7 +375,7 @@ def do_import_run(
 
     # -- build provenance --
     successful_indexes = [idx for idx in selected_indexes if idx not in set(failures)]
-    merged["provenance"] = runner_helpers_mod.build_batch_import_provenance(
+    merged["provenance"] = build_batch_import_provenance(
         runner=runner,
         blind_packet_path=blind_packet_path,
         run_stamp=stamp,
@@ -388,10 +403,10 @@ def do_import_run(
     if scan_after_import:
         lang_name = getattr(lang, "name", None) or str(getattr(lang, "lang", ""))
         if lang_name:
-            runner_helpers_mod.run_followup_scan(
+            run_followup_scan(
                 lang_name=lang_name,
                 scan_path=scan_path,
-                deps=runner_helpers_mod.FollowupScanDeps(
+                deps=FollowupScanDeps(
                     project_root=_runtime_project_root(),
                     timeout_seconds=FOLLOWUP_SCAN_TIMEOUT_SECONDS,
                     python_executable=sys.executable,

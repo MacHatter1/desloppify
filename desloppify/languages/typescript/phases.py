@@ -51,7 +51,7 @@ from desloppify.languages.typescript.extractors_components import (
     extract_ts_components,
 )
 from desloppify.state import Issue, make_issue
-from desloppify.core.output_api import log
+from desloppify.core.output import log
 from desloppify.core.paths_api import get_src_path
 
 # ── Helper computations for complexity signals ─────────────
@@ -273,7 +273,9 @@ def phase_structural(
 
     # Flat directories (too many files → missing sub-organization)
     flat_entries, dir_count = flat_dirs_detector_mod.detect_flat_dirs(
-        path, file_finder=lang.file_finder
+        path,
+        file_finder=lang.file_finder,
+        config=flat_dirs_detector_mod.FlatDirDetectionConfig(),
     )
     for e in flat_entries:
         child_dir_count = int(e.get("child_dir_count", 0))

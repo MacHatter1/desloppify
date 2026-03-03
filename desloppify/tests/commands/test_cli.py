@@ -580,7 +580,10 @@ class TestStatePath:
         state_dir.mkdir()
         existing = state_dir / "state-typescript.json"
         existing.write_text("{}")
-        monkeypatch.setattr("desloppify.app.commands.helpers.state.PROJECT_ROOT", tmp_path)
+        monkeypatch.setattr(
+            "desloppify.app.commands.helpers.state.get_project_root",
+            lambda: tmp_path,
+        )
 
         args = SimpleNamespace(state=None, lang="python", command="status")
         result = state_path(args)
@@ -590,7 +593,10 @@ class TestStatePath:
         state_dir = tmp_path / ".desloppify"
         state_dir.mkdir()
         (state_dir / "state-typescript.json").write_text("{}")
-        monkeypatch.setattr("desloppify.app.commands.helpers.state.PROJECT_ROOT", tmp_path)
+        monkeypatch.setattr(
+            "desloppify.app.commands.helpers.state.get_project_root",
+            lambda: tmp_path,
+        )
 
         args = SimpleNamespace(state=None, lang="python", command="scan")
         result = state_path(args)
@@ -603,7 +609,10 @@ class TestStatePath:
         state_dir.mkdir()
         existing = state_dir / "state-python.json"
         existing.write_text("{}")
-        monkeypatch.setattr("desloppify.app.commands.helpers.state.PROJECT_ROOT", tmp_path)
+        monkeypatch.setattr(
+            "desloppify.app.commands.helpers.state.get_project_root",
+            lambda: tmp_path,
+        )
         monkeypatch.setattr(
             "desloppify.app.commands.helpers.state.auto_detect_lang_name",
             lambda _args: None,
@@ -620,7 +629,10 @@ class TestStatePath:
         state_dir.mkdir()
         (state_dir / "state-python.json").write_text("{}")
         (state_dir / "state-typescript.json").write_text("{}")
-        monkeypatch.setattr("desloppify.app.commands.helpers.state.PROJECT_ROOT", tmp_path)
+        monkeypatch.setattr(
+            "desloppify.app.commands.helpers.state.get_project_root",
+            lambda: tmp_path,
+        )
 
         args = SimpleNamespace(state=None, lang="csharp", command="status")
         result = state_path(args)
@@ -645,7 +657,8 @@ class TestResolveDefaultPath:
 
         monkeypatch.setattr(cli_mod, "PROJECT_ROOT", project_root)
         monkeypatch.setattr(
-            "desloppify.app.commands.helpers.state.PROJECT_ROOT", project_root
+            "desloppify.app.commands.helpers.state.get_project_root",
+            lambda: project_root,
         )
 
         with (
@@ -718,7 +731,7 @@ class TestResolveLang:
         ts_src.mkdir()
         (ts_src / "index.ts").write_text("export const x = 1\n")
 
-        monkeypatch.setattr(lang_helpers_mod, "PROJECT_ROOT", cwd_root)
+        monkeypatch.setattr(lang_helpers_mod, "get_project_root", lambda: cwd_root)
         args = SimpleNamespace(lang=None, path=str(target_root))
         lang = resolve_lang(args)
         assert lang is not None
@@ -734,7 +747,7 @@ class TestResolveLang:
         src.mkdir()
         (src / "main.py").write_text("print('x')\n")
 
-        monkeypatch.setattr(lang_helpers_mod, "PROJECT_ROOT", root)
+        monkeypatch.setattr(lang_helpers_mod, "get_project_root", lambda: root)
         args = SimpleNamespace(lang=None, path=str(src))
         lang = resolve_lang(args)
         assert lang is not None
@@ -757,7 +770,7 @@ class TestResolveLang:
         target_src.mkdir()
         (target_src / "index.ts").write_text("export const x = 1\n")
 
-        monkeypatch.setattr(lang_helpers_mod, "PROJECT_ROOT", cwd_root)
+        monkeypatch.setattr(lang_helpers_mod, "get_project_root", lambda: cwd_root)
         args = SimpleNamespace(lang=None, path=str(target_src))
         lang = resolve_lang(args)
         assert lang is not None
@@ -780,7 +793,7 @@ class TestResolveLang:
         for i in range(2):
             (py_dir / f"job_{i}.py").write_text("print('x')\n")
 
-        monkeypatch.setattr(lang_helpers_mod, "PROJECT_ROOT", root)
+        monkeypatch.setattr(lang_helpers_mod, "get_project_root", lambda: root)
 
         # Path points to python subtree; detection should use this subtree first,
         # not the entire repo where TypeScript files are more numerous.
@@ -814,7 +827,7 @@ class TestResolveLang:
         target_src = target_root / "src"
         target_src.mkdir()
 
-        monkeypatch.setattr(lang_helpers_mod, "PROJECT_ROOT", cwd_root)
+        monkeypatch.setattr(lang_helpers_mod, "get_project_root", lambda: cwd_root)
         monkeypatch.setattr(
             lang_helpers_mod, "_lang_config_markers", lambda: ("deno.json",)
         )

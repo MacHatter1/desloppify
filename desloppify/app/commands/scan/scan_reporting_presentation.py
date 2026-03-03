@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from desloppify.engine._state.schema import StateModel
 from collections.abc import Callable
-from typing import Protocol
+from typing import Any, Protocol
 
 # ---------------------------------------------------------------------------
 # Protocol stubs for dependency-injected modules
@@ -11,7 +12,9 @@ from typing import Protocol
 
 
 class _StateMod(Protocol):
-    def path_scoped_issues(self, issues: dict, scan_path: object) -> dict: ...
+    def path_scoped_issues(
+        self, issues: dict[str, dict[str, Any]], scan_path: Any
+    ) -> dict[str, dict[str, Any]]: ...
 
 
 class _NarrativeMod(Protocol):
@@ -19,7 +22,7 @@ class _NarrativeMod(Protocol):
 
 
 class _RegistryMod(Protocol):
-    DETECTORS: dict
+    DETECTORS: dict[str, Any]
 
     def display_order(self) -> list[str]: ...
 
@@ -43,12 +46,68 @@ def dimension_bar(score: float, *, colorize_fn, bar_len: int = 15) -> str:
     )
 
 
+def _print_score_recipe(
+    *,
+    colorize_fn,
+    mech_frac: float,
+    subj_frac: float,
+    mech_avg: float,
+    subj_avg: float | None,
+) -> None:
+    print(colorize_fn("  Score recipe:", "dim"))
+    if subj_avg is None or subj_frac <= 0.0:
+        print(colorize_fn("    overall = 100% mechanical", "dim"))
+        print(colorize_fn(f"    Mechanical pool average: {mech_avg:.1f}%", "dim"))
+        return
+    if mech_frac <= 0.0:
+        print(colorize_fn("    overall = 100% subjective", "dim"))
+        print(colorize_fn(f"    Subjective pool average: {subj_avg:.1f}%", "dim"))
+        return
+    print(
+        colorize_fn(
+            f"    overall = {mech_frac * 100:.0f}% mechanical + {subj_frac * 100:.0f}% subjective",
+            "dim",
+        )
+    )
+    print(
+        colorize_fn(
+            f"    Pool averages: mechanical {mech_avg:.1f}% · subjective {subj_avg:.1f}%",
+            "dim",
+        )
+    )
+
+
+def _sorted_weighted_drags(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    drags = [
+        entry
+        for entry in entries
+        if float(entry.get("overall_drag", 0.0) or 0.0) > 0.01
+    ]
+    return sorted(
+        drags,
+        key=lambda entry: -float(entry.get("overall_drag", 0.0) or 0.0),
+    )
+
+
+def _detector_progress_bar(*, pct: int, open_count: int, bar_len: int, colorize_fn) -> str:
+    filled = round(pct / 100 * bar_len)
+    if pct == 100:
+        return colorize_fn("█" * bar_len, "green")
+    if open_count <= 2:
+        return colorize_fn("█" * filled, "green") + colorize_fn(
+            "░" * (bar_len - filled), "dim"
+        )
+    return colorize_fn("█" * filled, "yellow") + colorize_fn(
+        "░" * (bar_len - filled), "dim"
+    )
+
+
 def show_score_model_breakdown(
-    state: dict,
+    state: StateModel,
     *,
     scoring_mod,
     colorize_fn,
-    dim_scores: dict | None = None,
+    dim_scores: dict[str, Any] | None = None,
 ) -> None:
     """Show score recipe and weighted drags."""
     if dim_scores is None:
@@ -68,35 +127,14 @@ def show_score_model_breakdown(
     if not entries:
         return
 
-    print(colorize_fn("  Score recipe:", "dim"))
-    if subj_avg is None or subj_frac <= 0.0:
-        print(colorize_fn("    overall = 100% mechanical", "dim"))
-        print(colorize_fn(f"    Mechanical pool average: {mech_avg:.1f}%", "dim"))
-    elif mech_frac <= 0.0:
-        print(colorize_fn("    overall = 100% subjective", "dim"))
-        print(colorize_fn(f"    Subjective pool average: {subj_avg:.1f}%", "dim"))
-    else:
-        print(
-            colorize_fn(
-                f"    overall = {mech_frac * 100:.0f}% mechanical + {subj_frac * 100:.0f}% subjective",
-                "dim",
-            )
-        )
-        print(
-            colorize_fn(
-                f"    Pool averages: mechanical {mech_avg:.1f}% · subjective {subj_avg:.1f}%",
-                "dim",
-            )
-        )
-
-    drags = sorted(
-        [
-            entry
-            for entry in entries
-            if float(entry.get("overall_drag", 0.0) or 0.0) > 0.01
-        ],
-        key=lambda entry: -float(entry.get("overall_drag", 0.0) or 0.0),
+    _print_score_recipe(
+        colorize_fn=colorize_fn,
+        mech_frac=mech_frac,
+        subj_frac=subj_frac,
+        mech_avg=mech_avg,
+        subj_avg=subj_avg,
     )
+    drags = _sorted_weighted_drags(entries)
     if drags:
         print(colorize_fn("    Biggest weighted drags:", "dim"))
         for entry in drags[:5]:
@@ -116,8 +154,8 @@ def show_score_model_breakdown(
 
 
 def show_dimension_deltas(
-    prev: dict,
-    current: dict,
+    prev: dict[str, Any],
+    current: dict[str, Any],
     *,
     scoring_mod,
     colorize_fn,
@@ -174,7 +212,7 @@ def show_dimension_deltas(
 
 
 def show_low_dimension_hints(
-    dim_scores: dict,
+    dim_scores: dict[str, Any],
     *,
     scoring_mod,
     colorize_fn,
@@ -217,7 +255,7 @@ def show_low_dimension_hints(
 
 
 def show_detector_progress(
-    state: dict,
+    state: StateModel,
     *,
     state_mod: _StateMod,
     narrative_mod: _NarrativeMod,
@@ -229,7 +267,7 @@ def show_detector_progress(
     if not issues:
         return
 
-    by_detector: dict[str, dict] = {}
+    by_detector: dict[str, dict[str, int]] = {}
     for issue in issues.values():
         detector = issue.get("detector", "unknown")
         if detector in narrative_mod.STRUCTURAL_MERGE:
@@ -257,17 +295,12 @@ def show_detector_progress(
         addressed = total - open_count
         pct = round(addressed / total * 100) if total else 100
 
-        filled = round(pct / 100 * bar_len)
-        if pct == 100:
-            bar = colorize_fn("█" * bar_len, "green")
-        elif open_count <= 2:
-            bar = colorize_fn("█" * filled, "green") + colorize_fn(
-                "░" * (bar_len - filled), "dim"
-            )
-        else:
-            bar = colorize_fn("█" * filled, "yellow") + colorize_fn(
-                "░" * (bar_len - filled), "dim"
-            )
+        bar = _detector_progress_bar(
+            pct=pct,
+            open_count=open_count,
+            bar_len=bar_len,
+            colorize_fn=colorize_fn,
+        )
 
         det_label = detector.replace("_", " ").ljust(18)
         open_str = (

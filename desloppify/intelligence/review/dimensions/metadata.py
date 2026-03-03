@@ -5,13 +5,13 @@ from __future__ import annotations
 import logging
 from functools import lru_cache
 
-from desloppify.core.text_api import is_numeric
+from desloppify.core.text.text_api import is_numeric
 from desloppify.intelligence.review.dimensions.data import (
     load_dimensions,
     load_dimensions_for_lang,
 )
 from desloppify.languages import available_langs
-from desloppify.scoring import DISPLAY_NAMES
+from desloppify.engine._scoring.subjective.core import DISPLAY_NAMES
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +30,7 @@ _LEGACY_SUBJECTIVE_WEIGHTS_BY_DISPLAY: dict[str, float] = {
     "error consistency": 3.0,
     "naming quality": 2.0,
     "ai generated debt": 1.0,
+    "design coherence": 10.0,
 }
 
 _LEGACY_RESET_ON_SCAN_DIMENSIONS: frozenset[str] = frozenset(
@@ -72,7 +73,7 @@ def _normalize_lang_name(lang_name: str | None) -> str | None:
     return cleaned or None
 
 
-def _extract_prompt_meta_impl(entry: object) -> dict[str, object]:
+def extract_prompt_meta(entry: object) -> dict[str, object]:
     if not isinstance(entry, dict):
         return {}
     meta = entry.get("meta")
@@ -98,11 +99,6 @@ def _extract_prompt_meta_impl(entry: object) -> dict[str, object]:
     return out
 
 
-def _extract_prompt_meta(entry: object) -> dict[str, object]:
-    """Normalize optional prompt metadata into a compact payload."""
-    return _extract_prompt_meta_impl(entry)
-
-
 def _merge_dimension_meta(
     target: dict[str, dict[str, object]],
     *,
@@ -123,7 +119,7 @@ def _merge_dimension_meta(
             continue
 
         payload = target.setdefault(dim, {})
-        prompt_meta = _extract_prompt_meta(entry)
+        prompt_meta = extract_prompt_meta(entry)
 
         if "display_name" in prompt_meta and (
             override_existing or "display_name" not in payload
@@ -297,6 +293,7 @@ __all__ = [
     "default_display_names_map",
     "dimension_display_name",
     "dimension_weight",
+    "extract_prompt_meta",
     "get_dimension_metadata",
     "load_subjective_dimension_metadata",
     "load_subjective_dimension_metadata_for_lang",

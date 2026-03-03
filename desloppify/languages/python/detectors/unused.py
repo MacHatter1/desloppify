@@ -5,7 +5,7 @@ import re
 import subprocess
 from pathlib import Path
 
-from desloppify.core.text_api import PROJECT_ROOT
+from desloppify.core.text.text_api import get_project_root
 from desloppify.core.discovery_api import (
     collect_exclude_dirs as _collect_exclude_dirs,
 )
@@ -174,7 +174,7 @@ def _try_ruff(path: Path, category: str) -> list[dict] | None:
             cmd,
             capture_output=True,
             text=True,
-            cwd=PROJECT_ROOT,
+            cwd=get_project_root(),
             timeout=60,
         )
     except (FileNotFoundError, subprocess.TimeoutExpired):
@@ -201,7 +201,7 @@ def _try_pyflakes(path: Path, category: str) -> list[dict] | None:
             ["pyflakes", str(path)],
             capture_output=True,
             text=True,
-            cwd=PROJECT_ROOT,
+            cwd=get_project_root(),
             timeout=60,
         )
     except (FileNotFoundError, subprocess.TimeoutExpired):

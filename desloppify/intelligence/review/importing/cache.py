@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from desloppify.engine._state.schema import StateModel
 from pathlib import Path
 from typing import Any
 
-from desloppify.core.text_api import get_project_root
+from desloppify.core.text.text_api import get_project_root
 from desloppify.state import utc_now
 
 from desloppify.intelligence.review.importing.state_helpers import _review_file_cache
@@ -42,7 +43,7 @@ def upsert_review_cache_entry(
 
 
 def refresh_review_file_cache(
-    state: dict[str, Any],
+    state: StateModel,
     *,
     reviewed_files: list[str] | None,
     issues_by_file: dict[str, int | None] | None = None,

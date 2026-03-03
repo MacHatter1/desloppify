@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -31,8 +32,12 @@ from desloppify.intelligence.review.importing.contracts import (
     ReviewImportPayload,
 )
 from desloppify.app.commands.helpers.display import short_issue_id
-from desloppify.core.exception_sets import PLAN_LOAD_EXCEPTIONS, CommandError
-from desloppify.core.output_api import colorize
+from desloppify.core.exception_sets import (
+    PLAN_LOAD_EXCEPTIONS,
+    CommandError,
+    PacketValidationError,
+)
+from desloppify.core.output import colorize
 
 _SCORECARD_SUBJECTIVE_AT_TARGET = bind_scorecard_subjective_at_target(
     reporting_dimensions_mod=reporting_dimensions_mod,
@@ -42,6 +47,41 @@ _SCORECARD_SUBJECTIVE_AT_TARGET = bind_scorecard_subjective_at_target(
 
 class ImportFlagValidationError(ValueError):
     """Raised when review import CLI flags are mutually incompatible."""
+
+
+@dataclass(frozen=True)
+class ReviewImportConfig:
+    """Configuration bundle for review import/validate flows."""
+
+    config: dict | None = None
+    allow_partial: bool = False
+    trusted_assessment_source: bool = False
+    trusted_assessment_label: str | None = None
+    attested_external: bool = False
+    manual_override: bool = False
+    manual_attest: str | None = None
+    assessment_override: bool = False
+    assessment_note: str | None = None
+
+
+def _build_import_load_config(
+    *,
+    lang_name: str | None,
+    import_config: ReviewImportConfig,
+    override_enabled: bool,
+    override_attest: str | None,
+) -> import_helpers_mod.ImportLoadConfig:
+    return import_helpers_mod.ImportLoadConfig(
+        lang_name=lang_name,
+        allow_partial=import_config.allow_partial,
+        trusted_assessment_source=import_config.trusted_assessment_source,
+        trusted_assessment_label=import_config.trusted_assessment_label,
+        attested_external=import_config.attested_external,
+        manual_override=override_enabled,
+        manual_attest=override_attest,
+        assessment_override=import_config.assessment_override,
+        assessment_note=import_config.assessment_note,
+    )
 
 
 def _validate_import_flag_combos(
@@ -297,16 +337,27 @@ def do_import(
     assessment_note: str | None = None,
 ) -> None:
     """Import mode: ingest agent-produced issues."""
-    override_enabled, override_attest = import_helpers_mod.resolve_override_context(
+    import_config = ReviewImportConfig(
+        config=config,
+        allow_partial=allow_partial,
+        trusted_assessment_source=trusted_assessment_source,
+        trusted_assessment_label=trusted_assessment_label,
+        attested_external=attested_external,
         manual_override=manual_override,
         manual_attest=manual_attest,
         assessment_override=assessment_override,
         assessment_note=assessment_note,
     )
+    override_enabled, override_attest = import_helpers_mod.resolve_override_context(
+        manual_override=import_config.manual_override,
+        manual_attest=import_config.manual_attest,
+        assessment_override=import_config.assessment_override,
+        assessment_note=import_config.assessment_note,
+    )
     try:
         _validate_import_flag_combos(
-            attested_external=attested_external,
-            allow_partial=allow_partial,
+            attested_external=import_config.attested_external,
+            allow_partial=import_config.allow_partial,
             override_enabled=override_enabled,
             override_attest=override_attest,
         )
@@ -316,15 +367,12 @@ def do_import(
     try:
         issues_data = import_helpers_mod.load_import_issues_data(
             import_file,
-            lang_name=lang.name,
-            allow_partial=allow_partial,
-            trusted_assessment_source=trusted_assessment_source,
-            trusted_assessment_label=trusted_assessment_label,
-            attested_external=attested_external,
-            manual_override=override_enabled,
-            manual_attest=override_attest,
-            assessment_override=assessment_override,
-            assessment_note=assessment_note,
+            config=_build_import_load_config(
+                lang_name=lang.name,
+                import_config=import_config,
+                override_enabled=override_enabled,
+                override_attest=override_attest,
+            ),
         )
     except import_helpers_mod.ImportPayloadLoadError as exc:
         import_helpers_mod.print_import_load_errors(
@@ -332,7 +380,7 @@ def do_import(
             import_file=str(import_file),
             colorize_fn=colorize,
         )
-        raise CommandError("import payload validation failed", exit_code=1) from exc
+        raise PacketValidationError("import payload validation failed", exit_code=1) from exc
     assessment_policy: AssessmentImportPolicyModel = (
         import_helpers_mod.assessment_policy_model_from_payload(issues_data)
     )
@@ -371,7 +419,7 @@ def do_import(
             assessment_keys=imported_assessment_keys,
         )
 
-    if diff.get("skipped", 0) > 0 and not allow_partial:
+    if diff.get("skipped", 0) > 0 and not import_config.allow_partial:
         details_lines: list[str] = []
         for detail in diff.get("skipped_details", []):
             reasons = "; ".join(detail.get("missing", []))
@@ -410,7 +458,7 @@ def do_import(
     _print_import_results(
         state=state,
         lang_name=lang.name,
-        config=config,
+        config=import_config.config,
         diff=diff,
         prev=prev,
         label=label,
@@ -509,16 +557,24 @@ def do_validate_import(
     assessment_note: str | None = None,
 ) -> None:
     """Validate import payload/policy and print mode without mutating state."""
-    override_enabled, override_attest = import_helpers_mod.resolve_override_context(
+    import_config = ReviewImportConfig(
+        allow_partial=allow_partial,
+        attested_external=attested_external,
         manual_override=manual_override,
         manual_attest=manual_attest,
         assessment_override=assessment_override,
         assessment_note=assessment_note,
     )
+    override_enabled, override_attest = import_helpers_mod.resolve_override_context(
+        manual_override=import_config.manual_override,
+        manual_attest=import_config.manual_attest,
+        assessment_override=import_config.assessment_override,
+        assessment_note=import_config.assessment_note,
+    )
     try:
         _validate_import_flag_combos(
-            attested_external=attested_external,
-            allow_partial=allow_partial,
+            attested_external=import_config.attested_external,
+            allow_partial=import_config.allow_partial,
             override_enabled=override_enabled,
             override_attest=override_attest,
         )
@@ -528,13 +584,12 @@ def do_validate_import(
     try:
         issues_data = import_helpers_mod.load_import_issues_data(
             import_file,
-            lang_name=lang.name,
-            allow_partial=allow_partial,
-            attested_external=attested_external,
-            manual_override=override_enabled,
-            manual_attest=override_attest,
-            assessment_override=assessment_override,
-            assessment_note=assessment_note,
+            config=_build_import_load_config(
+                lang_name=lang.name,
+                import_config=import_config,
+                override_enabled=override_enabled,
+                override_attest=override_attest,
+            ),
         )
     except import_helpers_mod.ImportPayloadLoadError as exc:
         import_helpers_mod.print_import_load_errors(
@@ -542,7 +597,7 @@ def do_validate_import(
             import_file=str(import_file),
             colorize_fn=colorize,
         )
-        raise CommandError("import payload validation failed", exit_code=1) from exc
+        raise PacketValidationError("import payload validation failed", exit_code=1) from exc
     assessment_policy = import_helpers_mod.assessment_policy_model_from_payload(
         issues_data
     )
@@ -567,6 +622,7 @@ def do_validate_import(
 
 __all__ = [
     "ImportFlagValidationError",
+    "ReviewImportConfig",
     "do_import",
     "do_validate_import",
     "subjective_at_target_dimensions",

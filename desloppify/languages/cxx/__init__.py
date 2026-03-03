@@ -21,3 +21,8 @@ generic_lang(
     detect_markers=["CMakeLists.txt", "Makefile"],
     treesitter_spec=CPP_SPEC,
 )
+
+__all__ = [
+    "generic_lang",
+    "CPP_SPEC",
+]

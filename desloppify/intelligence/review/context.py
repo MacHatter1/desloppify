@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from desloppify.engine._state.schema import StateModel
 import re
 from collections import Counter
 from pathlib import Path
+from typing import Any
 
 from desloppify.core.discovery_api import (
     disable_file_cache,
@@ -47,7 +49,9 @@ def file_excerpt(filepath: str, max_lines: int = 30) -> str | None:
     return "".join(lines[:max_lines]) + f"\n... ({len(lines) - max_lines} more lines)"
 
 
-def dep_graph_lookup(graph: dict, filepath: str) -> dict:
+def dep_graph_lookup(
+    graph: dict[str, dict[str, Any]], filepath: str
+) -> dict[str, Any]:
     """Look up a file in the dep graph, trying absolute and relative keys."""
     resolved = resolve_path(filepath)
     entry = graph.get(resolved)
@@ -61,7 +65,7 @@ def dep_graph_lookup(graph: dict, filepath: str) -> dict:
     return {}
 
 
-def importer_count(entry: dict) -> int:
+def importer_count(entry: dict[str, Any]) -> int:
     """Extract importer count from a dep graph entry."""
     importers = entry.get("importers", set())
     if isinstance(importers, set):
@@ -75,7 +79,7 @@ def importer_count(entry: dict) -> int:
 def build_review_context(
     path: Path,
     lang,
-    state: dict,
+    state: StateModel,
     files: list[str] | None = None,
 ) -> ReviewContext:
     """Gather codebase conventions for contextual evaluation.
@@ -102,7 +106,7 @@ def build_review_context(
 def _build_review_context_inner(
     files: list[str],
     lang,
-    state: dict,
+    state: StateModel,
     ctx: ReviewContext,
 ) -> ReviewContext:
     """Inner context builder (runs with file cache enabled)."""
@@ -246,9 +250,9 @@ def _build_review_context_inner(
     return ctx
 
 
-def serialize_context(ctx: ReviewContext) -> dict:
+def serialize_context(ctx: ReviewContext) -> dict[str, Any]:
     """Convert ReviewContext to a JSON-serializable dict."""
-    def _section_dict(value: object) -> dict:
+    def _section_dict(value: Any) -> dict[str, Any]:
         if hasattr(value, "to_dict") and callable(value.to_dict):
             data = value.to_dict()
             return data if isinstance(data, dict) else {}

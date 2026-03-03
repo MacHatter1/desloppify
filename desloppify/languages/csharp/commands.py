@@ -28,7 +28,7 @@ from desloppify.languages.csharp.extractors import (
     find_csharp_files,
 )
 from desloppify.languages.csharp.phases import CSHARP_COMPLEXITY_SIGNALS
-from desloppify.core.output_api import colorize, print_table
+from desloppify.core.output import colorize, print_table
 
 _cmd_large_impl = make_cmd_large(find_csharp_files, default_threshold=500)
 _cmd_complexity_impl = make_cmd_complexity(

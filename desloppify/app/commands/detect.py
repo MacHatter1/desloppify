@@ -15,7 +15,7 @@ from desloppify.app.commands.helpers.runtime_options import (
 )
 from desloppify.languages import runtime as lang_runtime
 from desloppify.core.exception_sets import CommandError
-from desloppify.core.output_api import colorize
+from desloppify.core.output import colorize
 
 
 def _resolve_detector_key(

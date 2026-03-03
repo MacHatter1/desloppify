@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 from importlib.metadata import PackageNotFoundError, version as get_version
 
+from desloppify.app.cli_support.parser_groups_plan import _add_plan_parser
 from desloppify.app.cli_support.parser_groups import (
     _add_config_parser,
     _add_detect_parser,
@@ -15,7 +16,6 @@ from desloppify.app.cli_support.parser_groups import (
     _add_langs_parser,
     _add_move_parser,
     _add_next_parser,
-    _add_plan_parser,
     _add_review_parser,
     _add_scan_parser,
     _add_show_parser,

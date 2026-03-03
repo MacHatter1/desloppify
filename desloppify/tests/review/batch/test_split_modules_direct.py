@@ -6,7 +6,7 @@ import pytest
 
 from desloppify.core.issues_render import issue_weight, render_issue_detail
 from desloppify.intelligence.review._prepare.remediation_engine import (
-    empty_plan,
+    render_empty_remediation_plan,
 )
 from desloppify.intelligence.review.importing.holistic import (
     parse_holistic_import_payload,
@@ -14,7 +14,7 @@ from desloppify.intelligence.review.importing.holistic import (
 from desloppify.intelligence.review.importing.per_file import (
     parse_per_file_import_payload,
 )
-from desloppify.intelligence.review.importing.shared import (
+from desloppify.intelligence.review.importing.helpers import (
     extract_reviewed_files,
     store_assessments,
 )
@@ -68,7 +68,7 @@ def test_remediation_empty_plan_renders_scores_block():
         "version": 1,
         "created": "2026-01-01T00:00:00+00:00",
     }
-    content = empty_plan(state, "python")
+    content = render_empty_remediation_plan(state, "python")
     assert "Holistic Review: Remediation Plan" in content
     assert (
         "desloppify --lang python review --prepare --path <src>" in content

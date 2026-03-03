@@ -26,7 +26,10 @@ from desloppify.intelligence.review import (
 from desloppify.languages._framework.runtime import make_lang_run
 from desloppify.languages.python import PythonConfig
 from desloppify.languages.typescript import TypeScriptConfig
-from desloppify.scoring import DIMENSIONS, FILE_BASED_DETECTORS
+from desloppify.engine._scoring.policy.core import (
+    DIMENSIONS,
+    FILE_BASED_DETECTORS,
+)
 from desloppify.state import empty_state, find_suspect_detectors
 
 # ── Helpers ──────────────────────────────────────────────────────

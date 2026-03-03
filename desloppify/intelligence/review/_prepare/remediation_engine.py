@@ -2,28 +2,27 @@
 
 from __future__ import annotations
 
+from desloppify.engine._state.schema import StateModel
 from pathlib import Path
 from typing import Any
 
 from desloppify.core.discovery_api import safe_write_text
-from desloppify.scoring import CONFIDENCE_WEIGHTS, HOLISTIC_MULTIPLIER
+from desloppify.engine._scoring.policy.core import (
+    CONFIDENCE_WEIGHTS,
+    HOLISTIC_MULTIPLIER,
+)
 from desloppify.state import (
-    get_objective_score,
-    get_overall_score,
-    get_strict_score,
+    score_snapshot as state_score_snapshot,
     utc_now,
 )
 
 
-def _score_snapshot(state: dict[str, Any]) -> tuple[float, float, float]:
-    return (
-        get_overall_score(state) or 0.0,
-        get_objective_score(state) or 0.0,
-        get_strict_score(state) or 0.0,
-    )
+def _score_snapshot(state: StateModel) -> tuple[float, float, float]:
+    scores = state_score_snapshot(state)
+    return scores.overall or 0.0, scores.objective or 0.0, scores.strict or 0.0
 
 
-def empty_plan(state: dict[str, Any], lang_name: str) -> str:
+def render_empty_remediation_plan(state: StateModel, lang_name: str) -> str:
     """Generate a short plan when no holistic issues are open."""
     overall, objective, strict = _score_snapshot(state)
     return (
@@ -39,7 +38,7 @@ def empty_plan(state: dict[str, Any], lang_name: str) -> str:
 
 
 def _collect_holistic_issues(
-    state: dict[str, Any],
+    state: StateModel,
 ) -> list[tuple[str, dict[str, Any]]]:
     issues = state.get("issues", {})
     return [
@@ -51,7 +50,7 @@ def _collect_holistic_issues(
     ]
 
 
-def _review_potential(state: dict[str, Any]) -> int:
+def _review_potential(state: StateModel) -> int:
     total = 0
     for language_potentials in state.get("potentials", {}).values():
         total += language_potentials.get("review", 0)
@@ -189,12 +188,12 @@ def _render_re_evaluate(lines: list[str], lang_name: str) -> None:
 
 
 def generate_remediation_plan(
-    state: dict[str, Any], lang_name: str, *, output_path: Path | None = None
+    state: StateModel, lang_name: str, *, output_path: Path | None = None
 ) -> str:
     """Generate prioritized markdown remediation steps for open holistic issues."""
     holistic_issues = _collect_holistic_issues(state)
     if not holistic_issues:
-        content = empty_plan(state, lang_name)
+        content = render_empty_remediation_plan(state, lang_name)
         if output_path:
             safe_write_text(output_path, content)
         return content

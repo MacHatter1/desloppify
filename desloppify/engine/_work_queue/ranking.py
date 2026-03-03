@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+from desloppify.engine._state.schema import StateModel
+from typing import Any
+
+from desloppify.engine._scoring.results.health import compute_health_breakdown
+from desloppify.engine._scoring.results.impact import get_dimension_for_detector
 from desloppify.engine._work_queue.helpers import (
     ACTION_TYPE_PRIORITY,
     detail_dict,
@@ -16,7 +21,7 @@ from desloppify.engine._work_queue.helpers import (
 )
 from desloppify.engine._work_queue.synthetic import subjective_strict_scores
 from desloppify.core.registry import DETECTORS
-from desloppify.engine.planning.common import CONFIDENCE_ORDER
+from desloppify.engine.planning.helpers import CONFIDENCE_ORDER
 from desloppify.state import path_scoped_issues
 
 # Plan-aware sort tiers (item_sort_key)
@@ -32,7 +37,9 @@ _RANK_CLUSTER = 0           # Auto-clustered issues
 _RANK_ISSUE = 1           # Individual issues + assessed subjective
 
 
-def enrich_with_impact(items: list[dict], dimension_scores: dict) -> None:
+def enrich_with_impact(
+    items: list[dict[str, Any]], dimension_scores: dict[str, Any]
+) -> None:
     """Stamp ``estimated_impact`` on each item based on dimension-level headroom.
 
     Impact = ``overall_per_point * headroom`` where headroom = ``100 - score``.
@@ -42,9 +49,6 @@ def enrich_with_impact(items: list[dict], dimension_scores: dict) -> None:
         for item in items:
             item["estimated_impact"] = 0.0
         return
-
-    from desloppify.engine._scoring.results.health import compute_health_breakdown
-    from desloppify.engine._scoring.results.impact import get_dimension_for_detector
 
     breakdown = compute_health_breakdown(dimension_scores)
     entries = breakdown.get("entries", [])
@@ -66,7 +70,7 @@ def enrich_with_impact(items: list[dict], dimension_scores: dict) -> None:
 
 
 def _compute_item_impact(
-    item: dict,
+    item: dict[str, Any],
     dim_impact: dict[str, dict[str, float]],
     get_dimension_for_detector,
 ) -> float:
@@ -94,7 +98,7 @@ def _compute_item_impact(
     return 0.0
 
 
-def subjective_score_value(item: dict) -> float:
+def subjective_score_value(item: dict[str, Any]) -> float:
     if item.get("kind") == "subjective_dimension":
         detail = detail_dict(item)
         return float(detail.get("strict_score", item.get("subjective_score", 100.0)))
@@ -102,16 +106,16 @@ def subjective_score_value(item: dict) -> float:
 
 
 def build_issue_items(
-    state: dict,
+    state: StateModel,
     *,
     scan_path: str | None,
     status_filter: str,
     scope: str | None,
     chronic: bool,
-) -> list[dict]:
+) -> list[dict[str, Any]]:
     scoped = path_scoped_issues(state.get("issues", {}), scan_path)
     subjective_scores = subjective_strict_scores(state)
-    out: list[dict] = []
+    out: list[dict[str, Any]] = []
 
     for issue_id, issue in scoped.items():
         if issue.get("suppressed"):
@@ -162,7 +166,7 @@ def build_issue_items(
     return out
 
 
-def _natural_sort_key(item: dict) -> tuple:
+def _natural_sort_key(item: dict[str, Any]) -> tuple:
     """Compute natural (non-plan-aware) ranking for queue items."""
     kind = item.get("kind", "issue")
 
@@ -214,7 +218,7 @@ def _natural_sort_key(item: dict) -> tuple:
     )
 
 
-def item_sort_key(item: dict) -> tuple:
+def item_sort_key(item: dict[str, Any]) -> tuple:
     """Unified sort key: plan position first, then natural ranking.
 
     When ``_plan_position`` is stamped (by :func:`stamp_plan_sort_keys`),
@@ -240,7 +244,7 @@ def item_sort_key(item: dict) -> tuple:
     return (group, *_natural_sort_key(item))
 
 
-def item_explain(item: dict) -> dict:
+def item_explain(item: dict[str, Any]) -> dict[str, Any]:
     kind = item.get("kind", "issue")
     if kind == "workflow_stage":
         return {
@@ -320,9 +324,11 @@ def item_explain(item: dict) -> dict:
     return explain
 
 
-def group_queue_items(items: list[dict], group: str) -> dict[str, list[dict]]:
+def group_queue_items(
+    items: list[dict[str, Any]], group: str
+) -> dict[str, list[dict[str, Any]]]:
     """Group queue items for alternate output modes."""
-    grouped: dict[str, list[dict]] = {}
+    grouped: dict[str, list[dict[str, Any]]] = {}
     for item in items:
         if group == "file":
             key = item.get("file", "")

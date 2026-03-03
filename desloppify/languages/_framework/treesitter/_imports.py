@@ -6,7 +6,7 @@ import logging
 import os
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from ._cache import _PARSE_CACHE
 from ._extractors import _get_parser, _make_query, _run_query, _unwrap_node
@@ -21,7 +21,7 @@ def ts_build_dep_graph(
     path: Path,
     spec: TreeSitterLangSpec,
     file_list: list[str],
-) -> dict[str, dict]:
+) -> dict[str, dict[str, Any]]:
     """Build a dependency graph by parsing imports with tree-sitter.
 
     Returns the same shape as Python/TS dep graphs:
@@ -35,7 +35,7 @@ def ts_build_dep_graph(
 
     scan_path = str(path.resolve())
     file_set = set(file_list)
-    graph: dict[str, dict] = {}
+    graph: dict[str, dict[str, Any]] = {}
 
     # Initialize all files in the graph.
     for f in file_list:
@@ -94,7 +94,7 @@ def make_ts_dep_builder(spec: TreeSitterLangSpec, file_finder):
     matching the contract expected by LangConfig.build_dep_graph.
     """
 
-    def build(path: Path) -> dict:
+    def build(path: Path) -> dict[str, dict[str, Any]]:
         file_list = file_finder(path)
         return ts_build_dep_graph(path, spec, file_list)
 

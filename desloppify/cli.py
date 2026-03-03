@@ -15,7 +15,7 @@ from desloppify.app.commands.helpers.state import state_path
 from desloppify.core.registry import detector_names, on_detector_registered
 from desloppify.core.config import load_config
 from desloppify.core.discovery_api import set_exclusions
-from desloppify.core.output_api import colorize
+from desloppify.core.output import colorize
 from desloppify.core.paths_api import get_default_path, get_project_root
 from desloppify.core.runtime_state import runtime_scope
 from desloppify.languages import available_langs

@@ -1,9 +1,9 @@
-"""Tests for desloppify.app.commands.zone_cmd — zone command helpers."""
+"""Tests for desloppify.app.commands.zone — zone command helpers."""
 
 import desloppify.core.config as config_mod
 from desloppify.app.commands.helpers.runtime import CommandRuntime
 from desloppify.core.exception_sets import CommandError
-from desloppify.app.commands.zone_cmd import (
+from desloppify.app.commands.zone import (
     _zone_clear,
     _zone_set,
     _zone_show,
@@ -42,7 +42,7 @@ class TestCmdZoneDispatch:
     def test_missing_action_defaults_to_show(self, monkeypatch):
         calls = []
         monkeypatch.setattr(
-            "desloppify.app.commands.zone_cmd._zone_show",
+            "desloppify.app.commands.zone._zone_show",
             lambda args: calls.append("show"),
         )
 
@@ -55,7 +55,7 @@ class TestCmdZoneDispatch:
     def test_show_action_dispatches(self, monkeypatch):
         calls = []
         monkeypatch.setattr(
-            "desloppify.app.commands.zone_cmd._zone_show",
+            "desloppify.app.commands.zone._zone_show",
             lambda args: calls.append("show"),
         )
 
@@ -68,7 +68,7 @@ class TestCmdZoneDispatch:
     def test_set_action_dispatches(self, monkeypatch):
         calls = []
         monkeypatch.setattr(
-            "desloppify.app.commands.zone_cmd._zone_set",
+            "desloppify.app.commands.zone._zone_set",
             lambda args: calls.append("set"),
         )
 
@@ -81,7 +81,7 @@ class TestCmdZoneDispatch:
     def test_clear_action_dispatches(self, monkeypatch):
         calls = []
         monkeypatch.setattr(
-            "desloppify.app.commands.zone_cmd._zone_clear",
+            "desloppify.app.commands.zone._zone_clear",
             lambda args: calls.append("clear"),
         )
 
@@ -138,7 +138,7 @@ class TestZoneSet:
             config_mod, "save_config", lambda cfg, path=None: saved.append(dict(cfg))
         )
         monkeypatch.setattr(
-            "desloppify.app.commands.zone_cmd.rel", lambda p: p,
+            "desloppify.app.commands.zone.rel", lambda p: p,
         )
 
         class FakeArgs:
@@ -175,7 +175,7 @@ class TestZoneClear:
             config_mod, "save_config", lambda cfg, path=None: saved.append(dict(cfg))
         )
         monkeypatch.setattr(
-            "desloppify.app.commands.zone_cmd.rel", lambda p: p,
+            "desloppify.app.commands.zone.rel", lambda p: p,
         )
 
         class FakeArgs:
@@ -197,7 +197,7 @@ class TestZoneClear:
     def test_clear_nonexistent_override(self, monkeypatch, capsys):
         fake_config = {"zone_overrides": {}}
         monkeypatch.setattr(
-            "desloppify.app.commands.zone_cmd.rel", lambda p: p,
+            "desloppify.app.commands.zone.rel", lambda p: p,
         )
 
         class FakeArgs:
@@ -232,7 +232,7 @@ class TestZonePathNormalization:
         )
         # rel() normalizes the absolute path to relative form
         monkeypatch.setattr(
-            "desloppify.app.commands.zone_cmd.rel",
+            "desloppify.app.commands.zone.rel",
             lambda p: "src/file.py",
         )
 
@@ -261,7 +261,7 @@ class TestZonePathNormalization:
             config_mod, "save_config", lambda cfg, path=None: saved.append(dict(cfg))
         )
         monkeypatch.setattr(
-            "desloppify.app.commands.zone_cmd.rel",
+            "desloppify.app.commands.zone.rel",
             lambda p: "src/file.py",
         )
 

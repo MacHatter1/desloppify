@@ -7,7 +7,7 @@ import os
 import re
 from pathlib import Path
 
-from desloppify.core.text_api import PROJECT_ROOT, strip_c_style_comments
+from desloppify.core.text.text_api import get_project_root, strip_c_style_comments
 from desloppify.core.fallbacks import log_best_effort_failure
 from desloppify.core.paths_api import SRC_PATH
 
@@ -72,7 +72,7 @@ logger = logging.getLogger(__name__)
 def _relative_if_under_root(path_str: str) -> str:
     """Return project-relative path when possible; else return original."""
     try:
-        return str(Path(path_str).resolve().relative_to(PROJECT_ROOT)).replace("\\", "/")
+        return str(Path(path_str).resolve().relative_to(get_project_root())).replace("\\", "/")
     except (OSError, ValueError):
         return path_str
 

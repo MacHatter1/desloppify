@@ -13,7 +13,7 @@ from desloppify.app.commands.helpers.subjective import print_subjective_followup
 from desloppify.app.commands.scan import (
     scan_reporting_dimensions as reporting_dimensions_mod,
 )
-from desloppify.core.output_api import colorize
+from desloppify.core.output import colorize
 from desloppify.core.paths_api import read_code_snippet
 from desloppify.core.fallbacks import print_write_error
 from desloppify.core.enums import canonical_issue_status

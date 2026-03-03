@@ -18,6 +18,18 @@ class CommandError(Exception):
         super().__init__(message)
 
 
+class PacketValidationError(CommandError):
+    """Raised for malformed/missing review packet inputs."""
+
+
+class RunnerTimeoutError(CommandError):
+    """Raised when review batch execution fails due to timeout conditions."""
+
+
+class TriageValidationError(CommandError):
+    """Raised for invalid triage-stage attestation or workflow inputs."""
+
+
 PLAN_LOAD_EXCEPTIONS = (
     ImportError,
     AttributeError,
@@ -27,4 +39,10 @@ PLAN_LOAD_EXCEPTIONS = (
     KeyError,
 )
 
-__all__ = ["CommandError", "PLAN_LOAD_EXCEPTIONS"]
+__all__ = [
+    "CommandError",
+    "PLAN_LOAD_EXCEPTIONS",
+    "PacketValidationError",
+    "RunnerTimeoutError",
+    "TriageValidationError",
+]

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from desloppify.engine._state.schema import StateModel
 from typing import Any
 
 from desloppify import state as state_mod
@@ -18,7 +19,7 @@ def _coerce_coverage_confidence(value: object, *, default: float = 1.0) -> float
     return max(0.0, min(1.0, parsed))
 
 
-def _current_scan_coverage(state: dict[str, Any], lang) -> dict[str, Any]:
+def _current_scan_coverage(state: StateModel, lang) -> dict[str, Any]:
     scan_coverage = state.get("scan_coverage", {})
     if not isinstance(scan_coverage, dict):
         return {}
@@ -29,7 +30,7 @@ def _current_scan_coverage(state: dict[str, Any], lang) -> dict[str, Any]:
     return {}
 
 
-def _coverage_reduction_warnings(state: dict[str, Any], lang) -> list[str]:
+def _coverage_reduction_warnings(state: StateModel, lang) -> list[str]:
     coverage = _current_scan_coverage(state, lang)
     detectors = coverage.get("detectors", {})
     if not isinstance(detectors, dict):
@@ -58,7 +59,7 @@ def _coverage_reduction_warnings(state: dict[str, Any], lang) -> list[str]:
     return warnings
 
 
-def _post_scan_warnings(diff: dict[str, Any], state: dict[str, Any], lang) -> list[str]:
+def _post_scan_warnings(diff: dict[str, Any], state: StateModel, lang) -> list[str]:
     """Build post-scan warning list shown above narrative output."""
     warnings: list[str] = []
     if diff["reopened"] > 5:
@@ -90,7 +91,7 @@ def _plan_data_for_narrative() -> dict[str, Any] | None:
 
 def show_post_scan_analysis(
     diff: dict[str, Any],
-    state: dict[str, Any],
+    state: StateModel,
     lang,
     *,
     target_strict_score: float = 95.0,
@@ -139,7 +140,7 @@ def _should_show_score_integrity(
     return not (wontfix <= 5 and ignored <= 0 and ignore_patterns <= 0 and not confidence_reduced)
 
 
-def _print_dimension_gap_summary(state: dict[str, Any]) -> None:
+def _print_dimension_gap_summary(state: StateModel) -> None:
     """Print top dimension strict-vs-lenient gaps."""
     dim_scores = state.get("dimension_scores", {})
     if not isinstance(dim_scores, dict):
@@ -166,7 +167,7 @@ def _print_wontfix_integrity(
     wontfix: int,
     wontfix_pct: int,
     strict_gap: float,
-    state: dict[str, Any],
+    state: StateModel,
 ) -> None:
     """Print wontfix-focused integrity warning block."""
     if wontfix <= 5:
@@ -257,7 +258,7 @@ def _print_confidence_integrity(score_confidence: dict[str, Any]) -> None:
             print(colorize(f"      Fix: {remediation}", "dim"))
 
 
-def show_score_integrity(state: dict[str, Any], diff: dict[str, Any]) -> None:
+def show_score_integrity(state: StateModel, diff: dict[str, Any]) -> None:
     """Show Score Integrity section — surfaces wontfix debt and ignored issues."""
     stats = state.get("stats", {})
     wontfix = stats.get("wontfix", 0)
@@ -276,8 +277,9 @@ def show_score_integrity(state: dict[str, Any], diff: dict[str, Any]) -> None:
     ):
         return
 
-    overall = state_mod.get_overall_score(state)
-    strict = state_mod.get_strict_score(state)
+    scores = state_mod.score_snapshot(state)
+    overall = scores.overall
+    strict = scores.strict
     strict_gap = (
         round(overall - strict, 1) if overall is not None and strict is not None else 0
     )

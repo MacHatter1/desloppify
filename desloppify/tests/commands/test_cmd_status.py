@@ -1,6 +1,6 @@
-"""Tests for desloppify.app.commands.status_cmd — display helpers."""
+"""Tests for desloppify.app.commands.status — display helpers."""
 
-from desloppify.app.commands.status_cmd import (
+from desloppify.app.commands.status import (
     cmd_status,
     show_dimension_table,
     show_focus_suggestion,

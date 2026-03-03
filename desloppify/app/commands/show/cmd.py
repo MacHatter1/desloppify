@@ -11,7 +11,7 @@ from desloppify.app.commands.helpers.runtime import command_runtime
 from desloppify.app.commands.helpers.score import target_strict_score_from_config
 from desloppify.app.commands.helpers.state import require_completed_scan
 from desloppify.core.exception_sets import PLAN_LOAD_EXCEPTIONS
-from desloppify.core.output_api import colorize
+from desloppify.core.output import colorize
 from desloppify.core.skill_docs import check_skill_version
 from desloppify.core.tooling import check_config_staleness
 from desloppify.engine.plan import load_plan
@@ -33,6 +33,53 @@ from .render import (
     write_show_output_file,
 )
 from .scope import load_matches, resolve_entity, resolve_noise, resolve_show_scope
+
+
+def _handle_special_entity_views(
+    *,
+    entity,
+    state: dict,
+    config: dict,
+    lang_name: str | None,
+    pattern_raw: str,
+) -> bool:
+    if entity.kind == "special_view" and entity.pattern.strip().lower() == "concerns":
+        _show_concerns(state, lang_name)
+        return True
+    if entity.kind == "dimension" and entity.is_subjective:
+        _render_subjective_dimension(state, config, entity, pattern_raw)
+        return True
+    return False
+
+
+def _load_entity_matches(
+    *,
+    state: dict,
+    entity,
+    pattern: str,
+    status_filter: str,
+    scope: str | None,
+    chronic: bool,
+) -> tuple[str, list[dict]] | None:
+    if entity.kind != "dimension" or entity.is_subjective:
+        return pattern, load_matches(
+            state, scope=scope, status_filter=status_filter, chronic=chronic
+        )
+    matches = _load_dimension_issues(state, entity, status_filter)
+    if not matches:
+        _render_clean_mechanical_dimension(state, entity)
+        return None
+    return entity.display_name, matches
+
+
+def _active_plan_or_none() -> dict | None:
+    try:
+        plan = load_plan()
+    except PLAN_LOAD_EXCEPTIONS:
+        return None
+    if plan.get("queue_order") or plan.get("clusters"):
+        return plan
+    return None
 
 
 def cmd_show(args: argparse.Namespace) -> None:
@@ -68,25 +115,26 @@ def cmd_show(args: argparse.Namespace) -> None:
     )
 
     entity = resolve_entity(pattern, state)
-
-    if entity.kind == "special_view" and entity.pattern.strip().lower() == "concerns":
-        _show_concerns(state, lang_name)
+    if _handle_special_entity_views(
+        entity=entity,
+        state=state,
+        config=config,
+        lang_name=lang_name,
+        pattern_raw=pattern_raw,
+    ):
         return
 
-    if entity.kind == "dimension" and entity.is_subjective:
-        _render_subjective_dimension(state, config, entity, pattern_raw)
+    match_result = _load_entity_matches(
+        state=state,
+        entity=entity,
+        pattern=pattern,
+        status_filter=status_filter,
+        scope=scope,
+        chronic=chronic,
+    )
+    if match_result is None:
         return
-
-    if entity.kind == "dimension" and not entity.is_subjective:
-        matches = _load_dimension_issues(state, entity, status_filter)
-        if not matches:
-            _render_clean_mechanical_dimension(state, entity)
-            return
-        pattern = entity.display_name
-    else:
-        matches = load_matches(
-            state, scope=scope, status_filter=status_filter, chronic=chronic
-        )
+    pattern, matches = match_result
 
     if not matches:
         _render_no_matches(entity, pattern, status_filter, narrative, state, config)
@@ -138,11 +186,7 @@ def cmd_show(args: argparse.Namespace) -> None:
         global_noise_budget=global_noise_budget,
         budget_warning=budget_warning,
     )
-    try:
-        plan = load_plan()
-        plan_active = plan if (plan.get("queue_order") or plan.get("clusters")) else None
-    except PLAN_LOAD_EXCEPTIONS:
-        plan_active = None
+    plan_active = _active_plan_or_none()
     show_agent_plan(narrative, surfaced_matches, plan=plan_active)
     show_subjective_followup(
         state,

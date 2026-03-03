@@ -8,10 +8,10 @@ import re
 from pathlib import Path
 from typing import Any
 
-from desloppify.core.text_api import PROJECT_ROOT
+from desloppify.core.text.text_api import get_project_root
 from desloppify.core.fallbacks import log_best_effort_failure
 from desloppify.core.discovery_api import find_tsx_files, rel
-from desloppify.core.output_api import colorize, print_table
+from desloppify.core.output import colorize, print_table
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ def detect_mixed_concerns(path: Path) -> tuple[list[dict[str, Any]], int]:
             p = (
                 Path(filepath)
                 if Path(filepath).is_absolute()
-                else PROJECT_ROOT / filepath
+                else get_project_root() / filepath
             )
             content = p.read_text()
             loc = len(content.splitlines())

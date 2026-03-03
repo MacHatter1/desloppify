@@ -399,7 +399,7 @@ def prepare_holistic_review(
     try:
         from desloppify.engine.concerns import generate_concerns
 
-        concerns = generate_concerns(state, lang_name=lang.name)
+        concerns = generate_concerns(state)
         concerns = [
             concern
             for concern in concerns

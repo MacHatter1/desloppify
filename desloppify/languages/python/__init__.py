@@ -6,7 +6,7 @@ import shutil
 from functools import partial
 from pathlib import Path
 
-from desloppify.core.text_api import get_area
+from desloppify.core.text.text_api import get_area
 from desloppify.core.source_discovery import find_py_files
 from desloppify.engine.detectors.base import FunctionInfo
 from desloppify.engine.policy.zones import COMMON_ZONE_RULES, Zone, ZoneRule
@@ -48,6 +48,7 @@ from desloppify.languages.python.phases import (
     phase_structural,
     phase_uncalled_functions,
     phase_unused,
+    phase_unused_enums,
 )
 from desloppify.languages.python.phases import (
     PY_GOD_RULES as PY_GOD_RULES,
@@ -184,6 +185,7 @@ class PythonConfig(LangConfig):
                 DetectorPhase("Private imports", phase_private_imports),
                 DetectorPhase("Layer violations", phase_layer_violation),
                 DetectorPhase("Dict key flow", phase_dict_keys),
+                DetectorPhase("Unused enums", phase_unused_enums),
                 *shared_subjective_duplicates_tail(),
             ],
             fixers={},
@@ -208,3 +210,56 @@ class PythonConfig(LangConfig):
             extract_functions=_py_extract_functions,
             zone_rules=PY_ZONE_RULES,
         )
+
+__all__ = [
+    "shutil",
+    "partial",
+    "Path",
+    "get_area",
+    "find_py_files",
+    "FunctionInfo",
+    "COMMON_ZONE_RULES",
+    "Zone",
+    "ZoneRule",
+    "register_lang_hooks",
+    "register_lang",
+    "detector_phase_security",
+    "detector_phase_signature",
+    "detector_phase_test_coverage",
+    "shared_subjective_duplicates_tail",
+    "phase_private_imports",
+    "DetectorCoverageStatus",
+    "DetectorPhase",
+    "LangConfig",
+    "LangSecurityResult",
+    "py_test_coverage_hooks",
+    "get_detect_commands",
+    "collect_exclude_dirs",
+    "detect_with_bandit",
+    "build_dep_graph",
+    "detect_python_private_imports",
+    "extract_py_functions",
+    "PY_COMPLEXITY_SIGNALS",
+    "PY_ENTRY_PATTERNS",
+    "phase_coupling",
+    "phase_dict_keys",
+    "phase_layer_violation",
+    "phase_mutable_state",
+    "phase_responsibility_cohesion",
+    "phase_smells",
+    "phase_structural",
+    "phase_uncalled_functions",
+    "phase_unused",
+    "phase_unused_enums",
+    "PY_GOD_RULES",
+    "PY_SKIP_NAMES",
+    "PY_HOLISTIC_REVIEW_DIMENSIONS",
+    "PY_LOW_VALUE_PATTERN",
+    "PY_MIGRATION_MIXED_EXTENSIONS",
+    "PY_MIGRATION_PATTERN_PAIRS",
+    "PY_REVIEW_GUIDANCE",
+    "py_review_api_surface",
+    "py_review_module_patterns",
+    "PY_ZONE_RULES",
+    "PythonConfig",
+]

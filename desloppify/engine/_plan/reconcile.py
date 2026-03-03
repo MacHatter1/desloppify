@@ -5,8 +5,15 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 
+from desloppify.engine._plan.annotations import get_issue_note
+from desloppify.engine._plan.operations import append_log_entry, resurface_stale_skips
+from desloppify.engine._plan.promoted_ids import prune_promoted_ids
 from desloppify.engine._plan.schema import EPIC_PREFIX, PlanModel, SupersededEntry, ensure_plan_defaults
-from desloppify.engine._plan.stale_dimensions import SYNTHETIC_PREFIXES
+from desloppify.engine._plan.stale_dimensions import (
+    SYNTHETIC_PREFIXES,
+    compute_new_issue_ids,
+    sync_triage_needed,
+)
 from desloppify.engine._state.schema import StateModel, utc_now
 
 SUPERSEDED_TTL_DAYS = 90
@@ -75,21 +82,19 @@ def _supersede_id(
     }
 
     # Preserve any existing override note
-    override = plan.get("overrides", {}).get(issue_id)
-    if override and override.get("note"):
-        entry["note"] = override["note"]
+    override_note = get_issue_note(plan, issue_id)
+    if override_note:
+        entry["note"] = override_note
 
     plan["superseded"][issue_id] = entry
 
     # Remove from queue_order, skipped, promoted_ids, cluster issue_ids
     order: list[str] = plan.get("queue_order", [])
     skipped: dict = plan.get("skipped", {})
-    promoted: list[str] = plan.get("promoted_ids", [])
     if issue_id in order:
         order.remove(issue_id)
     skipped.pop(issue_id, None)
-    if issue_id in promoted:
-        promoted.remove(issue_id)
+    prune_promoted_ids(plan, {issue_id})
     for cluster in plan.get("clusters", {}).values():
         ids = cluster.get("issue_ids", [])
         if issue_id in ids:
@@ -186,7 +191,6 @@ def reconcile_plan_after_scan(
 
     # Resurface stale temporary skips
     scan_count = state.get("scan_count", 0)
-    from desloppify.engine._plan.operations import resurface_stale_skips
 
     resurfaced = resurface_stale_skips(plan, scan_count)
     if resurfaced:
@@ -200,8 +204,6 @@ def reconcile_plan_after_scan(
 
     # Log reconciliation if any changes were made
     if result.changes > 0:
-        from desloppify.engine._plan.operations import append_log_entry
-
         append_log_entry(
             plan,
             "reconcile",
@@ -235,11 +237,6 @@ def sync_plan_after_review_import(
     Appends new issue IDs to queue_order and injects triage stages
     if needed. Returns None when there are no new issues to sync.
     """
-    from desloppify.engine._plan.stale_dimensions import (
-        compute_new_issue_ids,
-        sync_triage_needed,
-    )
-
     ensure_plan_defaults(plan)
     new_ids = compute_new_issue_ids(plan, state)
     if not new_ids:

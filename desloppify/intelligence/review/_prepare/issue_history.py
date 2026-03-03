@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from desloppify.engine._state.schema import StateModel
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime
@@ -74,7 +75,7 @@ def _related_files(issue: dict[str, Any], *, limit: int = 6) -> list[str]:
     return out
 
 
-def _iter_review_issues(state: dict[str, Any]) -> list[dict[str, Any]]:
+def _iter_review_issues(state: StateModel) -> list[dict[str, Any]]:
     issues = state.get("issues")
     if not isinstance(issues, dict):
         return []
@@ -113,7 +114,7 @@ def _shape_issue(issue: dict[str, Any]) -> dict[str, Any]:
 
 
 def build_issue_history_context(
-    state: dict[str, Any],
+    state: StateModel,
     *,
     options: ReviewHistoryOptions | None = None,
 ) -> dict[str, Any]:

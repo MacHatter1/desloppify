@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
+from desloppify.engine._state.schema import StateModel
 import re
 from fnmatch import fnmatch
+from typing import Any
 
 from desloppify.core.enums import issue_status_tokens
 from desloppify.core.registry import DETECTORS
-from desloppify.intelligence.integrity import (
-    is_holistic_subjective_issue,
-)
 
 ALL_STATUSES = set(issue_status_tokens(include_all=True))
 ACTION_TYPE_PRIORITY = {"auto_fix": 0, "refactor": 1, "manual_fix": 2, "reorganize": 3}
@@ -19,7 +18,7 @@ ATTEST_EXAMPLE = (
 )
 
 
-def detail_dict(item: dict) -> dict:
+def detail_dict(item: dict[str, Any]) -> dict[str, Any]:
     """Return issue detail as a dict; tolerate legacy/non-dict payloads."""
     detail = item.get("detail")
     return detail if isinstance(detail, dict) else {}
@@ -29,7 +28,7 @@ def status_matches(item_status: str, status_filter: str) -> bool:
     return status_filter == "all" or item_status == status_filter
 
 
-def is_subjective_issue(item: dict) -> bool:
+def is_subjective_issue(item: dict[str, Any]) -> bool:
     detector = item.get("detector")
     if detector in {"subjective_assessment"}:
         return True
@@ -38,11 +37,11 @@ def is_subjective_issue(item: dict) -> bool:
     return False
 
 
-def is_review_issue(item: dict) -> bool:
+def is_review_issue(item: dict[str, Any]) -> bool:
     return item.get("detector") == "review"
 
 
-def is_subjective_queue_item(item: dict) -> bool:
+def is_subjective_queue_item(item: dict[str, Any]) -> bool:
     """True for subjective work items, including collapsed subjective clusters."""
     if item.get("kind") == "subjective_dimension":
         return True
@@ -54,7 +53,7 @@ def is_subjective_queue_item(item: dict) -> bool:
     return False
 
 
-def review_issue_weight(item: dict) -> float:
+def review_issue_weight(item: dict[str, Any]) -> float:
     """Return review issue weight aligned with issues list ordering."""
     confidence = str(item.get("confidence", "low")).lower()
     weight_by_confidence = {
@@ -68,7 +67,7 @@ def review_issue_weight(item: dict) -> float:
     return float(weight)
 
 
-def scope_matches(item: dict, scope: str | None) -> bool:
+def scope_matches(item: dict[str, Any], scope: str | None) -> bool:
     """Apply show-style pattern matching against a queue item."""
     if not scope:
         return True
@@ -112,7 +111,9 @@ def slugify(text: str) -> str:
     return re.sub(r"[^a-z0-9_]+", "_", text.lower()).strip("_")
 
 
-def supported_fixers_for_item(state: dict, item: dict) -> set[str] | None:
+def supported_fixers_for_item(
+    state: StateModel, item: dict[str, Any]
+) -> set[str] | None:
     """Return supported fixers for an item's language when known."""
     lang = str(item.get("lang", "") or "").strip()
     if not lang:
@@ -133,7 +134,7 @@ def supported_fixers_for_item(state: dict, item: dict) -> set[str] | None:
 
 
 def primary_command_for_issue(
-    item: dict, *, supported_fixers: set[str] | None = None
+    item: dict[str, Any], *, supported_fixers: set[str] | None = None
 ) -> str:
     detector = item.get("detector", "")
     meta = DETECTORS.get(detector)
@@ -146,6 +147,10 @@ def primary_command_for_issue(
         if available_fixers:
             return f"desloppify autofix {available_fixers[0]} --dry-run"
     if detector == "subjective_review":
+        from desloppify.intelligence.integrity import (
+            is_holistic_subjective_issue,  # cycle-break: helpers.py ↔ integrity.py
+        )
+
         if is_holistic_subjective_issue(item):
             return "desloppify review --prepare"
         return "desloppify show subjective"

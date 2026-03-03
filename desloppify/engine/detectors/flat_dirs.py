@@ -2,6 +2,7 @@
 
 import logging
 from collections import Counter
+from dataclasses import dataclass
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -25,6 +26,39 @@ THIN_WRAPPER_NAMES = frozenset(
         "common",
     }
 )
+_DEFAULT_THIN_WRAPPER_NAMES = (
+    "components",
+    "hooks",
+    "utils",
+    "services",
+    "state",
+    "contexts",
+    "contracts",
+    "types",
+    "models",
+    "adapters",
+    "helpers",
+    "core",
+    "common",
+)
+
+
+@dataclass(frozen=True)
+class FlatDirDetectionConfig:
+    """Thresholds and heuristics for flat directory detection."""
+
+    threshold: int = 20
+    child_dir_threshold: int = 10
+    child_dir_weight: int = 3
+    combined_threshold: int = 30
+    sparse_parent_child_threshold: int = 8
+    sparse_child_file_threshold: int = 1
+    sparse_child_count_threshold: int = 6
+    sparse_child_ratio_threshold: float = 0.7
+    thin_wrapper_parent_sibling_threshold: int = 10
+    thin_wrapper_max_file_count: int = 1
+    thin_wrapper_max_child_dir_count: int = 1
+    thin_wrapper_names: tuple[str, ...] = _DEFAULT_THIN_WRAPPER_NAMES
 
 
 def format_flat_dir_summary(entry: dict) -> str:
@@ -72,6 +106,7 @@ def detect_flat_dirs(
     file_finder,
     threshold: int = 20,
     *,
+    config: FlatDirDetectionConfig | None = None,
     child_dir_threshold: int = 10,
     child_dir_weight: int = 3,
     combined_threshold: int = 30,
@@ -99,6 +134,24 @@ def detect_flat_dirs(
     ),
 ) -> tuple[list[dict], int]:
     """Find overloaded/fragmented directories using count and fan-out heuristics."""
+    if config is None:
+        settings = FlatDirDetectionConfig(
+            threshold=threshold,
+            child_dir_threshold=child_dir_threshold,
+            child_dir_weight=child_dir_weight,
+            combined_threshold=combined_threshold,
+            sparse_parent_child_threshold=sparse_parent_child_threshold,
+            sparse_child_file_threshold=sparse_child_file_threshold,
+            sparse_child_count_threshold=sparse_child_count_threshold,
+            sparse_child_ratio_threshold=sparse_child_ratio_threshold,
+            thin_wrapper_parent_sibling_threshold=thin_wrapper_parent_sibling_threshold,
+            thin_wrapper_max_file_count=thin_wrapper_max_file_count,
+            thin_wrapper_max_child_dir_count=thin_wrapper_max_child_dir_count,
+            thin_wrapper_names=thin_wrapper_names,
+        )
+    else:
+        settings = config
+
     files = file_finder(path)
     scan_root = path.resolve()
     dir_counts: Counter[str] = Counter()
@@ -127,7 +180,7 @@ def detect_flat_dirs(
     for children in child_dirs.values():
         all_dirs.update(children)
 
-    thin_names = {name.lower() for name in thin_wrapper_names}
+    thin_names = {name.lower() for name in settings.thin_wrapper_names}
     if not thin_names:
         thin_names = set(THIN_WRAPPER_NAMES)
 
@@ -136,14 +189,14 @@ def detect_flat_dirs(
         file_count = int(dir_counts.get(dir_path, 0))
         direct_children = child_dirs.get(dir_path, set())
         direct_child_count = len(direct_children)
-        combined_score = file_count + (child_dir_weight * direct_child_count)
+        combined_score = file_count + (settings.child_dir_weight * direct_child_count)
         has_local_files = dir_path in dir_counts
 
         if has_local_files:
             overloaded = (
-                file_count >= threshold
-                or direct_child_count >= child_dir_threshold
-                or combined_score >= combined_threshold
+                file_count >= settings.threshold
+                or direct_child_count >= settings.child_dir_threshold
+                or combined_score >= settings.combined_threshold
             )
             if overloaded:
                 entries.append(
@@ -163,7 +216,7 @@ def detect_flat_dirs(
                 child_file_count = int(dir_counts.get(child, 0))
                 child_child_count = len(child_dirs.get(child, set()))
                 if (
-                    child_file_count <= sparse_child_file_threshold
+                    child_file_count <= settings.sparse_child_file_threshold
                     and child_child_count == 0
                 ):
                     sparse_child_count += 1
@@ -173,9 +226,9 @@ def detect_flat_dirs(
                 else 0.0
             )
             fragmented = (
-                direct_child_count >= sparse_parent_child_threshold
-                and sparse_child_count >= sparse_child_count_threshold
-                and sparse_child_ratio >= sparse_child_ratio_threshold
+                direct_child_count >= settings.sparse_parent_child_threshold
+                and sparse_child_count >= settings.sparse_child_count_threshold
+                and sparse_child_ratio >= settings.sparse_child_ratio_threshold
             )
             if fragmented:
                 entries.append(
@@ -187,7 +240,7 @@ def detect_flat_dirs(
                         "kind": "fragmented",
                         "sparse_child_count": sparse_child_count,
                         "sparse_child_ratio": sparse_child_ratio,
-                        "sparse_child_file_threshold": sparse_child_file_threshold,
+                        "sparse_child_file_threshold": settings.sparse_child_file_threshold,
                     }
                 )
                 continue
@@ -199,9 +252,9 @@ def detect_flat_dirs(
         thin_wrapper = (
             dir_name in thin_names
             and wrapper_item_count == 1
-            and file_count <= thin_wrapper_max_file_count
-            and direct_child_count <= thin_wrapper_max_child_dir_count
-            and parent_sibling_count >= thin_wrapper_parent_sibling_threshold
+            and file_count <= settings.thin_wrapper_max_file_count
+            and direct_child_count <= settings.thin_wrapper_max_child_dir_count
+            and parent_sibling_count >= settings.thin_wrapper_parent_sibling_threshold
         )
         if thin_wrapper:
             entries.append(

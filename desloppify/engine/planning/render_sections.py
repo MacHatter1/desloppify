@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from collections import defaultdict
 
+from desloppify.engine._plan.annotations import get_issue_description, get_issue_note
+from desloppify.engine._plan.skip_policy import SKIP_KIND_SECTION_LABELS, USER_SKIP_KINDS
+
 
 def summary_lines(stats: dict) -> list[str]:
     open_count = stats.get("open", 0)
@@ -43,18 +46,18 @@ def addressed_section(issues: dict) -> list[str]:
     return lines
 
 
-def render_plan_item(item: dict, override: dict) -> list[str]:
+def render_plan_item(item: dict, plan: dict) -> list[str]:
     """Render a single plan item as markdown lines."""
     confidence = item.get("confidence", "medium")
     summary = item.get("summary", "")
     item_id = item.get("id", "")
 
     lines = [f"- [ ] [{confidence}] {summary}"]
-    description = override.get("description")
+    description = get_issue_description(plan, item_id)
     if description:
         lines.append(f"      → {description}")
     lines.append(f"      `{item_id}`")
-    note = override.get("note")
+    note = get_issue_note(plan, item_id)
     if note:
         lines.append(f"      Note: {note}")
     return lines
@@ -67,7 +70,6 @@ def plan_user_ordered_section(
     """Render the user-ordered queue section, grouped by cluster."""
     queue_order: list[str] = plan.get("queue_order", [])
     skipped_ids: set[str] = set(plan.get("skipped", {}).keys())
-    overrides: dict = plan.get("overrides", {})
     clusters: dict = plan.get("clusters", {})
 
     ordered_ids = set(queue_order) - skipped_ids
@@ -98,7 +100,7 @@ def plan_user_ordered_section(
         for issue_id in member_ids:
             item = by_id.get(issue_id)
             if item:
-                lines.extend(render_plan_item(item, overrides.get(issue_id, {})))
+                lines.extend(render_plan_item(item, plan))
                 emitted.add(issue_id)
         lines.append("")
 
@@ -114,7 +116,7 @@ def plan_user_ordered_section(
         for issue_id in unclustered:
             item = by_id.get(issue_id)
             if item:
-                lines.extend(render_plan_item(item, overrides.get(issue_id, {})))
+                lines.extend(render_plan_item(item, plan))
         lines.append("")
     return lines
 
@@ -126,18 +128,11 @@ def plan_skipped_section(items: list[dict], plan: dict) -> list[str]:
         return []
 
     by_id = {item.get("id"): item for item in items}
-    overrides = plan.get("overrides", {})
 
-    by_kind: dict[str, list[str]] = {"temporary": [], "permanent": [], "false_positive": []}
+    by_kind: dict[str, list[str]] = {kind: [] for kind in USER_SKIP_KINDS}
     for issue_id, entry in skipped.items():
         kind = entry.get("kind", "temporary")
         by_kind.setdefault(kind, []).append(issue_id)
-
-    kind_labels = {
-        "temporary": "Skipped Temporarily",
-        "permanent": "Wontfix (permanent)",
-        "false_positive": "False Positives",
-    }
 
     lines: list[str] = [
         "---",
@@ -145,24 +140,24 @@ def plan_skipped_section(items: list[dict], plan: dict) -> list[str]:
         "",
     ]
 
-    for kind in ("temporary", "permanent", "false_positive"):
+    for kind in USER_SKIP_KINDS:
         ids = by_kind.get(kind, [])
         if not ids:
             continue
-        lines.append(f"### {kind_labels[kind]} ({len(ids)})")
+        lines.append(f"### {SKIP_KIND_SECTION_LABELS[kind]} ({len(ids)})")
         lines.append("")
         for issue_id in ids:
             entry = skipped.get(issue_id, {})
             item = by_id.get(issue_id)
             if item:
-                lines.extend(render_plan_item(item, overrides.get(issue_id, {})))
+                lines.extend(render_plan_item(item, plan))
             else:
                 lines.append(f"- ~~{issue_id}~~ (not in current queue)")
             reason = entry.get("reason")
             if reason:
                 lines.append(f"      Reason: {reason}")
             note = entry.get("note")
-            if note and not overrides.get(issue_id, {}).get("note"):
+            if note and not get_issue_note(plan, issue_id):
                 lines.append(f"      Note: {note}")
             review_after = entry.get("review_after")
             if review_after:
@@ -195,4 +190,3 @@ def plan_superseded_section(plan: dict) -> list[str]:
             lines.append(f"  Note: {note}")
     lines.append("")
     return lines
-

@@ -6,7 +6,7 @@ import os
 from contextlib import contextmanager
 from pathlib import Path
 
-from desloppify.core.text_api import get_project_root
+from desloppify.core.text.text_api import get_project_root
 from desloppify.core.file_paths import matches_exclusion
 from desloppify.core.file_paths import (
     normalize_path_separators as _normalize_path_separators,

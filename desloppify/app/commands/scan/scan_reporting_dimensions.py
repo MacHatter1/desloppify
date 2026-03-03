@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from desloppify import scoring as scoring_mod
+import desloppify.engine._scoring.results.core as scoring_mod
 from desloppify import state as state_mod
 from . import scan_reporting_presentation as presentation_mod
 from desloppify.app.commands.scan.scan_reporting_subjective import (

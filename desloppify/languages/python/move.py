@@ -7,7 +7,7 @@ import os
 import re
 from pathlib import Path
 
-from desloppify.core.text_api import PROJECT_ROOT
+from desloppify.core.text.text_api import get_project_root
 from desloppify.core.fallbacks import log_best_effort_failure
 
 VERIFY_HINT = ""
@@ -113,8 +113,8 @@ def find_replacements(
     if not entry:
         return changes
 
-    old_module = _path_to_py_module(source_abs, PROJECT_ROOT)
-    new_module = _path_to_py_module(dest_abs, PROJECT_ROOT)
+    old_module = _path_to_py_module(source_abs, get_project_root())
+    new_module = _path_to_py_module(dest_abs, get_project_root())
     if not old_module or not new_module:
         return changes
 

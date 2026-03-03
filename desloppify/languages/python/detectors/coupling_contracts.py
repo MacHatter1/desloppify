@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from desloppify.core.text_api import PROJECT_ROOT
+from desloppify.core.text.text_api import get_project_root
 from desloppify.core.discovery_api import find_py_files
 
 _IGNORED_SELF_ATTRS = {"logger"}
@@ -76,7 +76,7 @@ def detect_implicit_mixin_contracts(
     candidates = 0
 
     for filepath in find_py_files(path):
-        full = Path(filepath) if Path(filepath).is_absolute() else PROJECT_ROOT / filepath
+        full = Path(filepath) if Path(filepath).is_absolute() else get_project_root() / filepath
         try:
             content = full.read_text()
             tree = ast.parse(content, filename=str(full))

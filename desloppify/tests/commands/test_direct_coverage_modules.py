@@ -4,20 +4,20 @@ from __future__ import annotations
 
 import desloppify.app.cli_support.parser as cli_parser
 import desloppify.app.cli_support.parser_groups as cli_parser_groups
-import desloppify.app.commands.config_cmd as config_cmd
+import desloppify.app.commands.config as config_cmd
 import desloppify.app.commands.move.move_directory as move_directory
 import desloppify.app.commands.move.move_reporting as move_reporting
-import desloppify.app.commands.move.move as move_cmd_mod
+import desloppify.app.commands.move.cmd as move_cmd_mod
 import desloppify.app.commands.next_parts.output as next_output
 import desloppify.app.commands.next_parts.render_support as next_render_support
-import desloppify.app.commands.plan_cmd as plan_cmd
+import desloppify.app.commands.plan.cmd as plan_cmd_mod
 import desloppify.app.commands.registry as cmd_registry
 import desloppify.app.commands.review.batch_core as review_batch_core
 import desloppify.app.commands.review.batches as review_batches
 import desloppify.app.commands.review.import_cmd as review_import
 import desloppify.app.commands.review.import_helpers as review_import_helpers
 import desloppify.app.commands.review.prepare as review_prepare
-import desloppify.app.commands.review.runner_helpers as review_runner_helpers
+import desloppify.app.commands.review.runner_process as review_runner_helpers
 import desloppify.app.commands.review.runtime as review_runtime
 import desloppify.app.commands.scan as scan_pkg
 import desloppify.app.commands.scan.scan_artifacts as scan_artifacts
@@ -35,7 +35,7 @@ import desloppify.core.runtime_state as runtime_state
 import desloppify.engine._state.noise as noise
 import desloppify.engine._state.persistence as persistence
 import desloppify.engine._state.resolution as state_resolution
-import desloppify.engine.planning.common as plan_common
+import desloppify.engine.planning.helpers as plan_common
 import desloppify.engine.planning.scan as plan_scan
 import desloppify.engine.planning.select as plan_select
 import desloppify.intelligence.integrity as subjective_review_integrity
@@ -58,7 +58,7 @@ import desloppify.languages.gdscript.phases as gdscript_phases
 import desloppify.languages.gdscript.review as gdscript_review
 import desloppify.languages.python.detectors.private_imports as private_imports
 import desloppify.languages.python.detectors.smells_ast as smells_ast
-import desloppify.languages.python.detectors.smells_ast._shared as smells_ast_shared
+import desloppify.languages.python.detectors.smells_ast._helpers as smells_ast_shared
 import desloppify.languages.python.detectors.smells_ast._source_detectors as smells_ast_source_detectors
 import desloppify.languages.python.detectors.smells_ast._tree_context_detectors as smells_ast_tree_context_detectors
 import desloppify.languages.python.detectors.smells_ast._tree_quality_detectors as smells_ast_tree_quality_detectors
@@ -106,7 +106,7 @@ def test_smoke_commands():
     """App command modules: config, plan, move, scan, next, review, status."""
     _assert_all_callables(
         config_cmd.cmd_config,
-        plan_cmd.cmd_plan_output,
+        plan_cmd_mod.cmd_plan_output,
         move_directory.run_directory_move,
         move_reporting.print_file_move_plan,
         move_reporting.print_directory_move_plan,
@@ -235,8 +235,8 @@ def test_smoke_lang_plugins():
     assert dart_move.find_self_replacements("a.dart", "b.dart", {}) == []
     assert isinstance(dart_commands.get_detect_commands(), dict)
     assert isinstance(dart_phases.DART_COMPLEXITY_SIGNALS, list)
-    assert callable(dart_phases._phase_structural)
-    assert callable(dart_phases._phase_coupling)
+    assert callable(dart_phases.phase_structural)
+    assert callable(dart_phases.phase_coupling)
     assert isinstance(dart_review.HOLISTIC_REVIEW_DIMENSIONS, list)
 
     # gdscript
@@ -245,8 +245,8 @@ def test_smoke_lang_plugins():
     assert gdscript_move.find_self_replacements("a.gd", "b.gd", {}) == []
     assert isinstance(gdscript_commands.get_detect_commands(), dict)
     assert isinstance(gdscript_phases.GDSCRIPT_COMPLEXITY_SIGNALS, list)
-    assert callable(gdscript_phases._phase_structural)
-    assert callable(gdscript_phases._phase_coupling)
+    assert callable(gdscript_phases.phase_structural)
+    assert callable(gdscript_phases.phase_coupling)
     assert isinstance(gdscript_review.HOLISTIC_REVIEW_DIMENSIONS, list)
 
 

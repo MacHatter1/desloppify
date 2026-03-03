@@ -30,8 +30,11 @@ from desloppify.app.commands.scan.scan_helpers import (
 from desloppify.app.commands.scan.scan_wontfix import (
     augment_with_stale_wontfix_issues as _augment_stale_wontfix_impl,
 )
-from desloppify.core.text_api import PROJECT_ROOT
-from desloppify.engine import work_queue as issues_mod
+from desloppify.app.commands.scan.scan_plan_reconcile import (
+    reconcile_plan_post_scan as _reconcile_plan_post_scan_impl,
+)
+from desloppify.core.text.text_api import get_project_root
+from desloppify.engine._work_queue.issues import expire_stale_holistic
 from desloppify.engine import planning as plan_mod
 from desloppify.engine.planning.scan import PlanScanOptions
 from desloppify.core.file_paths import rel
@@ -50,7 +53,7 @@ from desloppify.languages._framework.treesitter import (
 from desloppify.languages._framework.base.types import DetectorCoverageRecord
 from desloppify.languages._framework.runtime import LangRunOverrides, make_lang_run
 from desloppify.core.config import save_config as _save_config
-from desloppify.core.output_api import colorize
+from desloppify.core.output import colorize
 
 _WONTFIX_DECAY_SCANS_DEFAULT = 20
 
@@ -73,8 +76,7 @@ def _clear_needs_rescan_flag(config: dict[str, object]) -> None:
 
 def _reconcile_plan_post_scan(runtime: "ScanRuntime") -> None:
     """Reconcile plan queue metadata and stale subjective review dimensions."""
-    from desloppify.app.commands.scan.scan_plan_reconcile import reconcile_plan_post_scan
-    reconcile_plan_post_scan(runtime)
+    _reconcile_plan_post_scan_impl(runtime)
 
 
 def _state_subjective_assessments(
@@ -315,7 +317,7 @@ def _augment_with_stale_exclusion_issues(
 
     scanned_files = runtime.lang.file_finder(runtime.path)
     stale = _audit_excluded_dirs(
-        extra_exclusions, scanned_files, PROJECT_ROOT
+        extra_exclusions, scanned_files, get_project_root()
     )
     if not stale:
         return issues
@@ -338,7 +340,7 @@ def _augment_with_stale_wontfix_issues(
         issues,
         state=runtime.state,
         scan_path=runtime.path,
-        project_root=PROJECT_ROOT,
+        project_root=get_project_root(),
         decay_scans=decay_scans,
     )
 
@@ -422,7 +424,7 @@ def merge_scan_results(
         ),
     )
 
-    issues_mod.expire_stale_holistic(
+    expire_stale_holistic(
         runtime.state, runtime.config.get("holistic_max_age_days", 30)
     )
     state_mod.save_state(

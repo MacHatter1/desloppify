@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+from desloppify.engine._plan.annotations import (
+    get_issue_description,
+    get_issue_note,
+    get_issue_override,
+)
+from desloppify.core.registry import DETECTORS
 from desloppify.state import StateModel
 
 
@@ -22,15 +28,17 @@ def new_item_ids(state: StateModel) -> set[str]:
 
 def enrich_plan_metadata(items: list[dict], plan: dict) -> None:
     """Stamp plan description, note, and cluster info from overrides."""
-    overrides: dict = plan.get("overrides", {})
     clusters: dict = plan.get("clusters", {})
 
     for item in items:
-        override = overrides.get(item["id"], {})
-        if override.get("description"):
-            item["plan_description"] = override["description"]
-        if override.get("note"):
-            item["plan_note"] = override["note"]
+        issue_id = item["id"]
+        description = get_issue_description(plan, issue_id)
+        note = get_issue_note(plan, issue_id)
+        override = get_issue_override(plan, issue_id)
+        if description:
+            item["plan_description"] = description
+        if note:
+            item["plan_note"] = note
         if override.get("cluster"):
             cluster_name = override["cluster"]
             cluster_data = clusters.get(cluster_name, {})
@@ -123,14 +131,9 @@ def stamp_positions(items: list[dict], plan: dict) -> None:
 
 def action_type_for_detector(detector: str) -> str:
     """Look up the action_type for a detector from the registry."""
-    try:
-        from desloppify.core.registry import DETECTORS
-
-        meta = DETECTORS.get(detector)
-        if meta:
-            return meta.action_type
-    except ImportError as exc:
-        _ = exc
+    meta = DETECTORS.get(detector)
+    if meta:
+        return meta.action_type
     return "manual_fix"
 
 

@@ -133,6 +133,47 @@ def _coerce_target_strict_score(value: object) -> tuple[int, bool]:
     return parsed, valid
 
 
+def _load_config_payload(path: Path) -> dict[str, Any]:
+    if path.exists():
+        try:
+            payload = json.loads(path.read_text())
+        except (json.JSONDecodeError, UnicodeDecodeError, OSError):
+            return {}
+        return payload if isinstance(payload, dict) else {}
+    # First run — try migrating from state files
+    return _migrate_from_state_files(path)
+
+
+def _migrate_legacy_noise_keys(config: dict[str, Any]) -> bool:
+    changed = False
+    for old, new in (
+        ("finding_noise_budget", "issue_noise_budget"),
+        ("finding_noise_global_budget", "issue_noise_global_budget"),
+    ):
+        changed |= _rename_key(config, old, new)
+    return changed
+
+
+def _apply_schema_defaults_and_normalization(config: dict[str, Any]) -> bool:
+    changed = False
+    for key, schema in CONFIG_SCHEMA.items():
+        if key not in config:
+            config[key] = copy.deepcopy(schema.default)
+            changed = True
+            continue
+        if key != "badge_path":
+            continue
+        try:
+            normalized = _validate_badge_path(str(config[key]))
+            if normalized != config[key]:
+                config[key] = normalized
+                changed = True
+        except ValueError:
+            config[key] = copy.deepcopy(schema.default)
+            changed = True
+    return changed
+
+
 def load_config(path: Path | None = None) -> dict[str, Any]:
     """Load config from disk, auto-migrating from state files if needed.
 
@@ -140,36 +181,9 @@ def load_config(path: Path | None = None) -> dict[str, Any]:
     migration from state-*.json files.
     """
     p = path or _default_config_file()
-    if p.exists():
-        try:
-            config = json.loads(p.read_text())
-        except (json.JSONDecodeError, UnicodeDecodeError, OSError):
-            config = {}
-    else:
-        # First run — try migrating from state files
-        config = _migrate_from_state_files(p)
-
-    changed = False
-
-    # Migrate legacy config key names (finding → issue)
-    for old, new in (("finding_noise_budget", "issue_noise_budget"),
-                     ("finding_noise_global_budget", "issue_noise_global_budget")):
-        changed |= _rename_key(config, old, new)
-
-    # Fill missing keys with defaults
-    for key, schema in CONFIG_SCHEMA.items():
-        if key not in config:
-            config[key] = copy.deepcopy(schema.default)
-            changed = True
-        elif key == "badge_path":
-            try:
-                normalized = _validate_badge_path(str(config[key]))
-                if normalized != config[key]:
-                    config[key] = normalized
-                    changed = True
-            except ValueError:
-                config[key] = copy.deepcopy(schema.default)
-                changed = True
+    config = _load_config_payload(p)
+    changed = _migrate_legacy_noise_keys(config)
+    changed |= _apply_schema_defaults_and_normalization(config)
 
     if changed and p.exists():
         try:
@@ -265,6 +279,14 @@ def _set_list_config_value(config: dict, key: str, raw: str) -> None:
         config[key].append(raw)
 
 
+_SCHEMA_SETTERS = {
+    int: _set_int_config_value,
+    bool: _set_bool_config_value,
+    str: _set_str_config_value,
+    list: _set_list_config_value,
+}
+
+
 def set_config_value(config: dict, key: str, raw: str) -> None:
     """Parse and set a config value from a raw string.
 
@@ -276,18 +298,9 @@ def set_config_value(config: dict, key: str, raw: str) -> None:
         raise KeyError(f"Unknown config key: {key}")
 
     schema = CONFIG_SCHEMA[key]
-
-    if schema.type is int:
-        _set_int_config_value(config, key, raw)
-        return
-    if schema.type is bool:
-        _set_bool_config_value(config, key, raw)
-        return
-    if schema.type is str:
-        _set_str_config_value(config, key, raw)
-        return
-    if schema.type is list:
-        _set_list_config_value(config, key, raw)
+    setter = _SCHEMA_SETTERS.get(schema.type)
+    if setter is not None:
+        setter(config, key, raw)
         return
     if schema.type is dict:
         raise ValueError(f"Cannot set dict key '{key}' via CLI — use subcommands")

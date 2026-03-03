@@ -14,18 +14,7 @@ logger = logging.getLogger(__name__)
 def detect_complexity(
     path: Path, signals, file_finder, threshold: int = 15, min_loc: int = 50
 ) -> tuple[list[dict], int]:
-    """Detect files with complexity signals.
-
-    Args:
-        path: Directory to scan.
-        signals: list of ComplexitySignal objects. Required.
-        file_finder: callable(path) -> list[str]. Required.
-        threshold: minimum score to flag a file.
-        min_loc: minimum LOC to consider.
-
-    Returns:
-        (entries, total_files_checked)
-    """
+    """Detect files with complexity signals."""
     files = file_finder(path)
     entries = []
     for filepath in files:

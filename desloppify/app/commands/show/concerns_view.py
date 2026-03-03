@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from desloppify.core.output_api import colorize
+from desloppify.core.output import colorize
 from desloppify.engine.concerns import generate_concerns
 
 
 def _show_concerns(state: dict, lang_name: str | None) -> None:
     """Render current design concerns from mechanical signals."""
-    concerns = generate_concerns(state, lang_name=lang_name)
+    concerns = generate_concerns(state)
     if not concerns:
         print(colorize("  No design concerns detected.", "green"))
         return

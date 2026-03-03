@@ -12,7 +12,7 @@ from desloppify.intelligence.narrative._constants import (
     _REMINDER_DECAY_THRESHOLD,
     STRUCTURAL_MERGE,
 )
-from desloppify.state import StateModel, get_strict_score, path_scoped_issues
+from desloppify.state import StateModel, path_scoped_issues, score_snapshot
 
 logger = logging.getLogger(__name__)
 
@@ -489,7 +489,7 @@ def _compute_reminders(
     """Compute context-specific reminders, suppressing those shown too many times."""
     del lang  # Reserved for future language-specific rules.
 
-    strict_score = get_strict_score(state)
+    strict_score = score_snapshot(state).strict
     reminder_history = state.get("reminder_history", {})
     scoped_issues = path_scoped_issues(
         state.get("issues", {}), state.get("scan_path")

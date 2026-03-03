@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from desloppify.core.text_api import PROJECT_ROOT
+from desloppify.core.text.text_api import get_project_root
 from desloppify.core.discovery_api import (
     get_exclusions,
     matches_exclusion,
@@ -34,7 +34,7 @@ def finalize_graph(graph: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]
         excluded_keys = set()
         for k in graph:
             try:
-                rel_k = str(Path(k).relative_to(PROJECT_ROOT))
+                rel_k = str(Path(k).relative_to(get_project_root()))
             except ValueError:
                 rel_k = k
             if any(matches_exclusion(rel_k, ex) for ex in exclusions):

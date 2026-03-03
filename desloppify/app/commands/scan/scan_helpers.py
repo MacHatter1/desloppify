@@ -8,7 +8,8 @@ from pathlib import Path
 from desloppify import languages as lang_api
 from desloppify import state as state_mod
 from desloppify.core.discovery_api import DEFAULT_EXCLUSIONS, read_file_text
-from desloppify.core.output_api import colorize
+from desloppify.core.file_paths import count_lines
+from desloppify.core.output import colorize
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +83,7 @@ def _collect_codebase_metrics(lang, path: Path) -> dict | None:
     dirs = set()
     for filepath in files:
         try:
-            total_loc += len(Path(filepath).read_text().splitlines())
+            total_loc += count_lines(Path(filepath))
             dirs.add(str(Path(filepath).parent))
         except (OSError, UnicodeDecodeError) as exc:
             logger.debug(

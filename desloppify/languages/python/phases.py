@@ -16,6 +16,7 @@ from desloppify.languages.python.detectors import (
 )
 from desloppify.languages.python.detectors import uncalled as uncalled_detector_mod
 from desloppify.languages.python.detectors import unused as unused_detector_mod
+from desloppify.languages.python.detectors import unused_enums as unused_enums_mod
 from desloppify.languages.python.detectors.complexity import (
     compute_long_functions,
     compute_max_params,
@@ -32,7 +33,7 @@ from desloppify.languages.python.phases_quality import (
     phase_smells,
 )
 from desloppify.state import Issue
-from desloppify.core.output_api import log
+from desloppify.core.output import log
 
 # ── Config data (single source of truth) ──────────────────
 
@@ -198,6 +199,38 @@ def phase_uncalled_functions(
     return results, {"uncalled_functions": adjust_potential(zm, total)}
 
 
+def phase_unused_enums(
+    path: Path, lang: LangRun
+) -> tuple[list[Issue], dict[str, int]]:
+    """Detect enum classes with zero external imports."""
+    entries, total = unused_enums_mod.detect_unused_enums(path)
+    entries = filter_entries(lang.zone_map, entries, "unused_enums")
+
+    results: list[Issue] = []
+    for entry in entries:
+        results.append(
+            state_mod.make_issue(
+                "unused_enums",
+                entry["file"],
+                entry["name"],
+                tier=2,
+                confidence="high",
+                summary=(
+                    f"Unused enum: {entry['name']} "
+                    f"({entry['member_count']} members) — never imported externally"
+                ),
+                detail={
+                    "line": entry["line"],
+                    "member_count": entry["member_count"],
+                },
+            )
+        )
+
+    if results:
+        log(f"         unused enums: {len(results)} enum classes with zero imports")
+    return results, {"unused_enums": adjust_potential(lang.zone_map, total)}
+
+
 # Backward-compatible aliases for internal callers/tests.
 _phase_unused = phase_unused
 _phase_structural = phase_structural
@@ -224,4 +257,5 @@ __all__ = [
     "phase_structural",
     "phase_uncalled_functions",
     "phase_unused",
+    "phase_unused_enums",
 ]

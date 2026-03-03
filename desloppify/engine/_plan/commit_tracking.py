@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from desloppify.engine._state.schema import StateModel
 import fnmatch
 from typing import Any
 
@@ -94,7 +95,7 @@ def commit_tracking_summary(plan: dict[str, Any]) -> dict[str, int]:
     }
 
 
-def _issue_summary(state: dict[str, Any], issue_id: str) -> str:
+def _issue_summary(state: StateModel, issue_id: str) -> str:
     """Extract a short summary for a issue ID from state."""
     issue = state.get("issues", {}).get(issue_id, {})
     summary = issue.get("summary", "")
@@ -103,7 +104,7 @@ def _issue_summary(state: dict[str, Any], issue_id: str) -> str:
     return issue_id
 
 
-def _score_delta_line(plan: dict[str, Any], state: dict[str, Any]) -> str:
+def _score_delta_line(plan: dict[str, Any], state: StateModel) -> str:
     """Build a score delta summary line from plan_start_scores to current."""
     start = plan.get("plan_start_scores", {})
     current_dim = state.get("dimension_scores", {})
@@ -114,11 +115,11 @@ def _score_delta_line(plan: dict[str, Any], state: dict[str, Any]) -> str:
     if start_strict is None:
         return ""
 
-    # Compute current strict from dimension_scores
+    # Compute current strict from dimension_scores.
     try:
-        from desloppify.engine._scoring.results.core import compute_aggregate_scores
-        scores = compute_aggregate_scores(current_dim)
-        current_strict = scores.get("strict", 0)
+        from desloppify.engine._scoring.results.core import compute_health_score
+
+        current_strict = compute_health_score(current_dim, score_key="strict_score")
     except (ImportError, TypeError, ValueError, KeyError):
         return ""
 
@@ -127,7 +128,7 @@ def _score_delta_line(plan: dict[str, Any], state: dict[str, Any]) -> str:
     return f"Score: {start_strict:.1f} → {current_strict:.1f} strict ({sign}{delta:.1f})"
 
 
-def generate_pr_body(plan: dict[str, Any], state: dict[str, Any]) -> str:
+def generate_pr_body(plan: dict[str, Any], state: StateModel) -> str:
     """Generate the PR description markdown from commit_log."""
     lines: list[str] = ["## Code Health Improvements", ""]
 

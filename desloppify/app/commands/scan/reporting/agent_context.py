@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+from desloppify.engine._state.schema import StateModel
 import logging
 import os
 from pathlib import Path
 from typing import Any
 
-from desloppify import scoring as scoring_mod
 from desloppify import state as state_mod
 from ..scan_reporting_text import build_workflow_guide
 from desloppify.app.commands.update_skill import (
@@ -16,12 +16,14 @@ from desloppify.app.commands.update_skill import (
 )
 from desloppify.engine.planning import scorecard_projection as scorecard_projection_mod
 from desloppify.core import registry as registry_mod
-from desloppify.core.text_api import PROJECT_ROOT
+from desloppify.core.text.text_api import get_project_root
 from desloppify.core.exception_sets import PLAN_LOAD_EXCEPTIONS
 from desloppify.core.fallbacks import log_best_effort_failure
 from desloppify.core import skill_docs as skill_docs_mod
 from desloppify.engine.plan import load_plan
-from desloppify.engine.work_queue import ATTEST_EXAMPLE
+from desloppify.engine._scoring.results.core import compute_health_breakdown
+from desloppify.engine._scoring.subjective.core import DISPLAY_NAMES
+from desloppify.engine._work_queue.core import ATTEST_EXAMPLE
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +39,7 @@ def is_agent_environment() -> bool:
     )
 
 
-def _load_scores(state: dict[str, Any]) -> state_mod.ScoreSnapshot:
+def _load_scores(state: StateModel) -> state_mod.ScoreSnapshot:
     """Load all four canonical scores from state."""
     return state_mod.score_snapshot(state)
 
@@ -70,14 +72,14 @@ def _print_score_lines(
 
 
 def _split_dimension_scores(
-    state: dict[str, Any],
+    state: StateModel,
     dim_scores: dict[str, Any],
 ) -> tuple[list[tuple[str, dict[str, Any]]], list[tuple[str, dict[str, Any]]]]:
     # Build dimension table from canonical scorecard projection.
     rows = scorecard_projection_mod.scorecard_dimension_rows(
         state, dim_scores=dim_scores
     )
-    subjective_name_set = {name.lower() for name in scoring_mod.DISPLAY_NAMES.values()}
+    subjective_name_set = {name.lower() for name in DISPLAY_NAMES.values()}
     subjective_name_set.update({"elegance", "elegance (combined)"})
 
     mechanical = [
@@ -99,7 +101,7 @@ def _split_dimension_scores(
     return mechanical, subjective
 
 
-def _print_dimension_table(state: dict[str, Any], dim_scores: dict[str, Any]) -> None:
+def _print_dimension_table(state: StateModel, dim_scores: dict[str, Any]) -> None:
     mechanical, subjective = _split_dimension_scores(state, dim_scores)
     if not (mechanical or subjective):
         return
@@ -133,7 +135,7 @@ def _print_drag_summary(dim_scores: dict[str, Any]) -> None:
     if not dim_scores:
         return
     try:
-        breakdown = scoring_mod.compute_health_breakdown(dim_scores)
+        breakdown = compute_health_breakdown(dim_scores)
         entries = breakdown.get("entries", [])
         drags = sorted(
             [e for e in entries if isinstance(e, dict) and float(e.get("overall_drag", 0) or 0) > 0.01],
@@ -157,7 +159,7 @@ def _print_drag_summary(dim_scores: dict[str, Any]) -> None:
 
 
 def _print_stats_summary(
-    state: dict[str, Any],
+    state: StateModel,
     diff: dict[str, Any] | None,
     *,
     overall_score: float | None,
@@ -260,14 +262,14 @@ def _print_badge_hint(badge_path: Path | None) -> None:
     if not (badge_path and badge_path.exists()):
         return
 
-    rel_path = badge_path.name if badge_path.parent == PROJECT_ROOT else str(badge_path)
+    rel_path = badge_path.name if badge_path.parent == get_project_root() else str(badge_path)
     print(f"A scorecard image was saved to `{rel_path}`.")
     print("Let the user know they can view it, and suggest adding it")
     print(f'to their README: `<img src="{rel_path}" width="100%">`')
 
 
 def print_llm_summary(
-    state: dict[str, Any],
+    state: StateModel,
     badge_path: Path | None,
     narrative: dict[str, Any] | None = None,
     diff: dict[str, Any] | None = None,

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from desloppify.engine._state.schema import StateModel
 import shlex
 import sys
 from typing import Any
@@ -280,7 +281,7 @@ def print_skipped_validation_details(diff: dict[str, Any], *, colorize_fn) -> No
         )
 
 
-def print_assessments_summary(state: dict[str, Any], *, colorize_fn) -> None:
+def print_assessments_summary(state: StateModel, *, colorize_fn) -> None:
     """Print holistic subjective assessment summary when present."""
     assessments = state.get("subjective_assessments") or {}
     if not assessments:
@@ -292,7 +293,7 @@ def print_assessments_summary(state: dict[str, Any], *, colorize_fn) -> None:
     print(colorize_fn(f"\n  Assessments: {', '.join(parts)}", "bold"))
 
 
-def print_open_review_summary(state: dict[str, Any], *, colorize_fn) -> str:
+def print_open_review_summary(state: StateModel, *, colorize_fn) -> str:
     """Print current open review issue count and return next command."""
     open_review = [
         issue
@@ -313,7 +314,7 @@ def print_open_review_summary(state: dict[str, Any], *, colorize_fn) -> str:
 
 
 def print_review_import_scores_and_integrity(
-    state: dict[str, Any],
+    state: StateModel,
     config: dict[str, Any],
     *,
     state_mod,

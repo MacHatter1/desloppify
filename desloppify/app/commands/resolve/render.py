@@ -11,8 +11,11 @@ from desloppify.app.commands.resolve.render_support import (
     print_strict_gap_note,
     score_snapshot_or_warn,
 )
+from desloppify.core.config import load_config
 from desloppify.core.exception_sets import PLAN_LOAD_EXCEPTIONS
-from desloppify.core.output_api import colorize
+from desloppify.core.git_context import detect_git_context
+from desloppify.core.output import colorize
+from desloppify.engine.plan import get_uncommitted_issues, suggest_commit_message
 
 
 def _print_resolve_summary(*, status: str, all_resolved: list[str]) -> None:
@@ -190,17 +193,9 @@ def render_commit_guidance(
         return
 
     try:
-        from desloppify.core.config import load_config
-
         config = load_config()
         if not config.get("commit_tracking_enabled", True):
             return
-
-        from desloppify.core.git_context import detect_git_context
-        from desloppify.engine.plan import (
-            get_uncommitted_issues,
-            suggest_commit_message,
-        )
 
         git = detect_git_context()
         if not git.available:

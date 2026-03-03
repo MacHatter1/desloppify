@@ -12,11 +12,10 @@ from desloppify.engine._plan.schema_migrations import (
     migrate_v5_to_v6 as _migrate_v5_to_v6,
     normalize_cluster_defaults as _normalize_cluster_defaults,
 )
+from desloppify.engine._plan.skip_policy import VALID_SKIP_KINDS
 from desloppify.engine._state.schema import utc_now
 
 PLAN_VERSION = 7
-
-VALID_SKIP_KINDS = {"temporary", "permanent", "false_positive", "triaged_out"}
 
 EPIC_PREFIX = "epic/"
 VALID_EPIC_DIRECTIONS = {

@@ -6,7 +6,7 @@ import logging
 import re
 from pathlib import Path
 
-from desloppify.core.text_api import PROJECT_ROOT
+from desloppify.core.text.text_api import get_project_root
 from desloppify.engine.detectors.base import ClassInfo
 from desloppify.engine.detectors.passthrough import (
     classify_params,
@@ -38,7 +38,7 @@ def extract_ts_components(path: Path) -> list[ClassInfo]:
             p = (
                 Path(filepath)
                 if Path(filepath).is_absolute()
-                else PROJECT_ROOT / filepath
+                else get_project_root() / filepath
             )
             content = p.read_text()
             lines = content.splitlines()
@@ -123,7 +123,7 @@ def detect_passthrough_components(path: Path) -> list[dict]:
             p = (
                 Path(filepath)
                 if Path(filepath).is_absolute()
-                else PROJECT_ROOT / filepath
+                else get_project_root() / filepath
             )
             content = p.read_text()
         except (OSError, UnicodeDecodeError) as exc:

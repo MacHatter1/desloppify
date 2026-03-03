@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from desloppify.core.text_api import is_numeric
+from desloppify.core.text.text_api import is_numeric
 
 
 def coerce_target_score(value: object, *, fallback: float = 95.0) -> float:

@@ -572,14 +572,13 @@ class TestDynamicRegistration:
         _DISPLAY_ORDER.remove(name)
 
     def test_register_scoring_policy_rebuilds_dimensions(self):
-        from desloppify.scoring import (
+        from desloppify.engine._scoring.policy.core import (
             DETECTOR_SCORING_POLICIES,
             DIMENSIONS,
             FILE_BASED_DETECTORS,
             DetectorScoringPolicy,
             register_scoring_policy,
         )
-
         name = "_test_reg_pol_1"
         register_scoring_policy(DetectorScoringPolicy(
             detector=name, dimension="Code quality", tier=3, file_based=True,
@@ -611,7 +610,7 @@ class TestDynamicRegistration:
 @pytest.mark.usefixtures("_cleanup_registry")
 class TestScoringIntegration:
     def test_generic_issues_contribute_to_code_quality_dimension(self):
-        from desloppify.scoring import DIMENSIONS
+        from desloppify.engine._scoring.policy.core import DIMENSIONS
 
         generic_lang(
             name="test_scoring_1",
@@ -622,7 +621,7 @@ class TestScoringIntegration:
         assert "test_score_det_1" in cq.detectors
 
     def test_generic_issues_score_with_correct_tier(self):
-        from desloppify.scoring import DETECTOR_SCORING_POLICIES
+        from desloppify.engine._scoring.policy.core import DETECTOR_SCORING_POLICIES
 
         generic_lang(
             name="test_scoring_2",

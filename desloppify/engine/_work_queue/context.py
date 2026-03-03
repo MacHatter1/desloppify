@@ -10,11 +10,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from desloppify.app.commands.helpers.score import target_strict_score_from_config
+from desloppify.core.exception_sets import PLAN_LOAD_EXCEPTIONS
 from desloppify.engine._plan.subjective_policy import (
     SubjectiveVisibility,
     compute_subjective_visibility,
 )
 from desloppify.engine._state.schema import StateModel
+from desloppify.engine import plan as plan_mod
 
 # Sentinel: "auto-load plan from disk" (the default).
 _PLAN_AUTO_LOAD = object()
@@ -55,11 +58,8 @@ def queue_context(
     """
     # --- resolve plan ---
     if plan is _PLAN_AUTO_LOAD:
-        from desloppify.core.exception_sets import PLAN_LOAD_EXCEPTIONS
-        from desloppify.engine.plan import load_plan
-
         try:
-            resolved_plan: dict | None = load_plan()
+            resolved_plan: dict | None = plan_mod.load_plan()
         except PLAN_LOAD_EXCEPTIONS:
             resolved_plan = None
     else:
@@ -69,10 +69,6 @@ def queue_context(
     if target_strict is not None:
         resolved_target = target_strict
     elif config is not None:
-        from desloppify.app.commands.helpers.score import (
-            target_strict_score_from_config,
-        )
-
         resolved_target = target_strict_score_from_config(config, fallback=95.0)
     else:
         resolved_target = 95.0

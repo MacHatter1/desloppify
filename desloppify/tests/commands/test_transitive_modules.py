@@ -4,8 +4,8 @@ Tests cover:
   1. desloppify.app.commands.resolve.render
   2. desloppify.app.commands.status_parts.strict_target
   3. desloppify.app.commands._show_terminal
-  4. desloppify.app.commands.viz_cmd
-  5. desloppify.app.commands.review.entrypoint
+  4. desloppify.app.commands.viz
+  5. desloppify.app.commands.review.cmd
   6. desloppify.app.commands.update_skill
 """
 
@@ -417,20 +417,20 @@ class TestPrintFixFileSample:
         assert "v3" not in out
 
 
-# ── 4. viz_cmd.py ────────────────────────────────────────────────────────────
+# ── 4. viz.py ────────────────────────────────────────────────────────────────
 
-from desloppify.app.commands import viz_cmd  # noqa: E402
-from desloppify.app.commands.viz_cmd import cmd_tree, cmd_viz  # noqa: E402
+from desloppify.app.commands import viz as viz_cmd  # noqa: E402
+from desloppify.app.commands.viz import cmd_tree, cmd_viz  # noqa: E402
 
 
 class TestVizCmd:
-    @patch("desloppify.app.commands.viz_cmd._cmd_viz")
+    @patch("desloppify.app.commands.viz._cmd_viz")
     def test_cmd_viz_delegates(self, mock_inner):
         args = argparse.Namespace()
         cmd_viz(args)
         mock_inner.assert_called_once_with(args)
 
-    @patch("desloppify.app.commands.viz_cmd._cmd_tree")
+    @patch("desloppify.app.commands.viz._cmd_tree")
     def test_cmd_tree_delegates(self, mock_inner):
         args = argparse.Namespace()
         cmd_tree(args)
@@ -440,15 +440,15 @@ class TestVizCmd:
         assert set(viz_cmd.__all__) == {"cmd_tree", "cmd_viz"}
 
 
-# ── 5. review/entrypoint.py ─────────────────────────────────────────────────
+# ── 5. review/cmd.py ────────────────────────────────────────────────────────
 
-from desloppify.app.commands.review.entrypoint import cmd_review  # noqa: E402
+from desloppify.app.commands.review.cmd import cmd_review  # noqa: E402
 
 
 class TestCmdReviewEntrypoint:
-    @patch("desloppify.app.commands.review.entrypoint.do_prepare")
-    @patch("desloppify.app.commands.review.entrypoint.resolve_lang")
-    @patch("desloppify.app.commands.review.entrypoint.command_runtime")
+    @patch("desloppify.app.commands.review.cmd.do_prepare")
+    @patch("desloppify.app.commands.review.cmd.resolve_lang")
+    @patch("desloppify.app.commands.review.cmd.command_runtime")
     def test_prepare_path(self, mock_runtime, mock_resolve_lang, mock_do_prepare):
         """When no import_file and no run_batches, falls through to do_prepare."""
         rt = MagicMock()
@@ -470,9 +470,9 @@ class TestCmdReviewEntrypoint:
 
         mock_do_prepare.assert_called_once()
 
-    @patch("desloppify.app.commands.review.entrypoint.do_import")
-    @patch("desloppify.app.commands.review.entrypoint.resolve_lang")
-    @patch("desloppify.app.commands.review.entrypoint.command_runtime")
+    @patch("desloppify.app.commands.review.cmd.do_import")
+    @patch("desloppify.app.commands.review.cmd.resolve_lang")
+    @patch("desloppify.app.commands.review.cmd.command_runtime")
     def test_import_path(self, mock_runtime, mock_resolve_lang, mock_do_import):
         """When import_file is set, calls do_import."""
         rt = MagicMock()
@@ -494,9 +494,9 @@ class TestCmdReviewEntrypoint:
 
         mock_do_import.assert_called_once()
 
-    @patch("desloppify.app.commands.review.entrypoint.do_validate_import")
-    @patch("desloppify.app.commands.review.entrypoint.resolve_lang")
-    @patch("desloppify.app.commands.review.entrypoint.command_runtime")
+    @patch("desloppify.app.commands.review.cmd.do_validate_import")
+    @patch("desloppify.app.commands.review.cmd.resolve_lang")
+    @patch("desloppify.app.commands.review.cmd.command_runtime")
     def test_validate_import_path(
         self, mock_runtime, mock_resolve_lang, mock_do_validate_import
     ):
@@ -520,9 +520,9 @@ class TestCmdReviewEntrypoint:
 
         mock_do_validate_import.assert_called_once()
 
-    @patch("desloppify.app.commands.review.entrypoint._do_run_batches")
-    @patch("desloppify.app.commands.review.entrypoint.resolve_lang")
-    @patch("desloppify.app.commands.review.entrypoint.command_runtime")
+    @patch("desloppify.app.commands.review.cmd._do_run_batches")
+    @patch("desloppify.app.commands.review.cmd.resolve_lang")
+    @patch("desloppify.app.commands.review.cmd.command_runtime")
     def test_run_batches_path(self, mock_runtime, mock_resolve_lang, mock_do_run_batches):
         """When run_batches is set, calls _do_run_batches."""
         rt = MagicMock()
@@ -544,8 +544,8 @@ class TestCmdReviewEntrypoint:
 
         mock_do_run_batches.assert_called_once()
 
-    @patch("desloppify.app.commands.review.entrypoint.resolve_lang")
-    @patch("desloppify.app.commands.review.entrypoint.command_runtime")
+    @patch("desloppify.app.commands.review.cmd.resolve_lang")
+    @patch("desloppify.app.commands.review.cmd.command_runtime")
     def test_run_batches_rejects_conflicting_import_modes(
         self, mock_runtime, mock_resolve_lang
     ):
@@ -569,8 +569,8 @@ class TestCmdReviewEntrypoint:
             cmd_review(args)
         assert exc_info.value.exit_code == 1
 
-    @patch("desloppify.app.commands.review.entrypoint.resolve_lang")
-    @patch("desloppify.app.commands.review.entrypoint.command_runtime")
+    @patch("desloppify.app.commands.review.cmd.resolve_lang")
+    @patch("desloppify.app.commands.review.cmd.command_runtime")
     def test_import_and_validate_reject_together(self, mock_runtime, mock_resolve_lang):
         """--import and --validate-import are mutually exclusive."""
         rt = MagicMock()
@@ -592,9 +592,9 @@ class TestCmdReviewEntrypoint:
             cmd_review(args)
         assert exc_info.value.exit_code == 1
 
-    @patch("desloppify.app.commands.review.entrypoint.do_external_start")
-    @patch("desloppify.app.commands.review.entrypoint.resolve_lang")
-    @patch("desloppify.app.commands.review.entrypoint.command_runtime")
+    @patch("desloppify.app.commands.review.cmd.do_external_start")
+    @patch("desloppify.app.commands.review.cmd.resolve_lang")
+    @patch("desloppify.app.commands.review.cmd.command_runtime")
     def test_external_start_path(self, mock_runtime, mock_resolve_lang, mock_external_start):
         rt = MagicMock()
         rt.state = {"issues": {}}
@@ -615,9 +615,9 @@ class TestCmdReviewEntrypoint:
 
         mock_external_start.assert_called_once()
 
-    @patch("desloppify.app.commands.review.entrypoint.do_external_submit")
-    @patch("desloppify.app.commands.review.entrypoint.resolve_lang")
-    @patch("desloppify.app.commands.review.entrypoint.command_runtime")
+    @patch("desloppify.app.commands.review.cmd.do_external_submit")
+    @patch("desloppify.app.commands.review.cmd.resolve_lang")
+    @patch("desloppify.app.commands.review.cmd.command_runtime")
     def test_external_submit_path(self, mock_runtime, mock_resolve_lang, mock_external_submit):
         rt = MagicMock()
         rt.state = {"issues": {}}
@@ -642,8 +642,8 @@ class TestCmdReviewEntrypoint:
 
         mock_external_submit.assert_called_once()
 
-    @patch("desloppify.app.commands.review.entrypoint.resolve_lang")
-    @patch("desloppify.app.commands.review.entrypoint.command_runtime")
+    @patch("desloppify.app.commands.review.cmd.resolve_lang")
+    @patch("desloppify.app.commands.review.cmd.command_runtime")
     def test_external_submit_requires_import_and_session(
         self, mock_runtime, mock_resolve_lang
     ):
@@ -666,8 +666,8 @@ class TestCmdReviewEntrypoint:
             cmd_review(args)
         assert exc_info.value.exit_code == 2
 
-    @patch("desloppify.app.commands.review.entrypoint.resolve_lang", return_value=None)
-    @patch("desloppify.app.commands.review.entrypoint.command_runtime")
+    @patch("desloppify.app.commands.review.cmd.resolve_lang", return_value=None)
+    @patch("desloppify.app.commands.review.cmd.command_runtime")
     def test_exits_when_no_lang(self, mock_runtime, mock_resolve_lang):
         """When resolve_lang returns None, raises CommandError."""
         rt = MagicMock()

@@ -6,7 +6,7 @@ import logging
 import sys
 from pathlib import Path
 
-from desloppify.core.exception_sets import CommandError
+from desloppify.core.exception_sets import CommandError, RunnerTimeoutError
 from desloppify.core.fallbacks import log_best_effort_failure
 
 logger = logging.getLogger(__name__)
@@ -72,9 +72,14 @@ def _is_runner_auth_failure(text: str) -> bool:
     return any(phrase in text for phrase in _RUNNER_AUTH_PHRASES)
 
 
+def _normalize_runner_failure_text(log_text: str) -> str:
+    """Normalize runner logs for resilient failure phrase matching."""
+    return log_text.casefold().replace("’", "'").replace("`", "'")
+
+
 def classify_runner_failure(log_text: str) -> str:
     """Classify batch failure type from log contents."""
-    text = log_text.lower()
+    text = _normalize_runner_failure_text(log_text)
     if "timeout after" in text:
         return "timeout"
     if any(phrase in text for phrase in _USAGE_LIMIT_PHRASES):
@@ -92,7 +97,7 @@ def classify_runner_failure(log_text: str) -> str:
 
 def has_codex_backend_connectivity_issue(log_text: str) -> bool:
     """Return True when logs indicate Codex backend URL is unreachable."""
-    text = log_text.lower()
+    text = _normalize_runner_failure_text(log_text)
     if "error sending request for url" not in text:
         return False
     return (
@@ -106,7 +111,7 @@ def has_codex_backend_connectivity_issue(log_text: str) -> bool:
 
 def looks_like_restricted_sandbox(log_text: str) -> bool:
     """Return True when logs resemble a constrained agent sandbox execution."""
-    text = log_text.lower()
+    text = _normalize_runner_failure_text(log_text)
     return any(phrase in text for phrase in _SANDBOX_PATH_WARNING_PHRASES)
 
 
@@ -176,7 +181,7 @@ def runner_failure_hints(*, failures: list[int], logs_dir: Path) -> list[str]:
             continue
         if not raw:
             continue
-        text = raw.lower()
+        text = _normalize_runner_failure_text(raw)
         category = classify_runner_failure(text)
         _append_unique_hint(hints, _FAILURE_HINT_BY_CATEGORY.get(category))
         for hint in _connectivity_hints(text):
@@ -191,7 +196,7 @@ def any_restricted_sandbox_failures(*, failures: list[int], logs_dir: Path) -> b
         log_file = logs_dir / f"batch-{idx + 1}.log"
         text = ""
         try:
-            text = log_file.read_text().lower()
+            text = _normalize_runner_failure_text(log_file.read_text())
         except OSError as exc:
             log_best_effort_failure(
                 logger,
@@ -324,6 +329,10 @@ def print_failures_and_raise(
         colorize_fn=colorize_fn,
     )
     failed_1 = sorted({idx + 1 for idx in failures})
+    categories = summarize_failure_categories(failures=failures, logs_dir=logs_dir)
+    timeout_count = categories.get("timeout", 0)
+    if timeout_count > 0 and timeout_count == sum(categories.values()):
+        raise RunnerTimeoutError(f"batch execution failed: {failed_1}", exit_code=1)
     raise CommandError(f"batch execution failed: {failed_1}", exit_code=1)
 
 

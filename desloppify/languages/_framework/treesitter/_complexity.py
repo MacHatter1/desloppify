@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from . import PARSE_INIT_ERRORS
 from ._cache import _PARSE_CACHE
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 def _ensure_parser(
-    cache: dict,
+    cache: dict[str, Any],
     spec: TreeSitterLangSpec,
     *,
     with_query: bool = False,
@@ -101,7 +101,7 @@ def make_nesting_depth_compute(spec: TreeSitterLangSpec):
     (content: str, lines: list[str]) -> (count, label) | None
     """
     # Cache parser/language per spec to avoid repeated lookups.
-    _cached_parser: dict = {}
+    _cached_parser: dict[str, Any] = {}
 
     def compute(content: str, lines: list[str], *, _filepath: str = "") -> tuple[int, str] | None:
         if not _filepath:
@@ -128,7 +128,7 @@ def make_long_functions_compute(spec: TreeSitterLangSpec):
     """
     from ._extractors import _run_query, _unwrap_node
 
-    _cached_parser: dict = {}
+    _cached_parser: dict[str, Any] = {}
 
     def compute(content: str, lines: list[str], *, _filepath: str = "") -> tuple[int, str] | None:
         if not _filepath:
@@ -213,7 +213,7 @@ def make_cyclomatic_complexity_compute(spec: TreeSitterLangSpec):
     """
     from ._extractors import _run_query, _unwrap_node
 
-    _cached_parser: dict = {}
+    _cached_parser: dict[str, Any] = {}
 
     def compute(content: str, lines: list[str], *, _filepath: str = "") -> tuple[int, str] | None:
         if not _filepath:
@@ -261,7 +261,7 @@ def make_max_params_compute(spec: TreeSitterLangSpec):
         _unwrap_node,
     )
 
-    _cached_parser: dict = {}
+    _cached_parser: dict[str, Any] = {}
 
     def compute(content: str, lines: list[str], *, _filepath: str = "") -> tuple[int, str] | None:
         if not _filepath:
@@ -315,7 +315,7 @@ def make_callback_depth_compute(spec: TreeSitterLangSpec):
     Counts nested anonymous functions / arrow functions / lambdas.
     Separate from control-flow nesting — catches callback hell patterns.
     """
-    _cached_parser: dict = {}
+    _cached_parser: dict[str, Any] = {}
 
     def compute(content: str, lines: list[str], *, _filepath: str = "") -> tuple[int, str] | None:
         if not _filepath:

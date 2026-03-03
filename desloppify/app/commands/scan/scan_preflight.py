@@ -10,7 +10,7 @@ from desloppify import state as state_mod
 from desloppify.app.commands.helpers.queue_progress import plan_aware_queue_breakdown
 from desloppify.app.commands.helpers.state import state_path
 from desloppify.core.exception_sets import PLAN_LOAD_EXCEPTIONS, CommandError
-from desloppify.core.output_api import colorize
+from desloppify.core.output import colorize
 from desloppify.engine.plan import load_plan, save_plan
 
 

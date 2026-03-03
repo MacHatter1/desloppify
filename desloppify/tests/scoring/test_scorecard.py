@@ -20,7 +20,7 @@ from desloppify.app.output.scorecard_parts.meta import (
     resolve_package_version,
     resolve_project_name,
 )
-from desloppify.core.text_api import PROJECT_ROOT
+from desloppify.core.text.text_api import get_project_root
 
 # ===========================================================================
 # score_color
@@ -254,7 +254,7 @@ class TestGetProjectName:
             if "gh" in cmd
             else (_ for _ in ()).throw(FileNotFoundError),
         )
-        assert resolve_project_name(PROJECT_ROOT) == "owner/repo"
+        assert resolve_project_name(get_project_root()) == "owner/repo"
 
     def test_falls_back_to_git_remote_ssh(self, monkeypatch):
         import desloppify.app.output.scorecard_parts.meta as meta
@@ -265,7 +265,7 @@ class TestGetProjectName:
             return "git@github.com:myuser/myrepo.git\n"
 
         monkeypatch.setattr(meta.subprocess, "check_output", mock_check_output)
-        assert resolve_project_name(PROJECT_ROOT) == "myuser/myrepo"
+        assert resolve_project_name(get_project_root()) == "myuser/myrepo"
 
     def test_falls_back_to_git_remote_https(self, monkeypatch):
         import desloppify.app.output.scorecard_parts.meta as meta
@@ -276,7 +276,7 @@ class TestGetProjectName:
             return "https://github.com/owner/repo.git\n"
 
         monkeypatch.setattr(meta.subprocess, "check_output", mock_check_output)
-        assert resolve_project_name(PROJECT_ROOT) == "owner/repo"
+        assert resolve_project_name(get_project_root()) == "owner/repo"
 
     def test_falls_back_to_directory_name(self, monkeypatch):
         import desloppify.app.output.scorecard_parts.meta as meta
@@ -284,7 +284,7 @@ class TestGetProjectName:
         monkeypatch.setattr(
             meta.subprocess, "check_output", lambda cmd, **kw: (_ for _ in ()).throw(FileNotFoundError)
         )
-        result = resolve_project_name(PROJECT_ROOT)
+        result = resolve_project_name(get_project_root())
         assert isinstance(result, str)
         assert len(result) > 0
 
@@ -297,7 +297,7 @@ class TestGetProjectName:
             return "https://TOKEN@github.com/owner/repo.git\n"
 
         monkeypatch.setattr(meta.subprocess, "check_output", mock_check_output)
-        assert resolve_project_name(PROJECT_ROOT) == "owner/repo"
+        assert resolve_project_name(get_project_root()) == "owner/repo"
 
 
 # ===========================================================================
@@ -310,7 +310,7 @@ class TestGetPackageVersion:
         from importlib.metadata import PackageNotFoundError
 
         result = resolve_package_version(
-            PROJECT_ROOT,
+            get_project_root(),
             version_getter=lambda name: "0.6.0",
             package_not_found_error=PackageNotFoundError,
         )

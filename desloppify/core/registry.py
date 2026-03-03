@@ -22,6 +22,7 @@ DISPLAY_ORDER = [
     "cycles",
     "orphaned",
     "uncalled_functions",
+    "unused_enums",
     "facade",
     "patterns",
     "naming",
@@ -109,6 +110,13 @@ DETECTORS: dict[str, DetectorMeta] = {
         "refactor",
         "remove dead functions or document why they're retained",
         needs_judgment=True,
+    ),
+    "unused_enums": DetectorMeta(
+        "unused_enums",
+        "unused enums",
+        "unused",
+        "manual_fix",
+        "remove unused enum classes or add imports where they belong",
     ),
     "flat_dirs": DetectorMeta(
         "flat_dirs",

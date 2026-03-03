@@ -42,13 +42,23 @@ def get_src_path() -> Path:
     return get_project_root() / os.environ.get("DESLOPPIFY_SRC", "src")
 
 
-def read_code_snippet(filepath: str, line: int, context: int = 1) -> str | None:
+def read_code_snippet(
+    filepath: str,
+    line: int,
+    context: int = 1,
+    *,
+    project_root: Path | str | None = None,
+) -> str | None:
     """Read a snippet around a 1-based line number."""
     return _text_utils.read_code_snippet(
         filepath,
         line,
         context,
-        project_root=get_project_root(),
+        project_root=(
+            Path(project_root).resolve()
+            if project_root is not None
+            else get_project_root()
+        ),
     )
 
 

@@ -60,7 +60,10 @@
         "Union types that could be narrowed (Optional used where None is never valid)",
         "Missing annotations on public API functions",
         "Type: ignore comments without explanation",
-        "TypedDict fields marked Required but accessed via .get() with defaults — the type promises a shape the code doesn't trust"
+        "TypedDict fields marked Required but accessed via .get() with defaults — the type promises a shape the code doesn't trust",
+        "Parameters typed as dict[str, Any] where a specific TypedDict or dataclass exists",
+        "Enum types defined in the codebase but bypassed with raw string or int literal comparisons — see enum_bypass_patterns evidence",
+        "Parallel type definitions: a Literal alias that duplicates an existing enum's values"
       ],
       "skip": [
         "Untyped private helpers in well-typed modules",
@@ -108,7 +111,8 @@
         "Wide options/context bag APIs that hide true domain boundaries",
         "Generic/type-parameter machinery used in only one concrete way",
         "Delegation-heavy classes where most methods forward to an inner object (high delegation ratio)",
-        "Facade/re-export modules that define no logic of their own"
+        "Facade/re-export modules that define no logic of their own",
+        "Getter functions whose body is solely return x.get(key) — the underlying type should be an object with properties instead of dict access"
       ],
       "skip": [
         "Dependency-injection or framework abstractions required for wiring/testability",
@@ -193,7 +197,8 @@
         "Documented architecture contracts drifting from runtime (e.g. dynamic import boundaries)",
         "Cross-module coordination through shared mutable state or import-time side effects",
         "Compatibility shim paths that persist without active external need and blur boundaries",
-        "Cross-package duplication that indicates a missing shared boundary"
+        "Cross-package duplication that indicates a missing shared boundary",
+        "Subsystem or package consuming a disproportionate share of the codebase — see package_size_census evidence"
       ],
       "skip": [
         "Intentional facades/re-exports with clear API purpose",
@@ -209,7 +214,8 @@
         "Import-time side effects: DB connections, file I/O, network calls at module scope",
         "Global singletons where creation order matters across modules",
         "Environment variable reads at import time (fragile in testing)",
-        "Circular init dependencies hidden behind conditional or lazy imports"
+        "Circular init dependencies hidden behind conditional or lazy imports",
+        "Module-level constants computed at import time alongside a dynamic getter function — consumers referencing the stale snapshot instead of calling the getter"
       ],
       "skip": [
         "Standard library initialization (logging.basicConfig)",
@@ -225,7 +231,8 @@
         "Style islands: one directory uses a completely different pattern than the rest",
         "Sibling modules following different behavioral protocols (e.g. most call a shared function, one doesn't)",
         "Inconsistent plugin organization: sibling plugins structured differently",
-        "Large __init__.py re-export surfaces that obscure internal module structure"
+        "Large __init__.py re-export surfaces that obscure internal module structure",
+        "Mixed type strategies for domain objects (TypedDict for some, dataclass for others, NamedTuple for yet others) without documented rationale — see type_strategy_census evidence"
       ],
       "skip": [
         "Intentional variation for different module types (config vs logic)",

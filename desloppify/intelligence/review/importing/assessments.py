@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
+from desloppify.engine._state.schema import StateModel
 from typing import Any
 
-from desloppify.core.text_api import is_numeric
+from desloppify.core.text.text_api import is_numeric
 from desloppify.intelligence.review.dimensions import normalize_dimension_name
 from desloppify.state import utc_now
 
 
 def store_assessments(
-    state: dict[str, Any],
+    state: StateModel,
     assessments: dict[str, Any],
     source: str,
     *,

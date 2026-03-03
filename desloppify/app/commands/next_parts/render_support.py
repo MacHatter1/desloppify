@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from collections import Counter
 
-from desloppify.core.output_api import colorize
+from desloppify.app.commands.helpers.queue_progress import format_plan_delta
+from desloppify.core.output import colorize
 from desloppify.engine.planning.scorecard_projection import (
     scorecard_subjective_entries,
 )
-from desloppify.engine.work_queue import group_queue_items
+from desloppify.engine._work_queue.core import group_queue_items
 from desloppify.intelligence.integrity import subjective_review_open_breakdown
 
 _ACTION_TYPE_LABELS = {
@@ -16,6 +17,11 @@ _ACTION_TYPE_LABELS = {
     "reorganize": "Reorganize batch",
     "refactor": "Refactor batch",
     "manual_fix": "Grouped task",
+}
+_CLUSTER_NAME_LABELS = {
+    "auto/initial-review": "Initial subjective review",
+    "auto/stale-review": "Stale subjective review",
+    "auto/under-target-review": "Optional re-review",
 }
 
 
@@ -66,61 +72,47 @@ def render_grouped(items: list[dict], group: str) -> None:
             )
 
 
-def render_cluster_item(item: dict) -> None:
-    """Render an auto-cluster task card."""
-    member_count = int(item.get("member_count", 0))
-    action_type = item.get("action_type", "manual_fix")
-    cluster_name = item.get("id", "")
-    is_optional = bool(item.get("cluster_optional"))
-    if cluster_name == "auto/initial-review":
-        type_label = "Initial subjective review"
-    elif cluster_name == "auto/stale-review":
-        type_label = "Stale subjective review"
-    elif cluster_name == "auto/under-target-review":
-        type_label = "Optional re-review"
-    else:
-        type_label = _ACTION_TYPE_LABELS.get(action_type, "Grouped task")
-    optional_tag = " — optional" if is_optional else ""
-    print(colorize(f"  ({type_label}, {member_count} issues{optional_tag})", "bold"))
-    print(colorize("  " + "─" * 60, "dim"))
-    print(f"  {colorize(item.get('summary', ''), 'yellow')}")
+def _cluster_type_label(cluster_name: str, action_type: str) -> str:
+    if cluster_name in _CLUSTER_NAME_LABELS:
+        return _CLUSTER_NAME_LABELS[cluster_name]
+    return _ACTION_TYPE_LABELS.get(action_type, "Grouped task")
 
-    members = item.get("members", [])
-    if members:
-        file_counts = Counter(m.get("file", "?") for m in members)
-        if len(file_counts) <= 5:
-            print(colorize("\n  Files:", "dim"))
-            for filename, count in file_counts.most_common():
-                print(f"    {filename} ({count})")
-        else:
-            print(colorize(f"\n  Spread across {len(file_counts)} files:", "dim"))
-            for filename, count in file_counts.most_common(3):
-                print(f"    {filename} ({count})")
-            remaining = len(file_counts) - 3
-            print(colorize(f"    ... and {remaining} more files", "dim"))
 
-        print(colorize("\n  Sample:", "dim"))
-        for member in members[:3]:
-            print(f"    - {member.get('id', '')}")
-        if len(members) > 3:
-            print(colorize(f"    ... and {len(members) - 3} more", "dim"))
-
-    cluster_name = item.get("id", "")
-    primary_command = item.get("primary_command")
-    if primary_command:
-        print(colorize(f"\n  Action: {primary_command}", "cyan"))
-
-    if is_optional:
-        print(colorize(f"\n  Skip:          desloppify plan skip {cluster_name}", "dim"))
-        print(colorize(f"  Drill in:      desloppify next --cluster {cluster_name} --count 10", "dim"))
-        print(
-            colorize(
-                f'  Resolve all:   desloppify plan resolve "{cluster_name}" --note "<what>" --confirm',
-                "dim",
-            )
-        )
+def _render_cluster_files(members: list[dict]) -> None:
+    file_counts = Counter(m.get("file", "?") for m in members)
+    if len(file_counts) <= 5:
+        print(colorize("\n  Files:", "dim"))
+        for filename, count in file_counts.most_common():
+            print(f"    {filename} ({count})")
         return
 
+    print(colorize(f"\n  Spread across {len(file_counts)} files:", "dim"))
+    for filename, count in file_counts.most_common(3):
+        print(f"    {filename} ({count})")
+    remaining = len(file_counts) - 3
+    print(colorize(f"    ... and {remaining} more files", "dim"))
+
+
+def _render_cluster_sample(members: list[dict]) -> None:
+    print(colorize("\n  Sample:", "dim"))
+    for member in members[:3]:
+        print(f"    - {member.get('id', '')}")
+    if len(members) > 3:
+        print(colorize(f"    ... and {len(members) - 3} more", "dim"))
+
+
+def _render_optional_cluster_commands(cluster_name: str) -> None:
+    print(colorize(f"\n  Skip:          desloppify plan skip {cluster_name}", "dim"))
+    print(colorize(f"  Drill in:      desloppify next --cluster {cluster_name} --count 10", "dim"))
+    print(
+        colorize(
+            f'  Resolve all:   desloppify plan resolve "{cluster_name}" --note "<what>" --confirm',
+            "dim",
+        )
+    )
+
+
+def _render_required_cluster_commands(cluster_name: str) -> None:
     print(
         colorize(
             f'\n  Resolve all:   desloppify plan resolve "{cluster_name}" --note "<what>" --confirm',
@@ -129,6 +121,34 @@ def render_cluster_item(item: dict) -> None:
     )
     print(colorize(f"  Drill in:      desloppify next --cluster {cluster_name} --count 10", "dim"))
     print(colorize(f"  Skip cluster:  desloppify plan skip {cluster_name}", "dim"))
+
+
+def render_cluster_item(item: dict) -> None:
+    """Render an auto-cluster task card."""
+    member_count = int(item.get("member_count", 0))
+    action_type = item.get("action_type", "manual_fix")
+    cluster_name = item.get("id", "")
+    is_optional = bool(item.get("cluster_optional"))
+    type_label = _cluster_type_label(cluster_name, action_type)
+    optional_tag = " — optional" if is_optional else ""
+    print(colorize(f"  ({type_label}, {member_count} issues{optional_tag})", "bold"))
+    print(colorize("  " + "─" * 60, "dim"))
+    print(f"  {colorize(item.get('summary', ''), 'yellow')}")
+
+    members = item.get("members", [])
+    if members:
+        _render_cluster_files(members)
+        _render_cluster_sample(members)
+
+    primary_command = item.get("primary_command")
+    if primary_command:
+        print(colorize(f"\n  Action: {primary_command}", "cyan"))
+
+    if is_optional:
+        _render_optional_cluster_commands(cluster_name)
+        return
+
+    _render_required_cluster_commands(cluster_name)
 
 
 def render_gate_banner(gate_phase: str | None, *, item_count: int = 0) -> bool:
@@ -164,7 +184,6 @@ def show_empty_queue(
     if queue.get("items"):
         return False
     if plan_start_strict is not None and strict is not None:
-        from desloppify.app.commands.helpers.queue_progress import format_plan_delta
         delta = format_plan_delta(strict, plan_start_strict)
         delta_str = f" ({delta})" if delta else ""
         print(colorize("\n  Queue cleared!", "green"))
@@ -206,4 +225,3 @@ __all__ = [
     "show_empty_queue",
     "subjective_coverage_breakdown",
 ]
-

@@ -8,7 +8,7 @@ from pathlib import Path
 from .smells_runtime import (
     _build_string_line_set,
     _match_is_in_string,
-    detect_smells as _detect_smells_runtime,
+    detect_smells_runtime as _detect_smells_runtime,
 )
 
 logger = logging.getLogger(__name__)

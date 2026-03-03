@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from desloppify import scoring as scoring_mod
 from desloppify.app.commands.helpers.score import coerce_target_score
+from desloppify.engine._scoring.subjective.core import DISPLAY_NAMES
 from desloppify.intelligence import integrity as subjective_integrity_mod
 
 # ---------------------------------------------------------------------------
@@ -123,7 +123,7 @@ def subjective_rerun_command(
 
 
 def _subjective_display_name_from_key(dimension_key: str) -> str:
-    return scoring_mod.DISPLAY_NAMES.get(
+    return DISPLAY_NAMES.get(
         dimension_key, dimension_key.replace("_", " ").title()
     )
 
@@ -154,6 +154,63 @@ def subjective_entries_for_dimension_keys(
     return mapped
 
 
+def _integrity_notice_for_explicit_status(
+    *,
+    status: str,
+    matched_keys: list[str],
+    reset_keys: list[str],
+    target_display: float,
+    subjective_entries: list[dict],
+    max_items: int,
+) -> dict[str, object] | None:
+    if status == "penalized" and reset_keys:
+        reset_entries = subjective_entries_for_dimension_keys(
+            reset_keys,
+            subjective_entries,
+        )
+        return {
+            "status": "penalized",
+            "count": len(reset_keys),
+            "target": target_display,
+            "entries": reset_entries,
+            "rendered": render_subjective_names(reset_entries),
+            "command": subjective_rerun_command(reset_entries, max_items=max_items),
+        }
+    if status == "warn" and matched_keys:
+        matched_entries = subjective_entries_for_dimension_keys(
+            matched_keys,
+            subjective_entries,
+        )
+        return {
+            "status": "warn",
+            "count": len(matched_keys),
+            "target": target_display,
+            "entries": matched_entries,
+            "rendered": render_subjective_names(matched_entries),
+            "command": subjective_rerun_command(matched_entries, max_items=max_items),
+        }
+    return None
+
+
+def _at_target_entries(
+    subjective_entries: list[dict],
+    *,
+    threshold_value: float,
+) -> list[dict]:
+    return sorted(
+        [
+            entry
+            for entry in subjective_entries
+            if not entry.get("placeholder")
+            and subjective_integrity_mod.matches_target_score(
+                float(entry.get("strict", entry.get("score", 100.0))),
+                threshold_value,
+            )
+        ],
+        key=lambda entry: str(entry.get("name", "")).lower(),
+    )
+
+
 def subjective_integrity_followup(
     state: dict,
     subjective_entries: list[dict],
@@ -172,43 +229,20 @@ def subjective_integrity_followup(
     matched_keys = coerce_str_keys(integrity_state.get("matched_dimensions", []))
     reset_keys = coerce_str_keys(integrity_state.get("reset_dimensions", []))
 
-    if status == "penalized" and reset_keys:
-        reset_entries = subjective_entries_for_dimension_keys(
-            reset_keys, subjective_entries
-        )
-        return {
-            "status": "penalized",
-            "count": len(reset_keys),
-            "target": target_display,
-            "entries": reset_entries,
-            "rendered": render_subjective_names(reset_entries),
-            "command": subjective_rerun_command(reset_entries, max_items=max_items),
-        }
+    explicit_notice = _integrity_notice_for_explicit_status(
+        status=status,
+        matched_keys=matched_keys,
+        reset_keys=reset_keys,
+        target_display=target_display,
+        subjective_entries=subjective_entries,
+        max_items=max_items,
+    )
+    if explicit_notice is not None:
+        return explicit_notice
 
-    if status == "warn" and matched_keys:
-        matched_entries = subjective_entries_for_dimension_keys(
-            matched_keys, subjective_entries
-        )
-        return {
-            "status": "warn",
-            "count": len(matched_keys),
-            "target": target_display,
-            "entries": matched_entries,
-            "rendered": render_subjective_names(matched_entries),
-            "command": subjective_rerun_command(matched_entries, max_items=max_items),
-        }
-
-    at_target = sorted(
-        [
-            entry
-            for entry in subjective_entries
-            if not entry.get("placeholder")
-            and subjective_integrity_mod.matches_target_score(
-                float(entry.get("strict", entry.get("score", 100.0))),
-                threshold_value,
-            )
-        ],
-        key=lambda entry: str(entry.get("name", "")).lower(),
+    at_target = _at_target_entries(
+        subjective_entries,
+        threshold_value=threshold_value,
     )
     if not at_target:
         return None

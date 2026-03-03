@@ -20,3 +20,8 @@ generic_lang(
     detect_markers=["deps.edn", "project.clj"],
     treesitter_spec=CLOJURE_SPEC,
 )
+
+__all__ = [
+    "generic_lang",
+    "CLOJURE_SPEC",
+]

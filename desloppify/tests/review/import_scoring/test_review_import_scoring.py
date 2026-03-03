@@ -8,11 +8,11 @@ from desloppify.intelligence.review import (
     import_holistic_issues,
     import_review_issues,
 )
-from desloppify.scoring import (
+from desloppify.engine._scoring.policy.core import (
     DIMENSIONS,
     FILE_BASED_DETECTORS,
-    compute_dimension_scores,
 )
+from desloppify.engine._scoring.results.core import compute_dimension_scores
 from desloppify.state import MergeScanOptions, merge_scan
 from desloppify.state import empty_state as build_empty_state
 from desloppify.tests.review.shared_review_fixtures import _as_review_payload

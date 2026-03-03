@@ -10,12 +10,27 @@ that no single detector captures.
 
 from __future__ import annotations
 
+from desloppify.engine._state.schema import StateModel
 import hashlib
+import re
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any, Literal, TypedDict, cast
 
 from desloppify.core.registry import JUDGMENT_DETECTORS
+from desloppify.engine.detectors.base import (
+    ELEVATED_LOC_THRESHOLD,
+    ELEVATED_NESTING_THRESHOLD,
+    ELEVATED_PARAMS_THRESHOLD,
+)
+
+# ── Concern thresholds ──────────────────────────────────
+ELEVATED_MAX_PARAMS = ELEVATED_PARAMS_THRESHOLD
+ELEVATED_MAX_NESTING = ELEVATED_NESTING_THRESHOLD
+ELEVATED_LOC = ELEVATED_LOC_THRESHOLD
+MIN_DETECTORS_FOR_MIXED = 3
+MIN_FILES_FOR_SYSTEMIC = 3
+MIN_FILES_FOR_SMELL_PATTERN = 5
 
 
 @dataclass(frozen=True)
@@ -71,7 +86,7 @@ def _is_dismissed(
     return prev_sources == set(source_issue_ids)
 
 
-def _open_issues(state: dict[str, Any]) -> list[dict[str, Any]]:
+def _open_issues(state: StateModel) -> list[dict[str, Any]]:
     """Return all open issues from state."""
     issues = state.get("issues", {})
     return [
@@ -80,7 +95,7 @@ def _open_issues(state: dict[str, Any]) -> list[dict[str, Any]]:
     ]
 
 
-def _group_by_file(state: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
+def _group_by_file(state: StateModel) -> dict[str, list[dict[str, Any]]]:
     """Group open issues by file, excluding holistic (file='.')."""
     by_file: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for f in _open_issues(state):
@@ -91,6 +106,27 @@ def _group_by_file(state: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
 
 
 # ── Signal extraction ────────────────────────────────────────────────
+
+
+def _parse_complexity_signals(detail: dict[str, Any]) -> dict[str, float]:
+    """Parse complexity_signals strings into numeric values.
+
+    Structural detail dicts store complexity signals as strings like
+    "function with 12 params" and "nesting depth 8" in the
+    ``complexity_signals`` list.  Extract max_params and max_nesting
+    from those labels so the concern generator can evaluate thresholds.
+    """
+    result: dict[str, float] = {}
+    for sig in detail.get("complexity_signals", []):
+        if not isinstance(sig, str):
+            continue
+        m = re.search(r"(\d+)\s*params", sig)
+        if m:
+            result["max_params"] = max(result.get("max_params", 0), float(m.group(1)))
+        m = re.search(r"nesting depth\s*(\d+)", sig)
+        if m:
+            result["max_nesting"] = max(result.get("max_nesting", 0), float(m.group(1)))
+    return result
 
 
 def _extract_signals(issues: list[dict[str, Any]]) -> ConcernSignals:
@@ -104,10 +140,18 @@ def _extract_signals(issues: list[dict[str, Any]]) -> ConcernSignals:
         detail = detail_raw if isinstance(detail_raw, dict) else {}
 
         if det == "structural":
-            s = detail.get("signals", {})
-            if isinstance(s, dict):
+            # Read loc directly from the flat detail dict.
+            _update_max_signal(signals, "loc", detail.get("loc", 0))
+            # Parse complexity_signals strings for params/nesting.
+            parsed = _parse_complexity_signals(detail)
+            for key in ("max_params", "max_nesting"):
+                if key in parsed:
+                    _update_max_signal(signals, cast(SignalKey, key), parsed[key])
+            # Also support legacy "signals" sub-dict format (used in tests).
+            s_raw = detail.get("signals")
+            if isinstance(s_raw, dict):
                 for key in _NUMERIC_SIGNAL_KEYS:
-                    _update_max_signal(signals, cast(SignalKey, key), s.get(key, 0))
+                    _update_max_signal(signals, cast(SignalKey, key), s_raw.get(key, 0))
 
         if det == "smells" and detail.get("smell_id") == "monster_function":
             _update_max_signal(signals, "monster_loc", detail.get("loc", 0))
@@ -124,16 +168,27 @@ def _has_elevated_signals(issues: list[dict[str, Any]]) -> bool:
     """Does any issue have signals strong enough to flag on its own?"""
     for f in issues:
         det = f.get("detector", "")
-        detail = f.get("detail", {})
+        detail_raw = f.get("detail", {})
+        detail = detail_raw if isinstance(detail_raw, dict) else {}
 
         if det == "structural":
-            s = detail.get("signals", {})
+            # Check flat detail keys first (real structural data).
+            if detail.get("loc", 0) >= ELEVATED_LOC:
+                return True
+            # Parse complexity_signals strings.
+            parsed = _parse_complexity_signals(detail)
+            if parsed.get("max_params", 0) >= ELEVATED_MAX_PARAMS:
+                return True
+            if parsed.get("max_nesting", 0) >= ELEVATED_MAX_NESTING:
+                return True
+            # Also support legacy "signals" sub-dict (used in tests).
+            s = detail.get("signals")
             if isinstance(s, dict):
-                if s.get("max_params", 0) >= 8:
+                if s.get("max_params", 0) >= ELEVATED_MAX_PARAMS:
                     return True
-                if s.get("max_nesting", 0) >= 6:
+                if s.get("max_nesting", 0) >= ELEVATED_MAX_NESTING:
                     return True
-                if s.get("loc", 0) >= 300:
+                if s.get("loc", 0) >= ELEVATED_LOC:
                     return True
 
         if det == "smells" and detail.get("smell_id") == "monster_function":
@@ -151,7 +206,7 @@ def _has_elevated_signals(issues: list[dict[str, Any]]) -> bool:
 
 def _classify(detectors: set[str], signals: ConcernSignals) -> str:
     """Pick the most specific concern type from what's present."""
-    if len(detectors) >= 3:
+    if len(detectors) >= MIN_DETECTORS_FOR_MIXED:
         return "mixed_responsibilities"
     if "dupes" in detectors or "boilerplate_duplication" in detectors:
         return "duplication_design"
@@ -159,9 +214,9 @@ def _classify(detectors: set[str], signals: ConcernSignals) -> str:
         return "structural_complexity"
     if "coupling" in detectors:
         return "coupling_design"
-    if signals.get("max_params", 0) >= 8:
+    if signals.get("max_params", 0) >= ELEVATED_MAX_PARAMS:
         return "interface_design"
-    if signals.get("max_nesting", 0) >= 6:
+    if signals.get("max_nesting", 0) >= ELEVATED_MAX_NESTING:
         return "structural_complexity"
     if "responsibility_cohesion" in detectors:
         return "mixed_responsibilities"
@@ -187,10 +242,10 @@ def _build_summary(
             label = f" ({', '.join(funcs[:3])})" if funcs else ""
             parts.append(f"monster function{label}: {int(monster_loc)} lines")
         nesting = signals.get("max_nesting", 0)
-        if nesting >= 6:
+        if nesting >= ELEVATED_MAX_NESTING:
             parts.append(f"nesting depth {int(nesting)}")
         params = signals.get("max_params", 0)
-        if params >= 8:
+        if params >= ELEVATED_MAX_PARAMS:
             parts.append(f"{int(params)} parameters")
         return f"Structural complexity: {', '.join(parts) or 'elevated signals'}"
     if concern_type == "duplication_design":
@@ -216,10 +271,10 @@ def _build_evidence(
     if loc:
         evidence.append(f"File size: {int(loc)} lines")
     params = signals.get("max_params")
-    if params and params >= 8:
+    if params and params >= ELEVATED_MAX_PARAMS:
         evidence.append(f"Max parameters: {int(params)}")
     nesting = signals.get("max_nesting")
-    if nesting and nesting >= 6:
+    if nesting and nesting >= ELEVATED_MAX_NESTING:
         evidence.append(f"Max nesting depth: {int(nesting)}")
     monster_loc = signals.get("monster_loc")
     if monster_loc:
@@ -242,7 +297,7 @@ def _build_question(
     """Build targeted question from dominant signals."""
     parts: list[str] = []
 
-    if len(detectors) >= 3:
+    if len(detectors) >= MIN_DETECTORS_FOR_MIXED:
         parts.append(
             f"This file has issues across {len(detectors)} dimensions "
             f"({', '.join(sorted(detectors))}). Is it trying to do too many "
@@ -256,13 +311,13 @@ def _build_question(
             "Should it be decomposed into focused functions?"
         )
 
-    if signals.get("max_params", 0) >= 8:
+    if signals.get("max_params", 0) >= ELEVATED_MAX_PARAMS:
         parts.append(
             "Should the parameters be grouped into a config/context object? "
             "Which ones belong together?"
         )
 
-    if signals.get("max_nesting", 0) >= 6:
+    if signals.get("max_nesting", 0) >= ELEVATED_MAX_NESTING:
         parts.append(
             "Can the nesting be reduced with early returns, guard clauses, "
             "or extraction into helper functions?"
@@ -304,7 +359,7 @@ def _build_question(
 # ── Generators ───────────────────────────────────────────────────────
 
 
-def _file_concerns(state: dict[str, Any], dismissals: dict[str, Any]) -> list[Concern]:
+def _file_concerns(state: StateModel, dismissals: dict[str, Any]) -> list[Concern]:
     """Per-file design concerns from aggregated mechanical signals.
 
     Flags a file if it has 2+ judgment-needed detectors OR a single
@@ -361,7 +416,7 @@ def _file_concerns(state: dict[str, Any], dismissals: dict[str, Any]) -> list[Co
     return concerns
 
 
-def _cross_file_patterns(state: dict[str, Any], dismissals: dict[str, Any]) -> list[Concern]:
+def _cross_file_patterns(state: StateModel, dismissals: dict[str, Any]) -> list[Concern]:
     """Systemic patterns: same judgment detector combo across 3+ files.
 
     When multiple files share the same combination of detector types,
@@ -381,7 +436,7 @@ def _cross_file_patterns(state: dict[str, Any], dismissals: dict[str, Any]) -> l
 
     concerns: list[Concern] = []
     for det_combo, files in profile_to_files.items():
-        if len(files) < 3:
+        if len(files) < MIN_FILES_FOR_SYSTEMIC:
             continue
 
         sorted_files = sorted(files)
@@ -431,7 +486,7 @@ def _cross_file_patterns(state: dict[str, Any], dismissals: dict[str, Any]) -> l
 
 
 def _systemic_smell_patterns(
-    state: dict[str, Any], dismissals: dict[str, Any]
+    state: StateModel, dismissals: dict[str, Any]
 ) -> list[Concern]:
     """Systemic concerns: single smell_id appearing across 5+ files.
 
@@ -454,7 +509,7 @@ def _systemic_smell_patterns(
     concerns: list[Concern] = []
     for smell_id, files in smell_files.items():
         unique_files = sorted(set(files))
-        if len(unique_files) < 5:
+        if len(unique_files) < MIN_FILES_FOR_SMELL_PATTERN:
             continue
 
         all_ids = tuple(sorted(smell_ids_map[smell_id]))
@@ -492,15 +547,12 @@ _GENERATORS = [_file_concerns, _cross_file_patterns, _systemic_smell_patterns]
 
 
 def generate_concerns(
-    state: dict[str, Any],
-    lang_name: str | None = None,
+    state: StateModel,
 ) -> list[Concern]:
     """Run all concern generators against current state.
 
     Returns deduplicated list sorted by (type, file).
-    lang_name is reserved for future language-specific generators.
     """
-    del lang_name  # Reserved for future use.
     dismissals = state.get("concern_dismissals", {})
     concerns: list[Concern] = []
     seen_fps: set[str] = set()
@@ -515,7 +567,7 @@ def generate_concerns(
     return concerns
 
 
-def cleanup_stale_dismissals(state: dict[str, Any]) -> int:
+def cleanup_stale_dismissals(state: StateModel) -> int:
     """Remove dismissals whose source issues all disappeared.
 
     Returns the number of stale entries removed.  Dismissals without

@@ -128,18 +128,7 @@ def detect_review_coverage(
     holistic_cache: dict | None = None,
     holistic_total_files: int | None = None,
 ) -> tuple[list[dict], int]:
-    """Detect production files missing or with stale design reviews.
-
-    Args:
-        files: list of file paths from file_finder
-        zone_map: FileZoneMap (or None)
-        review_cache: dict of {rel_path: {content_hash, reviewed_at, issue_count}}
-        lang_name: language plugin name (for low-value pattern matching)
-        max_age_days: reviews older than this are flagged as stale
-
-    Returns:
-        (entries, potential) where potential = count of reviewable production files.
-    """
+    """Detect production files missing reviews or carrying stale reviews."""
     now = datetime.now(UTC)
     entries: list[dict] = []
     candidates: list[tuple[str, str, int]] = []

@@ -85,7 +85,9 @@ def run_phase_structural(
     results = merge_structural_signals(structural, log_fn)
 
     flat_entries, dir_count = flat_dirs_detector_mod.detect_flat_dirs(
-        path, file_finder=lang.file_finder
+        path,
+        file_finder=lang.file_finder,
+        config=flat_dirs_detector_mod.FlatDirDetectionConfig(),
     )
     for entry in flat_entries:
         child_dir_count = int(entry.get("child_dir_count", 0))

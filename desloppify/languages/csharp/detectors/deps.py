@@ -18,14 +18,14 @@ from desloppify.languages.csharp.extractors import (
 )
 from desloppify.languages.csharp.detectors.deps_support import (
     build_graph_from_edge_map as _build_graph_from_edge_map,
-    cmd_cycles as _cmd_cycles_support,
-    cmd_deps as _cmd_deps_support,
     expand_namespace_matches as _expand_namespace_matches,
     find_csproj_files as _find_csproj_files,
     map_file_to_project as _map_file_to_project,
     parse_csproj_references as _parse_csproj_references,
     parse_file_metadata as _parse_file_metadata,
     parse_project_assets_references as _parse_project_assets_references,
+    render_cycles_for_graph as _render_cycles_for_graph,
+    render_deps_for_graph as _render_deps_for_graph,
     safe_resolve_graph_path as _safe_resolve_graph_path,
 )
 
@@ -263,10 +263,10 @@ def resolve_roslyn_cmd_from_args(args) -> str | None:
 def cmd_deps(args: argparse.Namespace) -> None:
     """Show dependency info for a specific C# file or top coupled files."""
     graph = build_dep_graph(Path(args.path), roslyn_cmd=resolve_roslyn_cmd_from_args(args))
-    _cmd_deps_support(args, graph=graph)
+    _render_deps_for_graph(args, graph=graph)
 
 
 def cmd_cycles(args: argparse.Namespace) -> None:
     """Show import cycles in C# source files."""
     graph = build_dep_graph(Path(args.path), roslyn_cmd=resolve_roslyn_cmd_from_args(args))
-    _cmd_cycles_support(args, graph=graph)
+    _render_cycles_for_graph(args, graph=graph)

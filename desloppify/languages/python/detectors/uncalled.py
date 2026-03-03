@@ -67,14 +67,7 @@ def detect_uncalled_functions(
     path: Path,
     graph: dict,
 ) -> tuple[list[dict], int]:
-    """Find underscore-prefixed top-level functions with zero references.
-
-    Single-pass: walks every file's AST once, collecting both references
-    (Name, Attribute, import aliases) and function-definition candidates.
-
-    Returns:
-        (entries, total_candidates) — entries are dicts with file/name/line/loc.
-    """
+    """Find underscore-prefixed top-level functions with zero references."""
     project_files = [f for f in graph if f.endswith(".py")]
     if not project_files:
         return [], 0

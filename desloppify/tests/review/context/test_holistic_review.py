@@ -40,10 +40,8 @@ from desloppify.intelligence.review.prepare_batches import (
     build_investigation_batches as _build_investigation_batches,
 )
 from desloppify.intelligence.review.prepare_batches import filter_batches_to_dimensions
-from desloppify.scoring import (
-    HOLISTIC_POTENTIAL,
-    detector_pass_rate,
-)
+from desloppify.engine._scoring.policy.core import HOLISTIC_POTENTIAL
+from desloppify.engine._scoring.detection import detector_pass_rate
 from desloppify.state import empty_state, path_scoped_issues
 
 
@@ -1488,7 +1486,7 @@ class TestBuildInvestigationBatches:
                 "directory_profiles": {
                     "commands/": {
                         "file_count": 3,
-                        "files": ["cmd.py", "scan_cmd.py", "plan_cmd.py"],
+                        "files": ["cmd.py", "scan/cmd.py", "plan/cmd.py"],
                     }
                 }
             },
@@ -1499,7 +1497,7 @@ class TestBuildInvestigationBatches:
         conv_batch = next(b for b in batches if b["name"] == "Conventions & Errors")
 
         assert "commands/review/cmd.py" in conv_batch["files_to_read"]
-        assert "commands/scan_cmd.py" in conv_batch["files_to_read"]
+        assert "commands/scan/cmd.py" in conv_batch["files_to_read"]
         assert "commands/" not in conv_batch["files_to_read"]
         assert all(not path.endswith("/") for path in conv_batch["files_to_read"])
 

@@ -81,6 +81,26 @@ def get_area(filepath: str, *, min_depth: int = 2) -> str:
     return "/".join(parts[:2]) if len(parts) >= min_depth else parts[0]
 
 
+def _consume_escaped_char(text: str, index: int, out: list[str]) -> int | None:
+    if text[index] != "\\" or index + 1 >= len(text):
+        return None
+    out.append(text[index : index + 2])
+    return index + 2
+
+
+def _skip_comment(text: str, index: int) -> int | None:
+    if text[index] != "/" or index + 1 >= len(text):
+        return None
+    next_char = text[index + 1]
+    if next_char == "/":
+        newline_at = text.find("\n", index)
+        return -1 if newline_at == -1 else newline_at
+    if next_char == "*":
+        end = text.find("*/", index + 2)
+        return -1 if end == -1 else end + 2
+    return None
+
+
 def strip_c_style_comments(text: str) -> str:
     """Strip // and /* */ comments while preserving string literals."""
     result: list[str] = []
@@ -89,35 +109,31 @@ def strip_c_style_comments(text: str) -> str:
     while i < len(text):
         ch = text[i]
         if in_str:
-            if ch == "\\" and i + 1 < len(text):
-                result.append(text[i : i + 2])
-                i += 2
+            escaped_next = _consume_escaped_char(text, i, result)
+            if escaped_next is not None:
+                i = escaped_next
                 continue
             if ch == in_str:
                 in_str = None
             result.append(ch)
             i += 1
-        elif ch in ('"', "'", "`"):
+            continue
+
+        if ch in ('"', "'", "`"):
             in_str = ch
             result.append(ch)
             i += 1
-        elif ch == "/" and i + 1 < len(text):
-            if text[i + 1] == "/":
-                nl = text.find("\n", i)
-                if nl == -1:
-                    break
-                i = nl
-            elif text[i + 1] == "*":
-                end = text.find("*/", i + 2)
-                if end == -1:
-                    break
-                i = end + 2
-            else:
-                result.append(ch)
-                i += 1
-        else:
-            result.append(ch)
-            i += 1
+            continue
+
+        skipped_to = _skip_comment(text, i)
+        if skipped_to is not None:
+            if skipped_to == -1:
+                break
+            i = skipped_to
+            continue
+
+        result.append(ch)
+        i += 1
     return "".join(result)
 
 
@@ -132,7 +148,6 @@ def is_numeric(value: object) -> bool:
 
 
 __all__ = [
-    "PROJECT_ROOT",
     "get_area",
     "get_project_root",
     "is_numeric",

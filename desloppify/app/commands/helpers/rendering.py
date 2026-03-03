@@ -4,8 +4,12 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+from desloppify.app.commands.helpers.queue_progress import (
+    QueueBreakdown,
+    format_queue_headline,
+)
 from desloppify.core.discovery_api import rel
-from desloppify.core.output_api import colorize
+from desloppify.core.output import colorize
 
 
 def print_agent_plan(
@@ -34,11 +38,6 @@ def print_agent_plan(
 
 def _print_plan_agent_block(plan: dict, *, header: str = "  AGENT PLAN:") -> None:
     """Render the living plan as the agent plan block."""
-    from desloppify.app.commands.helpers.queue_progress import (
-        QueueBreakdown,
-        format_queue_headline,
-    )
-
     active = plan.get("active_cluster")
     ordered = len(plan.get("queue_order", []))
     skipped_ids = set(plan.get("skipped", {}).keys())

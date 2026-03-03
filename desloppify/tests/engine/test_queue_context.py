@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
 
 from desloppify.engine._work_queue.context import (
-    QueueContext,
-    _PLAN_AUTO_LOAD,
     queue_context,
 )
 
@@ -170,7 +167,10 @@ class TestQueueContextImmutability:
 class TestQueueContextIntegration:
     def test_build_work_queue_uses_context_plan(self):
         """build_work_queue uses context.plan when context is provided."""
-        from desloppify.engine.work_queue import QueueBuildOptions, build_work_queue
+        from desloppify.engine._work_queue.core import (
+            QueueBuildOptions,
+            build_work_queue,
+        )
 
         state = _state_with_issues(_issue("f1"))
         plan = {
@@ -196,7 +196,10 @@ class TestQueueContextIntegration:
 
     def test_build_work_queue_uses_context_policy(self):
         """build_work_queue uses context.policy, not recomputing."""
-        from desloppify.engine.work_queue import QueueBuildOptions, build_work_queue
+        from desloppify.engine._work_queue.core import (
+            QueueBuildOptions,
+            build_work_queue,
+        )
 
         state = _minimal_state()
         ctx = queue_context(state, plan=None)

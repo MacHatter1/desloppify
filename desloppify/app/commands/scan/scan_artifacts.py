@@ -12,14 +12,14 @@ from desloppify.app.commands.scan.scan_workflow import (
     ScanMergeResult,
     ScanNoiseSnapshot,
 )
-from desloppify.core.text_api import PROJECT_ROOT
+from desloppify.core.text.text_api import get_project_root
 from desloppify.core.config import config_for_query
 from desloppify.core.exception_sets import PLAN_LOAD_EXCEPTIONS
 from desloppify.core.output_contract import OutputResult
 from desloppify.engine.plan import load_plan
-from desloppify.scoring import compute_health_breakdown
+from desloppify.engine._scoring.results.core import compute_health_breakdown
 from desloppify.state import open_scope_breakdown, score_snapshot
-from desloppify.core.output_api import colorize
+from desloppify.core.output import colorize
 
 
 def build_scan_query_payload(
@@ -101,31 +101,54 @@ def _load_scorecard_helpers():
     return generate, badge_config
 
 
+def _missing_scorecard_result(args, config: dict[str, object]) -> tuple[Path | None, OutputResult]:
+    explicit_badge_request = bool(
+        getattr(args, "badge_path", None)
+        or config.get("badge_path")
+        or os.environ.get("DESLOPPIFY_BADGE_PATH")
+    )
+    if explicit_badge_request:
+        print(
+            colorize(
+                "  Scorecard support not installed. Install with: pip install \"desloppify[scorecard]\"",
+                "yellow",
+            )
+        )
+        return None, OutputResult(
+            ok=False,
+            status="error",
+            message="scorecard support not installed",
+            error_kind="scorecard_dependency_missing",
+        )
+    return None, OutputResult(ok=True, status="skipped", message="badge generation disabled")
+
+
+def _badge_relative_path(badge_path: Path) -> str:
+    try:
+        return str(badge_path.relative_to(get_project_root()))
+    except ValueError:
+        return str(badge_path)
+
+
+def _readme_references_badge(rel_path: str) -> bool:
+    for readme_name in ("README.md", "readme.md", "README.MD"):
+        readme_path = get_project_root() / readme_name
+        if not readme_path.exists():
+            continue
+        try:
+            return rel_path in readme_path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return False
+    return False
+
+
 def emit_scorecard_badge(
     args, config: dict[str, object], state: dict[str, object]
 ) -> tuple[Path | None, OutputResult]:
     """Generate a scorecard image badge and print usage hints."""
     generate_scorecard, get_badge_config = _load_scorecard_helpers()
     if not callable(generate_scorecard) or not callable(get_badge_config):
-        explicit_badge_request = bool(
-            getattr(args, "badge_path", None)
-            or config.get("badge_path")
-            or os.environ.get("DESLOPPIFY_BADGE_PATH")
-        )
-        if explicit_badge_request:
-            print(
-                colorize(
-                    "  Scorecard support not installed. Install with: pip install \"desloppify[scorecard]\"",
-                    "yellow",
-                )
-            )
-            return None, OutputResult(
-                ok=False,
-                status="error",
-                message="scorecard support not installed",
-                error_kind="scorecard_dependency_missing",
-            )
-        return None, OutputResult(ok=True, status="skipped", message="badge generation disabled")
+        return _missing_scorecard_result(args, config)
 
     try:
         badge_path, disabled = get_badge_config(args, config)
@@ -153,22 +176,8 @@ def emit_scorecard_badge(
             error_kind="badge_generation_error",
         )
 
-    try:
-        rel_path = str(badge_path.relative_to(PROJECT_ROOT))
-    except ValueError:
-        rel_path = str(badge_path)
-
-    readme_has_badge = False
-    for readme_name in ("README.md", "readme.md", "README.MD"):
-        readme_path = PROJECT_ROOT / readme_name
-        if readme_path.exists():
-            try:
-                readme_has_badge = rel_path in readme_path.read_text(
-                    encoding="utf-8", errors="replace"
-                )
-            except OSError:
-                readme_has_badge = False
-            break
+    rel_path = _badge_relative_path(badge_path)
+    readme_has_badge = _readme_references_badge(rel_path)
 
     if readme_has_badge:
         print(

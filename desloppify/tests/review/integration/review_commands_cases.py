@@ -7,15 +7,18 @@ import json
 import subprocess
 import sys
 import time
+from types import SimpleNamespace
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from desloppify import state as state_mod
-from desloppify.app.commands.review import batches as review_batches_mod
 from desloppify.app.commands.review import batches_scope as review_scope_mod
-from desloppify.app.commands.review import runner_helpers as runner_helpers_mod
+import desloppify.app.commands.review.runner_failures as runner_failures_mod
+import desloppify.app.commands.review.runner_packets as runner_packets_mod
+import desloppify.app.commands.review.runner_parallel as runner_parallel_mod
+import desloppify.app.commands.review.runner_process as runner_process_mod
 from desloppify.app.commands.review.batch import (
     _do_run_batches,
 )
@@ -36,6 +39,26 @@ from desloppify.state import empty_state as build_empty_state
 from desloppify.tests.review.shared_review_fixtures import (
     _as_review_payload,
     prepare_review,
+)
+
+runner_helpers_mod = SimpleNamespace(
+    BatchResult=runner_parallel_mod.BatchResult,
+    CodexBatchRunnerDeps=runner_process_mod.CodexBatchRunnerDeps,
+    FollowupScanDeps=runner_process_mod.FollowupScanDeps,
+    build_batch_import_provenance=runner_packets_mod.build_batch_import_provenance,
+    build_blind_packet=runner_packets_mod.build_blind_packet,
+    collect_batch_results=runner_parallel_mod.collect_batch_results,
+    codex_batch_command=runner_process_mod.codex_batch_command,
+    execute_batches=runner_parallel_mod.execute_batches,
+    prepare_run_artifacts=runner_packets_mod.prepare_run_artifacts,
+    print_failures=runner_failures_mod.print_failures,
+    print_failures_and_raise=runner_failures_mod.print_failures_and_raise,
+    run_codex_batch=runner_process_mod.run_codex_batch,
+    run_followup_scan=runner_process_mod.run_followup_scan,
+    run_stamp=runner_packets_mod.run_stamp,
+    selected_batch_indexes=runner_packets_mod.selected_batch_indexes,
+    sha256_file=runner_packets_mod.sha256_file,
+    write_packet_snapshot=runner_packets_mod.write_packet_snapshot,
 )
 
 
@@ -1200,11 +1223,11 @@ class TestCmdReviewPrepare:
                 "desloppify.app.commands.review.batch._do_import",
             ),
             patch(
-                "desloppify.app.commands.review.batch.runner_helpers_mod.execute_batches",
+                "desloppify.app.commands.review.batch.execute_batches",
                 side_effect=fake_execute_batches,
             ),
             patch(
-                "desloppify.app.commands.review.batch.runner_helpers_mod.collect_batch_results",
+                "desloppify.app.commands.review.batch.collect_batch_results",
                 return_value=(
                     [
                         runner_helpers_mod.BatchResult(
@@ -1689,7 +1712,6 @@ class TestCmdReviewPrepare:
         assert captured["kwargs"]["trusted_assessment_source"] is True
 
     def test_run_codex_batch_returns_127_when_runner_missing(self, tmp_path):
-        from desloppify.app.commands.review import runner_helpers as runner_helpers_mod
 
         log_file = tmp_path / "batch.log"
         mock_run = MagicMock(side_effect=FileNotFoundError("codex not found"))
@@ -1709,7 +1731,6 @@ class TestCmdReviewPrepare:
         assert "RUNNER ERROR" in log_file.read_text()
 
     def test_run_codex_batch_retries_stream_disconnect(self, tmp_path):
-        from desloppify.app.commands.review import runner_helpers as runner_helpers_mod
 
         log_file = tmp_path / "batch.log"
         output_file = tmp_path / "out.txt"
@@ -1752,7 +1773,6 @@ class TestCmdReviewPrepare:
         assert "Transient runner failure detected" in raw_log
 
     def test_run_codex_batch_writes_live_status_before_completion(self, tmp_path):
-        from desloppify.app.commands.review import runner_helpers as runner_helpers_mod
 
         log_file = tmp_path / "batch.log"
         output_file = tmp_path / "out.txt"
@@ -1782,7 +1802,6 @@ class TestCmdReviewPrepare:
         assert "STDOUT:" in log_file.read_text()
 
     def test_run_codex_batch_stall_recovery_from_output_file(self, tmp_path):
-        from desloppify.app.commands.review import runner_helpers as runner_helpers_mod
 
         log_file = tmp_path / "batch.log"
         output_file = tmp_path / "out.json"
@@ -1801,7 +1820,7 @@ class TestCmdReviewPrepare:
         ]
 
         with patch(
-            "desloppify.app.commands.review.runner_helpers.codex_batch_command",
+            "desloppify.app.commands.review.runner_process.codex_batch_command",
             return_value=command,
         ):
             code = runner_helpers_mod.run_codex_batch(
@@ -1827,7 +1846,6 @@ class TestCmdReviewPrepare:
         assert "Recovered stalled batch from JSON output file" in log_text
 
     def test_run_codex_batch_stall_without_output_file_times_out(self, tmp_path):
-        from desloppify.app.commands.review import runner_helpers as runner_helpers_mod
 
         log_file = tmp_path / "batch.log"
         output_file = tmp_path / "out.json"
@@ -1839,7 +1857,7 @@ class TestCmdReviewPrepare:
         ]
 
         with patch(
-            "desloppify.app.commands.review.runner_helpers.codex_batch_command",
+            "desloppify.app.commands.review.runner_process.codex_batch_command",
             return_value=command,
         ):
             code = runner_helpers_mod.run_codex_batch(
@@ -1867,7 +1885,6 @@ class TestCmdReviewPrepare:
     def test_collect_batch_results_recovers_execution_failure_with_valid_output(
         self, tmp_path
     ):
-        from desloppify.app.commands.review import runner_helpers as runner_helpers_mod
 
         output_file = tmp_path / "batch-1.raw.txt"
         output_file.write_text(
@@ -1907,7 +1924,6 @@ class TestCmdReviewPrepare:
     def test_collect_batch_results_skips_full_log_fallback_when_stdout_empty(
         self, tmp_path
     ):
-        from desloppify.app.commands.review import runner_helpers as runner_helpers_mod
 
         results_dir = tmp_path / "results"
         logs_dir = tmp_path / "logs"
@@ -1960,7 +1976,6 @@ class TestCmdReviewPrepare:
         assert "Output schema:" not in seen_inputs[0]
 
     def test_execute_batches_marks_progress_callback_exceptions_as_failures(self, tmp_path):
-        from desloppify.app.commands.review import runner_helpers as runner_helpers_mod
 
         def _broken_progress(*_args, **_kwargs):
             raise RuntimeError("progress callback failed")
@@ -1980,7 +1995,6 @@ class TestCmdReviewPrepare:
         assert any("progress callback failed" in msg for _idx, msg in captured)
 
     def test_execute_batches_does_not_mask_internal_progress_typeerror(self):
-        from desloppify.app.commands.review import runner_helpers as runner_helpers_mod
 
         def _broken_typeerror_progress(batch_index, event, code, **details):
             _ = batch_index, event, code, details
@@ -1998,7 +2012,6 @@ class TestCmdReviewPrepare:
         assert any("internal progress bug" in msg for _idx, msg in captured)
 
     def test_execute_batches_heartbeat_error_log_failure_is_nonfatal(self):
-        from desloppify.app.commands.review import runner_helpers as runner_helpers_mod
 
         def _heartbeat_only_failure(event):
             if getattr(event, "event", "") == "heartbeat":
@@ -2021,7 +2034,6 @@ class TestCmdReviewPrepare:
         assert failures == []
 
     def test_print_failures_and_raise_shows_codex_missing_hint(self, tmp_path, capsys):
-        from desloppify.app.commands.review import runner_helpers as runner_helpers_mod
 
         logs_dir = tmp_path / "logs"
         logs_dir.mkdir(parents=True, exist_ok=True)
@@ -2041,7 +2053,6 @@ class TestCmdReviewPrepare:
         assert "codex CLI not found on PATH" in err
 
     def test_print_failures_and_raise_shows_codex_auth_hint(self, tmp_path, capsys):
-        from desloppify.app.commands.review import runner_helpers as runner_helpers_mod
 
         logs_dir = tmp_path / "logs"
         logs_dir.mkdir(parents=True, exist_ok=True)
@@ -2061,7 +2072,6 @@ class TestCmdReviewPrepare:
         assert "codex login" in err
 
     def test_print_failures_reports_categories_without_exit(self, tmp_path, capsys):
-        from desloppify.app.commands.review import runner_helpers as runner_helpers_mod
 
         logs_dir = tmp_path / "logs"
         logs_dir.mkdir(parents=True, exist_ok=True)
@@ -2083,7 +2093,6 @@ class TestCmdReviewPrepare:
         assert "missing log=1" in err
 
     def test_print_failures_reports_stream_disconnect_category(self, tmp_path, capsys):
-        from desloppify.app.commands.review import runner_helpers as runner_helpers_mod
 
         logs_dir = tmp_path / "logs"
         logs_dir.mkdir(parents=True, exist_ok=True)
@@ -2105,7 +2114,6 @@ class TestCmdReviewPrepare:
     def test_print_failures_reports_codex_backend_connectivity_hint(
         self, tmp_path, capsys
     ):
-        from desloppify.app.commands.review import runner_helpers as runner_helpers_mod
 
         logs_dir = tmp_path / "logs"
         logs_dir.mkdir(parents=True, exist_ok=True)
@@ -2135,7 +2143,6 @@ class TestCmdReviewPrepare:
     def test_print_failures_reports_sandbox_hint_for_backend_disconnect(
         self, tmp_path, capsys
     ):
-        from desloppify.app.commands.review import runner_helpers as runner_helpers_mod
 
         logs_dir = tmp_path / "logs"
         logs_dir.mkdir(parents=True, exist_ok=True)
@@ -2162,7 +2169,6 @@ class TestCmdReviewPrepare:
         assert "restricted sandbox execution" in err
 
     def test_run_followup_scan_returns_nonzero_code(self, tmp_path):
-        from desloppify.app.commands.review import runner_helpers as runner_helpers_mod
 
         mock_run = MagicMock(return_value=MagicMock(returncode=9))
         code = runner_helpers_mod.run_followup_scan(
@@ -2180,7 +2186,6 @@ class TestCmdReviewPrepare:
         assert code == 9
 
     def test_run_followup_scan_default_respects_queue_gate(self, tmp_path):
-        from desloppify.app.commands.review import runner_helpers as runner_helpers_mod
 
         mock_run = MagicMock(return_value=MagicMock(returncode=0))
         runner_helpers_mod.run_followup_scan(
@@ -2241,11 +2246,11 @@ class TestCmdReviewPrepare:
                 "desloppify.app.commands.review.batch._do_import",
             ),
             patch(
-                "desloppify.app.commands.review.batch.runner_helpers_mod.execute_batches",
+                "desloppify.app.commands.review.batch.execute_batches",
                 return_value=[],
             ),
             patch(
-                "desloppify.app.commands.review.batch.runner_helpers_mod.collect_batch_results",
+                "desloppify.app.commands.review.batch.collect_batch_results",
                 return_value=([{"assessments": {}, "dimension_notes": {}, "issues": []}], []),
             ),
             patch(
@@ -2253,7 +2258,7 @@ class TestCmdReviewPrepare:
                 return_value={"assessments": {}, "dimension_notes": {}, "issues": []},
             ),
             patch(
-                "desloppify.app.commands.review.runner_helpers.run_followup_scan",
+                "desloppify.app.commands.review.batch.run_followup_scan",
                 return_value=7,
             ),
             patch(
@@ -2315,7 +2320,7 @@ class TestCmdReviewPrepare:
 
         with (
             patch(
-                "desloppify.app.commands.review.batch.runner_helpers_mod.execute_batches",
+                "desloppify.app.commands.review.batch.execute_batches",
                 side_effect=KeyboardInterrupt,
             ),
             patch(

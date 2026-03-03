@@ -163,7 +163,10 @@ class TestAutoResolveOutOfScope:
 class TestQueueCountingScanPath:
     def test_queue_count_respects_scan_path_from_state(self):
         """build_work_queue auto-reads scan_path from state and filters issues."""
-        from desloppify.engine.work_queue import QueueBuildOptions, build_work_queue
+        from desloppify.engine._work_queue.core import (
+            QueueBuildOptions,
+            build_work_queue,
+        )
 
         state: dict = {
             "issues": {
@@ -193,7 +196,10 @@ class TestQueueCountingScanPath:
 
     def test_queue_count_no_scan_path_returns_all(self):
         """Without scan_path in state, all issues are returned."""
-        from desloppify.engine.work_queue import QueueBuildOptions, build_work_queue
+        from desloppify.engine._work_queue.core import (
+            QueueBuildOptions,
+            build_work_queue,
+        )
 
         state: dict = {
             "issues": {
@@ -218,7 +224,10 @@ class TestQueueCountingScanPath:
 
     def test_explicit_scan_path_overrides_state(self):
         """Explicit scan_path on QueueBuildOptions overrides state value."""
-        from desloppify.engine.work_queue import QueueBuildOptions, build_work_queue
+        from desloppify.engine._work_queue.core import (
+            QueueBuildOptions,
+            build_work_queue,
+        )
 
         state: dict = {
             "issues": {
@@ -315,7 +324,10 @@ class TestSubjectivePolicyScanPathAndPlan:
 class TestWorkflowRunScanItem:
     def test_run_scan_item_injected_when_queue_empty_and_plan_active(self):
         """When queue is empty and plan_start_scores exist, workflow::run-scan appears."""
-        from desloppify.engine.work_queue import QueueBuildOptions, build_work_queue
+        from desloppify.engine._work_queue.core import (
+            QueueBuildOptions,
+            build_work_queue,
+        )
 
         state: dict = {"issues": {}, "scan_count": 5}
         plan = {
@@ -339,7 +351,10 @@ class TestWorkflowRunScanItem:
 
     def test_run_scan_not_injected_when_real_items_exist(self):
         """When queue has real issues, no workflow::run-scan item."""
-        from desloppify.engine.work_queue import QueueBuildOptions, build_work_queue
+        from desloppify.engine._work_queue.core import (
+            QueueBuildOptions,
+            build_work_queue,
+        )
 
         state: dict = {
             "issues": {
@@ -369,7 +384,10 @@ class TestWorkflowRunScanItem:
 
     def test_run_scan_not_injected_without_plan_start_scores(self):
         """No workflow::run-scan when plan_start_scores is empty (no active cycle)."""
-        from desloppify.engine.work_queue import QueueBuildOptions, build_work_queue
+        from desloppify.engine._work_queue.core import (
+            QueueBuildOptions,
+            build_work_queue,
+        )
 
         state: dict = {"issues": {}, "scan_count": 5}
         plan = {
@@ -389,7 +407,10 @@ class TestWorkflowRunScanItem:
 
     def test_run_scan_not_injected_without_plan(self):
         """No workflow::run-scan when no plan is provided."""
-        from desloppify.engine.work_queue import QueueBuildOptions, build_work_queue
+        from desloppify.engine._work_queue.core import (
+            QueueBuildOptions,
+            build_work_queue,
+        )
 
         state: dict = {"issues": {}, "scan_count": 5}
         result = build_work_queue(

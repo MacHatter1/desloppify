@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from desloppify.core.fallbacks import log_best_effort_failure
+from desloppify.core.file_paths import count_lines
 from desloppify.core.file_paths import resolve_scan_file
 from desloppify.core.discovery_api import rel
 
@@ -165,7 +166,9 @@ def detect_boundary_candidates(
         if len(tool_areas) == 1 and not has_non_tool_importer:
             try:
                 resolved = resolve_scan_file(filepath, scan_root=path)
-                loc = len(resolved.read_text().splitlines())
+                if not resolved.exists():
+                    raise FileNotFoundError(resolved)
+                loc = count_lines(resolved)
             except (OSError, UnicodeDecodeError) as exc:
                 log_best_effort_failure(
                     logger,

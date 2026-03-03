@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 
 from desloppify.core.fallbacks import log_best_effort_failure
+from desloppify.core.file_paths import count_lines
 from desloppify.core.file_paths import rel
 from desloppify.core.file_paths import resolve_scan_file
 
@@ -65,7 +66,7 @@ def detect_single_use_abstractions(
             if _is_test_importer(importer):
                 continue
             total_candidates += 1
-            loc = len(p.read_text().splitlines())
+            loc = count_lines(p)
             if loc < 20 or loc > 300:
                 continue
             entries.append(

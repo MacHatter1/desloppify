@@ -21,7 +21,7 @@ from desloppify.languages.python.extractors import (
     extract_py_functions,
 )
 from desloppify.languages.python.extractors_classes import extract_py_classes
-from desloppify.core.output_api import colorize, display_entries, print_table
+from desloppify.core.output import colorize, display_entries, print_table
 
 if TYPE_CHECKING:
     import argparse

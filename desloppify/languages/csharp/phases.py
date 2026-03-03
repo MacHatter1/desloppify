@@ -14,7 +14,7 @@ from desloppify.languages._framework.base.shared_phases import (
 from desloppify.languages._framework.base.types import LangRuntimeContract
 from desloppify.languages.csharp.detectors.deps import build_dep_graph
 from desloppify.languages.csharp.extractors import extract_csharp_classes
-from desloppify.core.output_api import log
+from desloppify.core.output import log
 
 
 def _compute_max_nesting(content: str, _lines: list[str]):
@@ -162,7 +162,7 @@ def _apply_csharp_actionability_gates(
         detail["import_count"] = import_count
 
 
-def _phase_structural(
+def phase_structural(
     path: Path, lang: LangRuntimeContract
 ) -> tuple[list[dict], dict[str, int]]:
     """Merge large + complexity + god classes into structural issues."""
@@ -176,7 +176,7 @@ def _phase_structural(
     )
 
 
-def _phase_coupling(
+def phase_coupling(
     path: Path, lang: LangRuntimeContract
 ) -> tuple[list[dict], dict[str, int]]:
     """Run coupling-oriented detectors on the C# dependency graph."""

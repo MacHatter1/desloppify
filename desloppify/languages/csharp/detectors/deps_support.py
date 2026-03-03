@@ -11,7 +11,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from desloppify.core.discovery_api import rel, resolve_path
-from desloppify.core.output_api import colorize, print_table
+from desloppify.core.output import colorize, print_table
 from desloppify.engine.detectors.graph import (
     detect_cycles,
     finalize_graph,
@@ -283,7 +283,7 @@ def build_graph_from_edge_map(edge_map: dict[str, set[str]]) -> dict[str, dict]:
     return finalize_graph(dict(graph))
 
 
-def cmd_deps(args: argparse.Namespace, *, graph: dict[str, dict]) -> None:
+def render_deps_for_graph(args: argparse.Namespace, *, graph: dict[str, dict]) -> None:
     """Show dependency info for a specific C# file or top coupled files."""
     if getattr(args, "file", None):
         coupling = get_coupling_score(args.file, graph)
@@ -329,7 +329,7 @@ def cmd_deps(args: argparse.Namespace, *, graph: dict[str, dict]) -> None:
         print_table(["File", "Importers", "Imports"], rows, [70, 9, 7])
 
 
-def cmd_cycles(args: argparse.Namespace, *, graph: dict[str, dict]) -> None:
+def render_cycles_for_graph(args: argparse.Namespace, *, graph: dict[str, dict]) -> None:
     """Show import cycles in C# source files."""
     cycles, _ = detect_cycles(graph)
     if getattr(args, "json", False):
@@ -362,8 +362,8 @@ def cmd_cycles(args: argparse.Namespace, *, graph: dict[str, dict]) -> None:
 
 __all__ = [
     "build_graph_from_edge_map",
-    "cmd_cycles",
-    "cmd_deps",
+    "render_cycles_for_graph",
+    "render_deps_for_graph",
     "expand_namespace_matches",
     "find_csproj_files",
     "is_entrypoint_file",
@@ -374,4 +374,3 @@ __all__ = [
     "resolve_project_ref_path",
     "safe_resolve_graph_path",
 ]
-

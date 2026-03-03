@@ -10,7 +10,7 @@ from desloppify.core.coercions_api import coerce_positive_int
 from desloppify.core.exception_sets import CommandError
 from desloppify.intelligence import narrative as narrative_mod
 from desloppify.intelligence import review as review_mod
-from desloppify.core.output_api import colorize
+from desloppify.core.output import colorize
 
 from .helpers import parse_dimensions
 from .packet_policy import coerce_review_batch_file_limit, redacted_review_config

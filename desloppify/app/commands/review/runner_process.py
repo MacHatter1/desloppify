@@ -143,6 +143,47 @@ def _output_file_has_json_payload(output_file: Path) -> bool:
     return isinstance(payload, dict)
 
 
+def _extract_payload_from_log(
+    batch_index: int,
+    raw_path: Path,
+    extract_fn,
+) -> dict[str, object] | None:
+    """Try to recover a batch payload from the runner log file."""
+    log_path = raw_path.parent.parent / "logs" / f"batch-{batch_index + 1}.log"
+    if not log_path.exists():
+        return None
+    try:
+        log_text = log_path.read_text()
+    except OSError:
+        return None
+
+    stdout_marker = "\nSTDOUT:\n"
+    stderr_marker = "\n\nSTDERR:\n"
+    stdout_start = log_text.rfind(stdout_marker)
+    if stdout_start == -1 and log_text.startswith("STDOUT:\n"):
+        stdout_start = 0
+        stdout_offset = len("STDOUT:\n")
+    elif stdout_start >= 0:
+        stdout_offset = len(stdout_marker)
+    else:
+        stdout_offset = 0
+    if stdout_start >= 0:
+        start_idx = stdout_start + stdout_offset
+        stdout_end = log_text.find(stderr_marker, start_idx)
+        stdout_text = (
+            log_text[start_idx:] if stdout_end == -1 else log_text[start_idx:stdout_end]
+        )
+        payload = extract_fn(stdout_text)
+        if payload is not None:
+            return payload
+        # If the batch log has a concrete STDOUT section but it contains no parseable
+        # payload, do not fallback to parsing the whole log. Full logs include the
+        # prompt template (often with JSON examples), which can hide true STDERR failures.
+        return None
+
+    return extract_fn(log_text)
+
+
 def _terminate_process(process: subprocess.Popen[str]) -> None:
     """Terminate (then kill) a subprocess that may still be running."""
     if process.poll() is not None:
@@ -591,9 +632,11 @@ def run_codex_batch(
     output_file: Path,
     log_file: Path,
     deps: CodexBatchRunnerDeps,
-    codex_batch_command_fn=codex_batch_command,
+    codex_batch_command_fn=None,
 ) -> int:
     """Execute one codex batch and return a stable CLI-style status code."""
+    if codex_batch_command_fn is None:
+        codex_batch_command_fn = codex_batch_command
     cmd = codex_batch_command_fn(
         prompt=prompt,
         repo_root=repo_root,

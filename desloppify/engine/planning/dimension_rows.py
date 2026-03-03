@@ -6,7 +6,7 @@ The app scorecard surface re-exports this so external call-sites are unaffected.
 
 from __future__ import annotations
 
-from desloppify.scoring import DIMENSIONS
+from desloppify.engine._scoring.policy.core import DIMENSIONS
 
 
 def scorecard_dimension_rows(

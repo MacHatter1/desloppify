@@ -8,7 +8,7 @@ import json
 import re
 from pathlib import Path
 
-from desloppify.core.text_api import PROJECT_ROOT
+from desloppify.core.text.text_api import get_project_root
 from desloppify.core.fallbacks import log_best_effort_failure
 from desloppify.core.discovery_api import find_source_files, find_ts_files
 from desloppify.languages.typescript.detectors._smell_detectors import (
@@ -256,7 +256,7 @@ def _detect_non_ts_asset_smells(path: Path, smell_counts: dict[str, list[dict]])
 
     for filepath in css_files:
         try:
-            full = Path(filepath) if Path(filepath).is_absolute() else PROJECT_ROOT / filepath
+            full = Path(filepath) if Path(filepath).is_absolute() else get_project_root() / filepath
             content = full.read_text()
             lines = content.splitlines()
         except (OSError, UnicodeDecodeError) as exc:
@@ -286,8 +286,8 @@ def _detect_non_ts_asset_smells(path: Path, smell_counts: dict[str, list[dict]])
                 }
             )
 
-    readme_path = PROJECT_ROOT / "README.md"
-    package_path = PROJECT_ROOT / "package.json"
+    readme_path = get_project_root() / "README.md"
+    package_path = get_project_root() / "package.json"
     if not readme_path.is_file() or not package_path.is_file():
         return scanned_files
 
@@ -337,7 +337,7 @@ def detect_smells(path: Path) -> tuple[list[dict], int]:
             p = (
                 Path(filepath)
                 if Path(filepath).is_absolute()
-                else PROJECT_ROOT / filepath
+                else get_project_root() / filepath
             )
             content = p.read_text()
             lines = content.splitlines()

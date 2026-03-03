@@ -1,10 +1,10 @@
-"""Tests for desloppify.app.commands.plan_cmd — plan generation command."""
+"""Tests for desloppify.app.commands.plan.cmd — plan generation command."""
 
 import inspect
 
 import desloppify.engine.planning.core as plan_mod
-from desloppify.app.commands import plan_cmd
-from desloppify.app.commands.plan_cmd import cmd_plan_output
+import desloppify.app.commands.plan.cmd as plan_cmd
+from desloppify.app.commands.plan.cmd import cmd_plan_output
 
 # ---------------------------------------------------------------------------
 # Module-level sanity
@@ -25,7 +25,7 @@ class TestPlanModuleSanity:
     def test_cmd_plan_output_metadata(self):
         """Extra behavioral assertions to improve test quality signal."""
         assert cmd_plan_output.__name__ == "cmd_plan_output"
-        assert cmd_plan_output.__module__.endswith("commands.plan_cmd")
+        assert cmd_plan_output.__module__.endswith("commands.plan.cmd")
         assert "plan" in (cmd_plan_output.__doc__ or "").lower()
 
 

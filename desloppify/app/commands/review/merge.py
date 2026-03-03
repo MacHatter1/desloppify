@@ -9,8 +9,8 @@ from desloppify.app.commands.helpers.query import write_query
 from desloppify.app.commands.helpers.runtime import command_runtime
 from desloppify.app.commands.helpers.queue_progress import show_score_with_plan_context
 from desloppify.core.issues_render import issue_weight
-from desloppify.core.output_api import colorize
-from desloppify.engine.work_queue import list_open_review_issues
+from desloppify.core.output import colorize
+from desloppify.engine._work_queue.issues import list_open_review_issues
 from desloppify.intelligence.narrative import NarrativeContext, compute_narrative
 from desloppify.intelligence.review.issue_merge import (
     merge_list_fields,

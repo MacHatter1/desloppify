@@ -8,7 +8,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-from desloppify.core.text_api import PROJECT_ROOT
+from desloppify.core.text.text_api import get_project_root
 from desloppify.core.discovery_api import find_py_files, resolve_path
 from desloppify.engine.detectors.graph import finalize_graph
 from desloppify.languages.python.detectors.deps_dynamic import (
@@ -45,7 +45,7 @@ def build_dep_graph(
 
     for filepath in py_files:
         abs_path = (
-            filepath if Path(filepath).is_absolute() else str(PROJECT_ROOT / filepath)
+            filepath if Path(filepath).is_absolute() else str(get_project_root() / filepath)
         )
         try:
             content = Path(abs_path).read_text()

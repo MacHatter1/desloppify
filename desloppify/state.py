@@ -35,6 +35,12 @@ from desloppify.engine._state.resolution import (
     match_issues,
     resolve_issues,
 )
+from desloppify.engine._state.schema_scores import (
+    _get_objective_score,
+    _get_overall_score,
+    _get_strict_score,
+    _get_verified_strict_score,
+)
 from desloppify.engine._state.schema import (
     CURRENT_VERSION,
     STATE_DIR,
@@ -48,10 +54,6 @@ from desloppify.engine._state.schema import (
     SubjectiveIntegrity,
     empty_state,
     ensure_state_defaults,
-    get_objective_score,
-    get_overall_score,
-    get_strict_score,
-    get_verified_strict_score,
     json_default,
     migrate_state_keys,
     utc_now,
@@ -74,11 +76,28 @@ class ScoreSnapshot(NamedTuple):
 def score_snapshot(state: StateModel) -> ScoreSnapshot:
     """Load all four canonical scores from *state* in one call."""
     return ScoreSnapshot(
-        overall=get_overall_score(state),
-        objective=get_objective_score(state),
-        strict=get_strict_score(state),
-        verified=get_verified_strict_score(state),
+        overall=_get_overall_score(state),
+        objective=_get_objective_score(state),
+        strict=_get_strict_score(state),
+        verified=_get_verified_strict_score(state),
     )
+
+
+# Backward-compatible wrappers; prefer ``score_snapshot(state)`` for new code.
+def get_overall_score(state: StateModel) -> float | None:
+    return score_snapshot(state).overall
+
+
+def get_objective_score(state: StateModel) -> float | None:
+    return score_snapshot(state).objective
+
+
+def get_strict_score(state: StateModel) -> float | None:
+    return score_snapshot(state).strict
+
+
+def get_verified_strict_score(state: StateModel) -> float | None:
+    return score_snapshot(state).verified
 
 
 __all__ = [
@@ -106,11 +125,7 @@ __all__ = [
     "ensure_state_defaults",
     "find_suspect_detectors",
     "issue_in_scan_scope",
-    "get_objective_score",
-    "get_overall_score",
     "open_scope_breakdown",
-    "get_strict_score",
-    "get_verified_strict_score",
     "is_ignored",
     "json_default",
     "load_state",

@@ -5,7 +5,7 @@ from __future__ import annotations
 import shlex
 import sys
 
-from desloppify.core.exception_sets import CommandError
+from desloppify.core.exception_sets import CommandError, PacketValidationError
 from desloppify.intelligence.review.dimensions.data import load_dimensions_for_lang
 from desloppify.intelligence.review.feedback_contract import (
     LEGACY_REVIEW_QUALITY_HIGH_SCORE_MISSING_ISSUES_KEY,
@@ -48,7 +48,7 @@ def require_batches(
         ),
         file=sys.stderr,
     )
-    raise CommandError("Error: packet has no investigation_batches.", exit_code=1)
+    raise PacketValidationError("Error: packet has no investigation_batches.", exit_code=1)
 
 
 def print_review_quality(quality: object, *, colorize_fn) -> None:

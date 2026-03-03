@@ -8,7 +8,10 @@ from datetime import date
 from desloppify.core.exception_sets import PLAN_LOAD_EXCEPTIONS
 from desloppify.core.registry import dimension_action_type
 from desloppify.engine.planning.types import PlanState
-from desloppify.engine.work_queue import QueueBuildOptions, build_work_queue
+from desloppify.engine._work_queue.core import (
+    QueueBuildOptions,
+    build_work_queue,
+)
 from desloppify.engine.planning.render_sections import (
     addressed_section as _addressed_section,
     plan_skipped_section as _plan_skipped_section,
@@ -16,16 +19,18 @@ from desloppify.engine.planning.render_sections import (
     plan_user_ordered_section as _plan_user_ordered_section,
     summary_lines as _summary_lines,
 )
-from desloppify.scoring import DIMENSIONS, DISPLAY_NAMES
-from desloppify.state import get_objective_score, get_overall_score, get_strict_score
-from desloppify.core.output_api import LOC_COMPACT_THRESHOLD
+from desloppify.engine._scoring.policy.core import DIMENSIONS
+from desloppify.engine._scoring.subjective.core import DISPLAY_NAMES
+from desloppify.state import score_snapshot
+from desloppify.core.output import LOC_COMPACT_THRESHOLD
 
 
 def _plan_header(state: PlanState, stats: dict) -> list[str]:
     """Build the plan header: title, score line, and codebase metrics."""
-    overall_score = get_overall_score(state)
-    objective_score = get_objective_score(state)
-    strict_score = get_strict_score(state)
+    scores = score_snapshot(state)
+    overall_score = scores.overall
+    objective_score = scores.objective
+    strict_score = scores.strict
 
     if (
         overall_score is not None

@@ -7,7 +7,7 @@ import tempfile
 import fnmatch
 from pathlib import Path
 
-from desloppify.core.text_api import get_project_root
+from desloppify.core.text.text_api import get_project_root
 
 
 def matches_exclusion(rel_path: str, exclusion: str) -> bool:
@@ -104,7 +104,20 @@ def safe_write_text(filepath: str | Path, content: str) -> None:
         raise
 
 
+def count_lines(path: Path) -> int:
+    """Count lines in a file without loading full contents into memory."""
+    count = 0
+    try:
+        with path.open("rb") as handle:
+            for _ in handle:
+                count += 1
+    except (OSError, UnicodeDecodeError):
+        return 0
+    return count
+
+
 __all__ = [
+    "count_lines",
     "matches_exclusion",
     "normalize_path_separators",
     "rel",

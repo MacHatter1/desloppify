@@ -6,7 +6,7 @@ import json
 import logging
 
 import desloppify.core.fallbacks as fallbacks_mod
-import desloppify.core.query as query_mod
+import desloppify.core.search.search_query as query_mod
 
 
 def test_write_query_injects_config_payload(tmp_path, monkeypatch):

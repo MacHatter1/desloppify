@@ -5,13 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 
 from desloppify.app.commands.helpers.lang import auto_detect_lang_name
-from desloppify.core.text_api import PROJECT_ROOT
-from desloppify.core.output_api import colorize
+from desloppify.core.text.text_api import get_project_root
+from desloppify.core.output import colorize
 
 
 def _sole_existing_lang_state_file() -> Path | None:
     """Return the only existing language-specific state file, if unambiguous."""
-    state_dir = PROJECT_ROOT / ".desloppify"
+    state_dir = get_project_root() / ".desloppify"
     if not state_dir.exists():
         return None
     candidates = sorted(path for path in state_dir.glob("state-*.json") if path.is_file())
@@ -35,7 +35,7 @@ def state_path(args) -> Path | None:
     if not lang_name:
         lang_name = auto_detect_lang_name(args)
     if lang_name:
-        resolved = PROJECT_ROOT / ".desloppify" / f"state-{lang_name}.json"
+        resolved = get_project_root() / ".desloppify" / f"state-{lang_name}.json"
         if resolved.exists() or not _allow_lang_state_fallback(args):
             return resolved
         fallback = _sole_existing_lang_state_file()

@@ -9,7 +9,7 @@ from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
-from desloppify.core.exception_sets import CommandError
+from desloppify.core.exception_sets import CommandError, PacketValidationError
 
 _BLIND_PACKET_DROP_KEYS = {
     "narrative",
@@ -67,6 +67,11 @@ def _build_blind_packet(packet: dict[str, Any]) -> dict[str, Any]:
 def build_blind_packet(packet: dict[str, Any]) -> dict[str, Any]:
     """Public wrapper for blind packet sanitization."""
     return _build_blind_packet(packet)
+
+
+def run_stamp() -> str:
+    """Stable UTC run stamp for artifact paths."""
+    return datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
 
 
 def _sanitize_blind_config(config: dict[str, Any]) -> dict[str, Any]:
@@ -129,10 +134,10 @@ def selected_batch_indexes(
     try:
         selected = parse_fn(raw_selection, batch_count)
     except ValueError as exc:
-        raise CommandError(str(exc), exit_code=2) from exc
+        raise PacketValidationError(str(exc), exit_code=2) from exc
     if selected:
         return selected
-    raise CommandError("no batches selected", exit_code=2)
+    raise PacketValidationError("no batches selected", exit_code=2)
 
 
 def prepare_run_artifacts(
@@ -185,6 +190,7 @@ __all__ = [
     "build_batch_import_provenance",
     "build_blind_packet",
     "prepare_run_artifacts",
+    "run_stamp",
     "selected_batch_indexes",
     "sha256_file",
     "write_packet_snapshot",

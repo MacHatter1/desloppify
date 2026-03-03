@@ -46,20 +46,10 @@ def _report_load_errors_for_load_all() -> None:
         return
 
 
-def _reset_dynamic_registries() -> None:
-    """Reset runtime-registered detectors/scoring before a forced reload."""
-    from desloppify.core.registry import reset_registered_detectors
-    from desloppify.scoring import reset_registered_scoring_policies
-
-    reset_registered_detectors()
-    reset_registered_scoring_policies()
-
-
 def load_all(*, force_reload: bool = False) -> None:
     """Import all language modules to trigger registration."""
     if force_reload:
         registry_state.clear()
-        _reset_dynamic_registries()
     elif registry_state.was_load_attempted():
         _report_load_errors_for_load_all()
         return
@@ -127,4 +117,9 @@ def load_all(*, force_reload: bool = False) -> None:
 
 def reload_all() -> None:
     """Force a full in-process language plugin reload."""
+    from desloppify.core.registry import reset_registered_detectors
+    from desloppify.engine._scoring.policy.core import reset_registered_scoring_policies
+
+    reset_registered_detectors()
+    reset_registered_scoring_policies()
     load_all(force_reload=True)

@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from functools import partial
 from pathlib import Path
-from typing import Callable
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:

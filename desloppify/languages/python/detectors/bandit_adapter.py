@@ -26,7 +26,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from desloppify.core.text_api import PROJECT_ROOT
+from desloppify.core.text.text_api import get_project_root
 from desloppify.engine.policy.zones import FileZoneMap, Zone
 from desloppify.core.discovery_api import rel
 from desloppify.languages._framework.base.types import DetectorCoverageStatus
@@ -213,7 +213,7 @@ def detect_with_bandit(
             cmd,
             capture_output=True,
             text=True,
-            cwd=PROJECT_ROOT,
+            cwd=get_project_root(),
             timeout=timeout,
         )
     except FileNotFoundError:

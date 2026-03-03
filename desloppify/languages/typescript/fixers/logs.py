@@ -10,7 +10,7 @@ from desloppify.languages.typescript.fixers.syntax_scan import (
     extract_body_between_braces,
     find_balanced_end,
 )
-from desloppify.core.output_api import colorize
+from desloppify.core.output import colorize
 
 _LOGGER_WRAPPER_NAMES = frozenset(
     {

@@ -5,12 +5,81 @@ from __future__ import annotations
 import logging
 
 from desloppify.core.exception_sets import PLAN_LOAD_EXCEPTIONS
-from desloppify.core.output_api import colorize
+from desloppify.core.output import colorize
 from desloppify.engine.plan import has_living_plan, load_plan
 from desloppify.engine._work_queue.plan_order import collapse_clusters
-from desloppify.engine.work_queue import QueueBuildOptions, build_work_queue, queue_context
+from desloppify.engine._work_queue.core import (
+    QueueBuildOptions,
+    build_work_queue,
+)
+from desloppify.engine._work_queue.context import queue_context
 
 _logger = logging.getLogger(__name__)
+
+
+def _front_item_ids(front_item: dict) -> tuple[str, set[str]]:
+    front_id = front_item["id"]
+    front_ids = {front_id}
+    if front_item.get("kind") != "cluster":
+        return front_id, front_ids
+    for member in front_item.get("members", []):
+        front_ids.add(member["id"])
+    return front_id, front_ids
+
+
+def _resolve_target_ids(patterns: list[str], clusters: dict) -> set[str]:
+    resolved_ids: set[str] = set()
+    for pattern in patterns:
+        if pattern in clusters:
+            resolved_ids.update(clusters[pattern].get("issue_ids", []))
+            resolved_ids.add(pattern)
+            continue
+        resolved_ids.add(pattern)
+    return resolved_ids
+
+
+def _filter_open_or_cluster_targets(
+    resolved_ids: set[str],
+    *,
+    clusters: dict,
+    issues: dict,
+) -> set[str]:
+    return {
+        issue_id
+        for issue_id in resolved_ids
+        if issue_id in clusters
+        or (issue_id in issues and issues[issue_id].get("status") == "open")
+    }
+
+
+def _prune_front_covered_clusters(
+    out_of_order: set[str],
+    *,
+    clusters: dict,
+    issues: dict,
+    front_ids: set[str],
+) -> None:
+    for cluster_id in list(out_of_order):
+        if cluster_id not in clusters:
+            continue
+        alive_members = {
+            issue_id
+            for issue_id in clusters[cluster_id].get("issue_ids", [])
+            if issue_id in issues and issues[issue_id].get("status") == "open"
+        }
+        if alive_members and alive_members <= front_ids:
+            out_of_order.discard(cluster_id)
+
+
+def _print_queue_order_violation(front_id: str, out_of_order: set[str]) -> None:
+    print(colorize("\n  Queue order violation: these items are not next in the plan queue:\n", "yellow"))
+    for issue_id in sorted(out_of_order):
+        print(f"    {issue_id}")
+    print(colorize(f"\n  The current next item is: {front_id}", "dim"))
+    print(colorize("  Items must be resolved in plan order. If you need to reprioritize:", "dim"))
+    print(colorize("    desloppify plan reorder <pattern> top            # move to front", "dim"))
+    print(colorize("    desloppify plan skip <pattern> --reason '...'    # skip for now", "dim"))
+    print(colorize("    desloppify next                                  # see what's next\n", "dim"))
 
 
 def _check_queue_order_guard(
@@ -44,57 +113,30 @@ def _check_queue_order_guard(
         if not items:
             return False
 
-        front_item = items[0]
-        front_id = front_item["id"]
-
-        front_ids: set[str] = set()
-        if front_item.get("kind") == "cluster":
-            for member in front_item.get("members", []):
-                front_ids.add(member["id"])
-            front_ids.add(front_id)
-        else:
-            front_ids.add(front_id)
+        front_id, front_ids = _front_item_ids(items[0])
 
         clusters = plan.get("clusters", {})
-        resolved_ids: set[str] = set()
-        for pattern in patterns:
-            if pattern in clusters:
-                resolved_ids.update(clusters[pattern].get("issue_ids", []))
-                resolved_ids.add(pattern)
-            else:
-                resolved_ids.add(pattern)
-
         issues = state.get("issues", {})
-        resolved_ids = {
-            issue_id
-            for issue_id in resolved_ids
-            if issue_id in clusters
-            or (issue_id in issues and issues[issue_id].get("status") == "open")
-        }
+        resolved_ids = _resolve_target_ids(patterns, clusters)
+        resolved_ids = _filter_open_or_cluster_targets(
+            resolved_ids,
+            clusters=clusters,
+            issues=issues,
+        )
         if not resolved_ids:
             return False
 
         out_of_order = resolved_ids - front_ids
-        for cluster_id in list(out_of_order):
-            if cluster_id in clusters:
-                alive_members = {
-                    issue_id
-                    for issue_id in clusters[cluster_id].get("issue_ids", [])
-                    if issue_id in issues and issues[issue_id].get("status") == "open"
-                }
-                if alive_members and alive_members <= front_ids:
-                    out_of_order.discard(cluster_id)
+        _prune_front_covered_clusters(
+            out_of_order,
+            clusters=clusters,
+            issues=issues,
+            front_ids=front_ids,
+        )
         if not out_of_order:
             return False
 
-        print(colorize("\n  Queue order violation: these items are not next in the plan queue:\n", "yellow"))
-        for issue_id in sorted(out_of_order):
-            print(f"    {issue_id}")
-        print(colorize(f"\n  The current next item is: {front_id}", "dim"))
-        print(colorize("  Items must be resolved in plan order. If you need to reprioritize:", "dim"))
-        print(colorize("    desloppify plan reorder <pattern> top            # move to front", "dim"))
-        print(colorize("    desloppify plan skip <pattern> --reason '...'    # skip for now", "dim"))
-        print(colorize("    desloppify next                                  # see what's next\n", "dim"))
+        _print_queue_order_violation(front_id, out_of_order)
         return True
     except PLAN_LOAD_EXCEPTIONS:
         _logger.debug("queue order guard skipped", exc_info=True)

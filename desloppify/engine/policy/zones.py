@@ -134,14 +134,7 @@ class FileZoneMap:
         rel_fn=None,
         overrides: dict[str, str] | None = None,
     ):
-        """Build zone map.
-
-        Args:
-            files: List of file paths (absolute or relative).
-            rules: Ordered zone rules (first match wins).
-            rel_fn: Optional function to convert paths to relative.
-            overrides: Manual zone overrides {rel_path: zone_value}.
-        """
+        """Build a zone map from files, ordered rules, and optional overrides."""
         self._map: dict[str, Zone] = {}
         self._overrides = overrides
         for f in files:

@@ -8,11 +8,10 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 
-from desloppify.scoring import (
+from desloppify.engine._scoring.policy.core import (
     SUBJECTIVE_TARGET_MATCH_TOLERANCE,
     matches_target_score,
 )
-
 __all__ = [
     "SUBJECTIVE_TARGET_MATCH_TOLERANCE",
     "is_holistic_subjective_issue",

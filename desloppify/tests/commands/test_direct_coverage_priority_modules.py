@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import desloppify.app.commands.helpers.display as display_mod
 import desloppify.app.commands.next_parts.render_support as next_render_support_mod
-import desloppify.app.commands.resolve.suppress_cmd as resolve_suppress_cmd_mod
+import desloppify.app.commands.resolve.suppress as resolve_suppress_cmd_mod
 import desloppify.app.commands.resolve.persist as resolve_persist_mod
 import desloppify.app.commands.resolve.queue_guard as resolve_queue_guard_mod
 import desloppify.app.commands.resolve.render_support as resolve_render_support_mod
@@ -25,13 +25,13 @@ import desloppify.core.grep as grep_mod
 import desloppify.core.output as output_mod
 import desloppify.core.skill_docs as skill_docs_mod
 import desloppify.core.subjective_dimensions as subjective_dimensions_mod
-import desloppify.core.text_api as text_api_mod
+import desloppify.core.text.text_api as text_api_mod
 import desloppify.engine._plan.schema_migrations as schema_migrations_mod
 import desloppify.engine._scoring.results.health as scoring_health_mod
 import desloppify.engine._scoring.results.impact as scoring_impact_mod
 import desloppify.engine._state.schema_scores as schema_scores_mod
 import desloppify.engine._work_queue.plan_order as work_queue_plan_order_mod
-import desloppify.engine.hook_registry as hook_registry_mod
+import desloppify.hook_registry as hook_registry_mod
 import desloppify.engine.planning as planning_pkg
 import desloppify.engine.planning.dimension_rows as planning_dimension_rows_mod
 import desloppify.engine.planning.render_sections as planning_render_sections_mod
@@ -84,7 +84,7 @@ def test_direct_coverage_priority_modules_smoke():
     assert callable(schema_migrations_mod.migrate_v5_to_v6)
     assert callable(scoring_health_mod.compute_health_breakdown)
     assert callable(scoring_impact_mod.compute_score_impact)
-    assert callable(schema_scores_mod.get_verified_strict_score)
+    assert callable(schema_scores_mod._get_verified_strict_score)
     assert callable(work_queue_plan_order_mod.collapse_clusters)
     assert callable(planning_pkg.get_next_item)
     assert callable(planning_dimension_rows_mod.scorecard_dimension_rows)

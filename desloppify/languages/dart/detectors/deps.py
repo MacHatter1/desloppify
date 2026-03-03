@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from desloppify.core.text_api import PROJECT_ROOT
+from desloppify.core.text.text_api import get_project_root
 from desloppify.engine.detectors.graph import finalize_graph
 from desloppify.core.discovery_api import resolve_path
 from desloppify.languages.dart.extractors import find_dart_files
@@ -62,7 +62,7 @@ def _resolve_import(
             if probe_str in production_files:
                 return probe_str
             try:
-                rel_probe = str(probe.relative_to(PROJECT_ROOT))
+                rel_probe = str(probe.relative_to(get_project_root()))
             except ValueError:
                 rel_probe = None
             if rel_probe and rel_probe in production_files:

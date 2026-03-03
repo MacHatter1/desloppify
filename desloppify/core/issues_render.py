@@ -6,7 +6,10 @@ import logging
 from datetime import datetime
 
 from desloppify.core.registry import DETECTORS
-from desloppify.scoring import CONFIDENCE_WEIGHTS, HOLISTIC_MULTIPLIER
+from desloppify.engine._scoring.policy.core import (
+    CONFIDENCE_WEIGHTS,
+    HOLISTIC_MULTIPLIER,
+)
 
 logger = logging.getLogger(__name__)
 

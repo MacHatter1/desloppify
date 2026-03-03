@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
+from desloppify.engine._state.schema import StateModel
 from dataclasses import dataclass
 from typing import Any
 
-from desloppify.engine.work_queue import (
+from desloppify.engine._work_queue.core import (
     QueueBuildOptions,
     WorkQueueResult,
     build_work_queue,
 )
 
 
-def _subjective_threshold(state: dict[str, Any], *, default: float = 95.0) -> float:
+def _subjective_threshold(state: StateModel, *, default: float = 95.0) -> float:
     config = state.get("config", {})
     raw_target = default
     if isinstance(config, dict):
@@ -32,7 +33,7 @@ class OpenPlanQueuePolicy:
 
 
 def build_open_plan_queue(
-    state: dict[str, Any],
+    state: StateModel,
     policy: OpenPlanQueuePolicy | None = None,
 ) -> WorkQueueResult:
     """Build one open-status queue with consistent planning policy defaults."""

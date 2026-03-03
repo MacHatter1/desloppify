@@ -62,7 +62,7 @@ def parse_tsconfig_paths(project_root: Path) -> dict[str, str]:
     return fallback
 
 
-def extract_paths(data: dict, base_dir: Path) -> dict[str, str] | None:
+def extract_paths(data: dict[str, Any], base_dir: Path) -> dict[str, str] | None:
     """Extract paths mapping from a parsed tsconfig."""
     del base_dir
     compiler_options = data.get("compilerOptions")

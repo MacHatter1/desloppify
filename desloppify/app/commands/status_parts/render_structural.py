@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 
 from desloppify import state as state_mod
-from desloppify.core.output_api import colorize
+from desloppify.core.output import colorize
 from desloppify.core.paths_api import get_area
 
 

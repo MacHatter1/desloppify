@@ -17,7 +17,7 @@ from desloppify.core.skill_docs import (
     SkillInstall,
     find_installed_skill,
 )
-from desloppify.core.output_api import colorize
+from desloppify.core.output import colorize
 
 _RAW_BASE = (
     "https://raw.githubusercontent.com/peteromallet/desloppify/main/docs"

@@ -10,7 +10,7 @@ from pathlib import Path
 from desloppify.engine.detectors.base import ComplexitySignal
 from desloppify.languages._framework.base.shared_phases import run_structural_phase
 from desloppify.languages._framework.runtime import LangRun
-from desloppify.core.output_api import log
+from desloppify.core.output import log
 
 GO_COMPLEXITY_SIGNALS = [
     ComplexitySignal(
@@ -58,7 +58,7 @@ GO_COMPLEXITY_SIGNALS = [
 ]
 
 
-def _phase_structural(path: Path, lang: LangRun) -> tuple[list[dict], dict[str, int]]:
+def phase_structural(path: Path, lang: LangRun) -> tuple[list[dict], dict[str, int]]:
     """Run structural detectors (large/complexity/flat directories)."""
     return run_structural_phase(
         path,

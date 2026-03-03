@@ -162,7 +162,17 @@ MECHANICAL_DIMENSION_WEIGHTS: dict[str, float] = {
 }
 
 # Per-dimension weighting within the subjective pool.
-# Emphasize elegance and contract/type coherence for a stronger architecture north star.
+# Rationale (kept in sync with review metadata modules):
+# - High/mid elegance carry the most weight because architectural decomposition
+#   and seam quality drive broad maintainability and change velocity.
+# - Low elegance, contracts, and type safety remain high because they prevent
+#   correctness drift and interface ambiguity.
+# - Design coherence is a medium-high bridge between architecture intent and
+#   the detector-led concern stream.
+# - Structure navigation and error consistency are meaningful but secondary
+#   signals compared to core architecture/correctness dimensions.
+# - Naming quality and AI-generated debt are intentionally low-weight nudges:
+#   useful for polish/cleanup, but they should not dominate score movement.
 SUBJECTIVE_DIMENSION_WEIGHTS: dict[str, float] = {
     "high elegance": 22.0,
     "mid elegance": 22.0,

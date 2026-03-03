@@ -17,6 +17,7 @@ import tempfile
 from pathlib import Path
 
 from desloppify.core.discovery_api import collect_exclude_dirs, get_exclusions
+from desloppify.core.fallbacks import warn_best_effort
 
 logger = logging.getLogger(__name__)
 
@@ -185,12 +186,22 @@ def detect_with_jscpd(path: Path) -> list[dict] | None:
                 timeout=120,
             )
         except FileNotFoundError:
+            warn_best_effort(
+                "Boilerplate duplication detection skipped: npx/jscpd not found. "
+                "Install with `npm install -g jscpd`."
+            )
             logger.debug("jscpd: npx not found — skipping boilerplate duplication detection")
             return None
         except OSError as exc:
+            warn_best_effort(
+                "Boilerplate duplication detection skipped: npx/jscpd failed to run."
+            )
             logger.debug("jscpd: OS error running npx/jscpd: %s", exc)
             return None
         except subprocess.TimeoutExpired:
+            warn_best_effort(
+                "Boilerplate duplication detection skipped: jscpd timed out after 120s."
+            )
             logger.debug("jscpd: timed out")
             return None
 

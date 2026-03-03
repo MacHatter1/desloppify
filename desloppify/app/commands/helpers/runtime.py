@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from desloppify.engine._state.schema import StateModel
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -16,7 +17,7 @@ class CommandRuntime:
     """Explicit runtime dependencies shared by command handlers."""
 
     config: dict[str, Any]
-    state: dict[str, Any]
+    state: StateModel
     state_path: Path | None
 
 

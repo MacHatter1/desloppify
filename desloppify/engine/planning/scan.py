@@ -6,15 +6,15 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from desloppify.core.text_api import PROJECT_ROOT
-from desloppify.engine.planning.common import is_subjective_phase
+from desloppify.core.text.text_api import get_project_root
+from desloppify.engine.planning.helpers import is_subjective_phase
 from desloppify.engine.policy.zones import ZONE_POLICIES, FileZoneMap
 from desloppify.core.file_paths import rel
 from desloppify.languages import auto_detect_lang, available_langs, get_lang
 from desloppify.languages._framework.base.types import DetectorPhase, LangConfig
 from desloppify.languages._framework.runtime import LangRun, make_lang_run
 from desloppify.state import Issue
-from desloppify.core.output_api import colorize
+from desloppify.core.output import colorize
 
 
 @dataclass
@@ -140,7 +140,7 @@ def generate_issues(
     """Run all detectors and convert results to normalized issues."""
     resolved_options = options or PlanScanOptions()
 
-    resolved_lang = _resolve_lang(lang, PROJECT_ROOT)
+    resolved_lang = _resolve_lang(lang, get_project_root())
     runtime_lang = make_lang_run(resolved_lang)
     return _generate_issues_from_lang(
         path,

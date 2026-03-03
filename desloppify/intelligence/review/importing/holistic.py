@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from desloppify.engine._state.schema import StateModel
 import hashlib
 from pathlib import Path
 from typing import Any
@@ -14,7 +15,7 @@ from desloppify.intelligence.review.importing.contracts import (
     ReviewScopePayload,
     validate_review_issue_payload,
 )
-from desloppify.intelligence.review.importing.shared import (
+from desloppify.intelligence.review.importing.helpers import (
     _lang_potentials,
     auto_resolve_review_issues,
     normalize_review_confidence,
@@ -25,7 +26,7 @@ from desloppify.intelligence.review.importing.shared import (
     store_assessments,
 )
 from desloppify.intelligence.review.selection import hash_file
-from desloppify.scoring import HOLISTIC_POTENTIAL
+from desloppify.engine._scoring.policy.core import HOLISTIC_POTENTIAL
 from desloppify.state import MergeScanOptions, make_issue, merge_scan, utc_now
 
 # Backward-compatible test patch hook (runtime root now resolves lazily).
@@ -41,7 +42,7 @@ def parse_holistic_import_payload(
 
 
 def update_reviewed_file_cache(
-    state: dict[str, Any],
+    state: StateModel,
     reviewed_files: list[str],
     *,
     project_root: Path | str | None = None,
@@ -213,7 +214,7 @@ def _collect_imported_dimensions(
 
 
 def _auto_resolve_stale_holistic(
-    state: dict[str, Any],
+    state: StateModel,
     new_ids: set[str],
     diff: dict[str, Any],
     utc_now_fn,
@@ -255,7 +256,7 @@ def _auto_resolve_stale_holistic(
 
 def import_holistic_issues(
     issues_data: ReviewImportPayload,
-    state: dict[str, Any],
+    state: StateModel,
     lang_name: str,
     *,
     project_root: Path | str | None = None,
@@ -308,7 +309,7 @@ def import_holistic_issues(
         store = state.setdefault("concern_dismissals", {})
         now = utc_now_fn()
         # Compute current concerns to get source_issue_ids for each fingerprint.
-        current_concerns = generate_concerns(state, lang_name=lang_name)
+        current_concerns = generate_concerns(state)
         concern_sources = {
             c.fingerprint: list(c.source_issues) for c in current_concerns
         }
@@ -389,7 +390,7 @@ def import_holistic_issues(
     return diff
 
 
-def _resolve_total_files(state: dict[str, Any], lang_name: str | None) -> int:
+def _resolve_total_files(state: StateModel, lang_name: str | None) -> int:
     """Best-effort total file count from codebase_metrics or review cache."""
     review_cache = state.get("review_cache", {})
     fallback = len(review_cache.get("files", {}))
@@ -415,7 +416,7 @@ def _resolve_total_files(state: dict[str, Any], lang_name: str | None) -> int:
 
 
 def update_holistic_review_cache(
-    state: dict[str, Any],
+    state: StateModel,
     issues_data: list[dict],
     *,
     lang_name: str | None = None,
@@ -473,7 +474,7 @@ def update_holistic_review_cache(
 
 
 def resolve_holistic_coverage_issues(
-    state: dict[str, Any],
+    state: StateModel,
     diff: dict[str, Any],
     *,
     utc_now_fn=utc_now,
@@ -506,7 +507,7 @@ def resolve_holistic_coverage_issues(
 
 
 def resolve_reviewed_file_coverage_issues(
-    state: dict[str, Any],
+    state: StateModel,
     diff: dict[str, Any],
     reviewed_files: list[str],
     *,

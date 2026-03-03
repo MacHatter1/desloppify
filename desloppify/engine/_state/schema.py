@@ -3,15 +3,11 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any, Literal, NotRequired, Required, TypedDict
+from typing import Any, NotRequired, Required, TypedDict
 
-from desloppify.core.text_api import PROJECT_ROOT
-from desloppify.core.enums import canonical_issue_status, issue_status_tokens
+from desloppify.core.text.text_api import get_project_root
+from desloppify.core.enums import Status, canonical_issue_status, issue_status_tokens
 from desloppify.engine._state.schema_scores import (
-    get_objective_score,
-    get_overall_score,
-    get_strict_score,
-    get_verified_strict_score,
     json_default,
 )
 from desloppify.languages._framework.base.types import ScanCoverageRecord
@@ -36,14 +32,10 @@ __all__ = [
     "ensure_state_defaults",
     "validate_state_invariants",
     "json_default",
-    "get_overall_score",
-    "get_objective_score",
-    "get_strict_score",
-    "get_verified_strict_score",
     "migrate_state_keys",
 ]
 
-IssueStatus = Literal["open", "fixed", "auto_resolved", "wontfix", "false_positive"]
+IssueStatus = Status  # Backward-compat alias for migrated status typing.
 _ALLOWED_ISSUE_STATUSES: set[str] = {
     *issue_status_tokens(),
 }
@@ -185,7 +177,7 @@ class ScanDiff(TypedDict):
     skipped_details: NotRequired[list[dict]]
 
 
-STATE_DIR = PROJECT_ROOT / ".desloppify"
+STATE_DIR = get_project_root() / ".desloppify"
 STATE_FILE = STATE_DIR / "state.json"
 CURRENT_VERSION = 1
 
@@ -342,5 +334,3 @@ def validate_state_invariants(state: StateModel) -> None:
             raise ValueError(
                 f"issue {issue_id!r} has invalid reopen_count {reopen_count!r}"
             )
-
-

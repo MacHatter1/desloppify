@@ -3,8 +3,8 @@
 from pathlib import Path
 from types import SimpleNamespace
 
-import desloppify.app.commands.move.move as move_mod
-from desloppify.app.commands.move.move import _cmd_move_dir
+import desloppify.app.commands.move.cmd as move_mod
+from desloppify.app.commands.move.cmd import _cmd_move_dir
 from desloppify.app.commands.move.move_language import (
     detect_lang_from_dir,
     detect_lang_from_ext,

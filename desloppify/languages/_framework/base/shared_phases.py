@@ -4,13 +4,15 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import Any
 
 from desloppify.core.coercions_api import coerce_confidence
-from desloppify.core.text_api import get_project_root
+from desloppify.core.text.text_api import get_project_root
 from desloppify.engine.detectors.base import ComplexitySignal
 from desloppify.engine.detectors.complexity import detect_complexity
 from desloppify.engine.detectors.dupes import detect_duplicates
 from desloppify.engine.detectors.flat_dirs import (
+    FlatDirDetectionConfig,
     detect_flat_dirs,
     format_flat_dir_summary,
 )
@@ -50,7 +52,7 @@ from desloppify.languages._framework.issue_factories import (
     make_single_use_issues,
 )
 from desloppify.state import Issue, make_issue
-from desloppify.core.output_api import log
+from desloppify.core.output import log
 
 
 def phase_dupes(path: Path, lang: LangRuntimeContract) -> tuple[list[Issue], dict[str, int]]:
@@ -123,7 +125,9 @@ def phase_boilerplate_duplication(
     return issues, {"boilerplate_duplication": distinct_files}
 
 
-def _filter_boilerplate_entries_by_zone(entries: list[dict], zone_map) -> list[dict]:
+def _filter_boilerplate_entries_by_zone(
+    entries: list[dict[str, Any]], zone_map
+) -> list[dict[str, Any]]:
     """Keep only in-scope, zone-allowed boilerplate clusters.
 
     jscpd can return files that are outside language discovery (artifacts/docs).
@@ -134,7 +138,7 @@ def _filter_boilerplate_entries_by_zone(entries: list[dict], zone_map) -> list[d
         return entries
 
     known_files = set(zone_map.all_files())
-    filtered: list[dict] = []
+    filtered: list[dict[str, Any]] = []
     skipped = 0
     for entry in entries:
         locations = entry.get("locations", [])
@@ -188,7 +192,7 @@ def find_external_test_files(path: Path, lang: LangRuntimeContract) -> set[str]:
 
 def _entries_to_issues(
     detector: str,
-    entries: list[dict],
+    entries: list[dict[str, Any]],
     *,
     default_name: str = "",
     include_zone: bool = False,
@@ -222,7 +226,7 @@ def _log_phase_summary(label: str, results: list[Issue], potential: int, unit: s
         log(f"         {label}: clean ({potential} {unit})")
 
 
-def _coverage_to_dict(coverage: DetectorCoverageStatus) -> dict[str, object]:
+def _coverage_to_dict(coverage: DetectorCoverageStatus) -> dict[str, Any]:
     return {
         "detector": coverage.detector,
         "status": coverage.status,
@@ -236,9 +240,9 @@ def _coverage_to_dict(coverage: DetectorCoverageStatus) -> dict[str, object]:
 
 
 def _merge_detector_coverage(
-    existing: dict[str, object],
-    incoming: dict[str, object],
-) -> dict[str, object]:
+    existing: dict[str, Any],
+    incoming: dict[str, Any],
+) -> dict[str, Any]:
     merged = dict(existing)
     merged["status"] = (
         "reduced"
@@ -459,14 +463,14 @@ def run_structural_phase(
     min_loc: int = 40,
     god_rules=None,
     god_extractor_fn=None,
-) -> tuple[list[dict], dict[str, int]]:
+) -> tuple[list[Issue], dict[str, int]]:
     """Run large/complexity/flat directory detectors for a language.
 
     Optional ``god_rules`` + ``god_extractor_fn`` enable god-class detection:
     when both are provided, ``god_extractor_fn(path)`` is called to extract
     class info, then ``detect_gods()`` finds classes matching multiple rules.
     """
-    structural: dict[str, dict] = {}
+    structural: dict[str, dict[str, Any]] = {}
 
     large_entries, file_count = detect_large_files(
         path,
@@ -509,7 +513,11 @@ def run_structural_phase(
             log_fn(f"         god classes: {len(god_entries)}")
 
     results = merge_structural_signals(structural, log_fn)
-    flat_entries, analyzed_dir_count = detect_flat_dirs(path, file_finder=lang.file_finder)
+    flat_entries, analyzed_dir_count = detect_flat_dirs(
+        path,
+        file_finder=lang.file_finder,
+        config=FlatDirDetectionConfig(),
+    )
     for entry in flat_entries:
         child_dir_count = int(entry.get("child_dir_count", 0))
         combined_score = int(entry.get("combined_score", entry.get("file_count", 0)))
@@ -556,7 +564,7 @@ def run_coupling_phase(
     build_dep_graph_fn,
     log_fn,
     post_process_fn=None,
-) -> tuple[list[dict], dict[str, int]]:
+) -> tuple[list[Issue], dict[str, int]]:
     """Run single-use/cycles/orphaned detectors against a language dep graph.
 
     Optional ``post_process_fn(issues, entries, lang)`` is called after
@@ -566,7 +574,7 @@ def run_coupling_phase(
     graph = build_dep_graph_fn(path)
     lang.dep_graph = graph
     zone_map = lang.zone_map
-    results: list[dict] = []
+    results: list[Issue] = []
 
     single_entries, single_candidates = detect_single_use_abstractions(
         path,
@@ -621,7 +629,7 @@ def make_structural_coupling_phase_pair(
     their complexity signals and dependency-graph builder.
     """
 
-    def phase_structural(path: Path, lang: LangRuntimeContract) -> tuple[list[dict], dict[str, int]]:
+    def phase_structural(path: Path, lang: LangRuntimeContract) -> tuple[list[Issue], dict[str, int]]:
         return run_structural_phase(
             path,
             lang,
@@ -629,7 +637,7 @@ def make_structural_coupling_phase_pair(
             log_fn=log_fn,
         )
 
-    def phase_coupling(path: Path, lang: LangRuntimeContract) -> tuple[list[dict], dict[str, int]]:
+    def phase_coupling(path: Path, lang: LangRuntimeContract) -> tuple[list[Issue], dict[str, int]]:
         return run_coupling_phase(
             path,
             lang,

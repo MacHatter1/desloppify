@@ -9,8 +9,8 @@ from dataclasses import dataclass
 
 from desloppify import state as state_mod
 from desloppify.core.exception_sets import CommandError
-from desloppify.engine.work_queue import ATTEST_EXAMPLE
-from desloppify.core.output_api import colorize
+from desloppify.engine._work_queue.core import ATTEST_EXAMPLE
+from desloppify.core.output import colorize
 
 _REQUIRED_ATTESTATION_PHRASES = ("i have actually", "not gaming")
 _ATTESTATION_KEYWORD_HINT = ("I have actually", "not gaming")
@@ -121,13 +121,13 @@ def _estimate_wontfix_strict_delta(
     resolve_all_patterns_fn,
 ) -> float:
     """Estimate strict score drop if this resolve command is applied as wontfix."""
-    before = state_mod.get_strict_score(state)
+    before = state_mod.score_snapshot(state).strict
     if before is None:
         return 0.0
 
     preview_state = copy.deepcopy(state)
     resolve_all_patterns_fn(preview_state, args, attestation=attestation)
-    after = state_mod.get_strict_score(preview_state)
+    after = state_mod.score_snapshot(preview_state).strict
     if after is None:
         return 0.0
     return max(0.0, before - after)

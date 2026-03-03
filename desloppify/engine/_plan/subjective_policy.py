@@ -9,7 +9,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from desloppify.core.registry import DETECTORS
+from desloppify.engine.planning.helpers import CONFIDENCE_ORDER
 from desloppify.engine._state.schema import StateModel
+from desloppify.engine._state.filtering import issue_in_scan_scope
 
 # Detectors whose issues are NOT objective mechanical work.
 # Canonical definition — re-exported by stale_dimensions for back-compat.
@@ -63,9 +66,6 @@ class SubjectiveVisibility:
 
 def _is_evidence_only(issue: dict) -> bool:
     """Return True if the issue is below its detector's standalone threshold."""
-    from desloppify.core.registry import DETECTORS
-    from desloppify.engine.planning.common import CONFIDENCE_ORDER
-
     detector = issue.get("detector", "")
     meta = DETECTORS.get(detector)
     if meta and meta.standalone_threshold:
@@ -96,12 +96,12 @@ def compute_subjective_visibility(
     Imports building-block helpers from ``stale_dimensions`` so the
     source-of-truth logic stays in one place.
     """
+    # cycle-break: subjective_policy.py ↔ stale_dimensions.py
     from desloppify.engine._plan.stale_dimensions import (
         _current_stale_ids,
         current_under_target_ids,
         current_unscored_ids,
     )
-    from desloppify.engine._state.filtering import issue_in_scan_scope
 
     resolved_scan_path: str | None = (
         state.get("scan_path")

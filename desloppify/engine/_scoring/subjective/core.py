@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from desloppify.core.text_api import is_numeric
+from desloppify.core.text.text_api import is_numeric
+from desloppify.intelligence.review.dimensions.holistic import DIMENSIONS
 from desloppify.engine._scoring.policy.core import SUBJECTIVE_CHECKS
 
 DISPLAY_NAMES: dict[str, str] = {
@@ -59,26 +60,23 @@ def _primary_lang_from_issues(issues: dict) -> str | None:
 
 def _dimension_display_name(dim_name: str, *, lang_name: str | None) -> str:
     try:
-        # Deferred import to avoid circular: scoring -> _scoring/results/core
-        # -> _scoring/subjective/core -> intelligence.review -> state -> scoring
         from desloppify.intelligence.review.dimensions.metadata import (
-            dimension_display_name,
+            dimension_display_name,  # cycle-break: subjective/core.py ↔ metadata.py
         )
 
         return str(dimension_display_name(dim_name, lang_name=lang_name))
-    except (ImportError, AttributeError, RuntimeError, ValueError, TypeError):
+    except (AttributeError, RuntimeError, ValueError, TypeError):
         return DISPLAY_NAMES.get(dim_name, _display_fallback(dim_name))
 
 
 def _dimension_weight(dim_name: str, *, lang_name: str | None) -> float:
     try:
-        # Deferred import to avoid circular (see _dimension_display_name).
         from desloppify.intelligence.review.dimensions.metadata import (
-            dimension_weight,
+            dimension_weight,  # cycle-break: subjective/core.py ↔ metadata.py
         )
 
         return float(dimension_weight(dim_name, lang_name=lang_name))
-    except (ImportError, AttributeError, RuntimeError, ValueError, TypeError):
+    except (AttributeError, RuntimeError, ValueError, TypeError):
         return 1.0
 
 
@@ -157,9 +155,6 @@ def append_subjective_dimensions(
     determine pass-rate, while imported assessment scores are retained as
     metadata for transparency.
     """
-    # Deferred import to avoid circular (see _dimension_display_name).
-    from desloppify.intelligence.review.dimensions.holistic import DIMENSIONS
-
     raw_defaults = DIMENSIONS
     allowed = (
         {_normalize_dimension_key(name) for name in allowed_dimensions}

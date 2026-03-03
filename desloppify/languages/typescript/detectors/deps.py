@@ -8,7 +8,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-from desloppify.core.text_api import get_project_root
+from desloppify.core.text.text_api import get_project_root
 from desloppify.core.file_paths import rel, resolve_path
 from desloppify.core.grep import grep_files
 from desloppify.core.output import colorize, print_table

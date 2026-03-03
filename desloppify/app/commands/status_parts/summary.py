@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from desloppify import state as state_mod
-from desloppify.core.output_api import LOC_COMPACT_THRESHOLD, colorize
+from desloppify.core.output import LOC_COMPACT_THRESHOLD, colorize
 
 
 def score_summary_lines(

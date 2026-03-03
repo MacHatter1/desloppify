@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from desloppify.engine._state.schema import StateModel
 import logging
+from typing import Any
 
 from desloppify import state as state_mod
 from desloppify.app.commands.scan.scan_helpers import format_delta
@@ -10,14 +12,16 @@ from desloppify.app.commands.status_parts.strict_target import (
     format_strict_target_progress,
 )
 from desloppify.app.commands.helpers.score_update import print_strict_target_nudge
-from desloppify.app.commands.scan.scan_reporting_llm import is_agent_environment
-from desloppify.core.output_api import colorize
+from desloppify.app.commands.scan.reporting.agent_context import is_agent_environment
+from desloppify.core.output import colorize
 from desloppify.engine.concerns import generate_concerns
 
 logger = logging.getLogger(__name__)
 
 
-def _consecutive_subjective_integrity_status(state: dict, status: str) -> int:
+def _consecutive_subjective_integrity_status(
+    state: StateModel, status: str
+) -> int:
     """Return consecutive trailing scans with the given subjective-integrity status."""
     history = state.get("scan_history", [])
     if not isinstance(history, list):
@@ -37,7 +41,7 @@ def _consecutive_subjective_integrity_status(state: dict, status: str) -> int:
 
 
 def _show_score_reveal(
-    state: dict,
+    state: StateModel,
     new: state_mod.ScoreSnapshot,
     *,
     target_strict: float | None = None,
@@ -74,7 +78,7 @@ def _show_score_reveal(
     print(colorize(f"  {bar}", "cyan"))
 
 
-def show_diff_summary(diff: dict):
+def show_diff_summary(diff: dict[str, Any]) -> None:
     """Print the +new / -resolved / reopened one-liner."""
     diff_parts = []
     if diff["new"]:
@@ -97,8 +101,84 @@ def show_diff_summary(diff: dict):
         )
 
 
+def _has_complete_scores(new: state_mod.ScoreSnapshot) -> bool:
+    return not (
+        new.overall is None
+        or new.objective is None
+        or new.strict is None
+        or new.verified is None
+    )
+
+
+def _print_score_guide() -> None:
+    print(colorize("  Score guide:", "dim"))
+    print(colorize("    overall  = 40% mechanical + 60% subjective (lenient — ignores wontfix)", "dim"))
+    print(colorize("    objective = mechanical detectors only (no subjective review)", "dim"))
+    print(colorize("    strict   = like overall, but wontfix counts against you  <-- your north star", "dim"))
+    print(colorize("    verified = strict, but only credits scan-verified fixes", "dim"))
+
+
+def _subjective_target_label(target: object) -> str:
+    if target is None:
+        return "target threshold"
+    return f"target {target}"
+
+
+def _print_subjective_integrity_warning(
+    state: StateModel,
+    integrity: dict[str, Any],
+) -> None:
+    status = integrity.get("status")
+    matched_count = int(integrity.get("matched_count", 0) or 0)
+    target = integrity.get("target_score")
+    target_label = _subjective_target_label(target)
+
+    if status == "penalized":
+        print(
+            colorize(
+                "  ⚠ Subjective integrity: "
+                f"{matched_count} target-matched dimensions were reset to 0.0 "
+                f"({target_label}).",
+                "red",
+            )
+        )
+        streak = _consecutive_subjective_integrity_status(state, "penalized")
+        if streak < 2:
+            return
+        print(
+            colorize(
+                "    Repeated penalty across scans. Use a blind, isolated reviewer "
+                "on `.desloppify/review_packet_blind.json` and re-import before trusting subjective scores.",
+                "yellow",
+            )
+        )
+        return
+
+    if status != "warn":
+        return
+    print(
+        colorize(
+            "  ⚠ Subjective integrity: "
+            f"{matched_count} dimension matched the target "
+            f"({target_label}). Re-review recommended.",
+            "yellow",
+        )
+    )
+    streak = _consecutive_subjective_integrity_status(state, "warn")
+    if streak < 2:
+        return
+    print(
+        colorize(
+            "    This warning has repeated. Prefer "
+            "`desloppify review --run-batches --runner codex --parallel --scan-after-import` "
+            "or run a blind reviewer pass before import.",
+            "yellow",
+        )
+    )
+
+
 def show_score_delta(
-    state: dict,
+    state: StateModel,
     prev_overall: float | None,
     prev_objective: float | None,
     prev_strict: float | None,
@@ -106,17 +186,12 @@ def show_score_delta(
     non_comparable_reason: str | None = None,
     *,
     target_strict: float | None = None,
-):
+) -> None:
     """Print the canonical score quartet with deltas."""
     stats = state["stats"]
     new = state_mod.score_snapshot(state)
 
-    if (
-        new.overall is None
-        or new.objective is None
-        or new.strict is None
-        or new.verified is None
-    ):
+    if not _has_complete_scores(new):
         print(
             colorize(
                 "  Scores unavailable — run a full scan with language detectors enabled.",
@@ -162,11 +237,7 @@ def show_score_delta(
     # Score legend — shown on first scan or when strict gap is significant
     scan_count = state.get("scan_count", 0)
     if scan_count <= 1 or gap > 10 or is_agent_environment():
-        print(colorize("  Score guide:", "dim"))
-        print(colorize("    overall  = 40% mechanical + 60% subjective (lenient — ignores wontfix)", "dim"))
-        print(colorize("    objective = mechanical detectors only (no subjective review)", "dim"))
-        print(colorize("    strict   = like overall, but wontfix counts against you  <-- your north star", "dim"))
-        print(colorize("    verified = strict, but only credits scan-verified fixes", "dim"))
+        _print_score_guide()
 
     # Show strict target progress
     if target_strict is not None and new.strict is not None:
@@ -174,52 +245,13 @@ def show_score_delta(
 
     integrity = state.get("subjective_integrity", {})
     if isinstance(integrity, dict):
-        status = integrity.get("status")
-        matched_count = int(integrity.get("matched_count", 0) or 0)
-        target = integrity.get("target_score")
-        if status == "penalized":
-            print(
-                colorize(
-                    "  ⚠ Subjective integrity: "
-                    f"{matched_count} target-matched dimensions were reset to 0.0 "
-                    f"({'target ' + str(target) if target is not None else 'target threshold'}).",
-                    "red",
-                )
-            )
-            streak = _consecutive_subjective_integrity_status(state, "penalized")
-            if streak >= 2:
-                print(
-                    colorize(
-                        "    Repeated penalty across scans. Use a blind, isolated reviewer "
-                        "on `.desloppify/review_packet_blind.json` and re-import before trusting subjective scores.",
-                        "yellow",
-                    )
-                )
-        elif status == "warn":
-            print(
-                colorize(
-                    "  ⚠ Subjective integrity: "
-                    f"{matched_count} dimension matched the target "
-                    f"({'target ' + str(target) if target is not None else 'target threshold'}). Re-review recommended.",
-                    "yellow",
-                )
-            )
-            streak = _consecutive_subjective_integrity_status(state, "warn")
-            if streak >= 2:
-                print(
-                    colorize(
-                        "    This warning has repeated. Prefer "
-                        "`desloppify review --run-batches --runner codex --parallel --scan-after-import` "
-                        "or run a blind reviewer pass before import.",
-                        "yellow",
-                )
-            )
+        _print_subjective_integrity_warning(state, integrity)
 
 
-def show_concern_count(state: dict, lang_name: str | None = None) -> None:
+def show_concern_count(state: StateModel, lang_name: str | None = None) -> None:
     """Print concern count if any exist."""
     try:
-        concerns = generate_concerns(state, lang_name=lang_name)
+        concerns = generate_concerns(state)
         if concerns:
             print(
                 colorize(
@@ -232,7 +264,9 @@ def show_concern_count(state: dict, lang_name: str | None = None) -> None:
         logger.debug("Concern generation failed (best-effort): %s", exc)
 
 
-def show_strict_target_progress(strict_target: dict | None) -> tuple[float | None, float | None]:
+def show_strict_target_progress(
+    strict_target: dict[str, Any] | None,
+) -> tuple[float | None, float | None]:
     """Print strict target progress lines and return (target, gap)."""
     lines, target, gap = format_strict_target_progress(strict_target)
     for message, style in lines:

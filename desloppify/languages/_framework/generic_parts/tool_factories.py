@@ -5,6 +5,7 @@ from __future__ import annotations
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 from desloppify.languages._framework.base.types import (
     DetectorPhase,
@@ -24,7 +25,7 @@ from desloppify.state import make_issue
 
 
 def _record_tool_failure_coverage(
-    lang: object,
+    lang: Any,
     *,
     detector: str,
     label: str,
@@ -67,7 +68,7 @@ def make_tool_phase(
     """Create a DetectorPhase that runs an external tool and parses output."""
     parser = PARSERS[fmt]
 
-    def run(path: Path, lang: object) -> tuple[list, dict]:
+    def run(path: Path, lang: Any) -> tuple[list[dict[str, Any]], dict[str, int]]:
         run_result = run_tool_result(cmd, path, parser)
         if run_result.status == "error":
             _record_tool_failure_coverage(
@@ -98,7 +99,7 @@ def make_tool_phase(
 
 def make_detect_fn(
     cmd: str,
-    parser: Callable[[str, Path], list[dict]],
+    parser: Callable[[str, Path], list[dict[str, Any]]],
     *,
     run_subprocess: SubprocessRun | None = None,
 ) -> Callable:

@@ -6,13 +6,13 @@ import logging
 import re
 from pathlib import Path
 
-from desloppify.core.text_api import PROJECT_ROOT
+from desloppify.core.text.text_api import get_project_root
 from desloppify.core.discovery_api import find_tsx_files, rel
 from desloppify.languages.typescript.detectors._smell_helpers import (
     _strip_ts_comments,
     scan_code,
 )
-from desloppify.core.output_api import colorize, print_table
+from desloppify.core.output import colorize, print_table
 
 MAX_EFFECT_BODY = 1000  # max characters to scan for brace-matching a useEffect callback
 MAX_FUNC_SCAN = 2000  # max lines to scan for function body extent
@@ -37,7 +37,7 @@ def detect_state_sync(path: Path) -> tuple[list[dict], int]:
             p = (
                 Path(filepath)
                 if Path(filepath).is_absolute()
-                else PROJECT_ROOT / filepath
+                else get_project_root() / filepath
             )
             content = p.read_text()
             lines = content.splitlines()
@@ -142,7 +142,7 @@ def detect_context_nesting(path: Path) -> tuple[list[dict], int]:
             p = (
                 Path(filepath)
                 if Path(filepath).is_absolute()
-                else PROJECT_ROOT / filepath
+                else get_project_root() / filepath
             )
             content = p.read_text()
             lines = content.splitlines()
@@ -201,7 +201,7 @@ def detect_hook_return_bloat(path: Path) -> tuple[list[dict], int]:
             p = (
                 Path(filepath)
                 if Path(filepath).is_absolute()
-                else PROJECT_ROOT / filepath
+                else get_project_root() / filepath
             )
             content = p.read_text()
             lines = content.splitlines()
@@ -367,7 +367,7 @@ def detect_boolean_state_explosion(path: Path) -> tuple[list[dict], int]:
             p = (
                 Path(filepath)
                 if Path(filepath).is_absolute()
-                else PROJECT_ROOT / filepath
+                else get_project_root() / filepath
             )
             content = p.read_text()
         except (OSError, UnicodeDecodeError) as exc:

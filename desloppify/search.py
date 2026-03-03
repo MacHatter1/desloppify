@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import re
 
-from desloppify.core.text_api import PROJECT_ROOT
+from desloppify.core.text.text_api import get_project_root
 from desloppify.core.runtime_state import current_runtime_context
 
 
@@ -21,7 +21,7 @@ def grep_files(
     compiled = re.compile(pattern, flags)
     results: list[tuple[str, int, str]] = []
     for filepath in file_list:
-        abs_path = filepath if os.path.isabs(filepath) else str(PROJECT_ROOT / filepath)
+        abs_path = filepath if os.path.isabs(filepath) else str(get_project_root() / filepath)
         content = read_file_text(abs_path)
         if content is None:
             continue
@@ -47,7 +47,7 @@ def grep_files_containing(
 
     name_to_files: dict[str, set[str]] = {}
     for filepath in file_list:
-        abs_path = filepath if os.path.isabs(filepath) else str(PROJECT_ROOT / filepath)
+        abs_path = filepath if os.path.isabs(filepath) else str(get_project_root() / filepath)
         content = read_file_text(abs_path)
         if content is None:
             continue
@@ -67,7 +67,7 @@ def grep_count_files(
         pat = re.compile(re.escape(name))
     matching: list[str] = []
     for filepath in file_list:
-        abs_path = filepath if os.path.isabs(filepath) else str(PROJECT_ROOT / filepath)
+        abs_path = filepath if os.path.isabs(filepath) else str(get_project_root() / filepath)
         content = read_file_text(abs_path)
         if content is None:
             continue

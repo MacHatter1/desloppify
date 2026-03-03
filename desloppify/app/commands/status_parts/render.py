@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from desloppify.engine._state.schema import StateModel
+from typing import Any
+
 from desloppify.app.commands.helpers.rendering import print_agent_plan, print_ranked_actions
 from desloppify.app.commands.helpers.subjective import print_subjective_followup
 from desloppify.app.commands.scan import (
@@ -30,16 +33,14 @@ from desloppify.app.commands.status_parts.summary import (
     print_scan_metrics,
     score_summary_lines,
 )
-from desloppify.scoring import (
-    DIMENSIONS,
-    compute_score_impact,
-    merge_potentials,
-)
-from desloppify.core.output_api import colorize, print_table
+from desloppify.engine._scoring.policy.core import DIMENSIONS
+from desloppify.engine._scoring.results.core import compute_score_impact
+from desloppify.engine._scoring.detection import merge_potentials
+from desloppify.core.output import colorize, print_table
 
 def _render_dimension_legend(
-    scorecard_subjective: list[dict],
-    state: dict | None = None,
+    scorecard_subjective: list[dict[str, Any]],
+    state: StateModel | None = None,
     *,
     objective_backlog: int = 0,
 ) -> None:
@@ -75,7 +76,7 @@ def _render_dimension_legend(
 
 
 def show_dimension_table(
-    state: dict, dim_scores: dict, *, objective_backlog: int = 0,
+    state: StateModel, dim_scores: dict[str, Any], *, objective_backlog: int = 0,
 ) -> None:
     """Show dimension health table with dual scores and progress bars."""
     print()
@@ -103,24 +104,90 @@ def show_dimension_table(
     print()
 
 
+def _render_plan_focus(plan: dict[str, Any] | None) -> bool:
+    if not plan or not plan.get("active_cluster"):
+        return False
+    cluster_name = plan["active_cluster"]
+    cluster = plan.get("clusters", {}).get(cluster_name, {})
+    remaining = len(cluster.get("issue_ids", []))
+    desc = cluster.get("description") or ""
+    desc_str = f" — {desc}" if desc else ""
+    print(
+        colorize(
+            f"  Focus: {cluster_name} ({remaining} items remaining){desc_str}",
+            "cyan",
+        )
+    )
+    print()
+    return True
+
+
+def _lowest_focus_context(
+    lowest_name: str,
+    dim_scores: dict[str, Any],
+    scorecard_subjective: list[dict[str, Any]],
+) -> tuple[str | None, float, int]:
+    for dim in DIMENSIONS:
+        if dim.name != lowest_name:
+            continue
+        dim_score = dim_scores.get(dim.name)
+        if not dim_score:
+            return None, 101.0, 0
+        return (
+            "mechanical",
+            float(dim_score.get("strict", dim_score["score"])),
+            int(dim_score.get("failing", 0)),
+        )
+
+    for entry in scorecard_subjective:
+        if entry.get("name") != lowest_name:
+            continue
+        return (
+            "subjective",
+            float(entry.get("strict", entry.get("score", 100.0))),
+            0,
+        )
+    return None, 101.0, 0
+
+
+def _mechanical_focus_impact(
+    *,
+    lowest_name: str,
+    lowest_issues: int,
+    dim_scores: dict[str, Any],
+    state: StateModel,
+) -> float | None:
+    target_dim = next((d for d in DIMENSIONS if d.name == lowest_name), None)
+    if target_dim is None:
+        return None
+    potentials = merge_potentials(state.get("potentials", {}))
+    impact = 0.0
+    normalized_scores = {
+        key: {
+            "score": value["score"],
+            "tier": value.get("tier", 3),
+            "detectors": value.get("detectors", {}),
+        }
+        for key, value in dim_scores.items()
+        if "score" in value
+    }
+    for detector in target_dim.detectors:
+        impact = compute_score_impact(
+            normalized_scores,
+            potentials,
+            detector,
+            lowest_issues,
+        )
+        if impact > 0:
+            return impact
+    return impact
+
+
 def show_focus_suggestion(
-    dim_scores: dict, state: dict, *, plan: dict | None = None
+    dim_scores: dict[str, Any], state: StateModel, *, plan: dict[str, Any] | None = None
 ) -> None:
     """Show the lowest-scoring dimension as the focus area."""
-    # When plan has an active focus cluster, show that instead
-    if plan and plan.get("active_cluster"):
-        cluster_name = plan["active_cluster"]
-        cluster = plan.get("clusters", {}).get(cluster_name, {})
-        remaining = len(cluster.get("issue_ids", []))
-        desc = cluster.get("description") or ""
-        desc_str = f" — {desc}" if desc else ""
-        print(
-            colorize(
-                f"  Focus: {cluster_name} ({remaining} items remaining){desc_str}",
-                "cyan",
-            )
-        )
-        print()
+    if _render_plan_focus(plan):
         return
 
     scorecard_subjective = _scorecard_subjective_entries(state, dim_scores)
@@ -128,73 +195,45 @@ def show_focus_suggestion(
     if not lowest_name:
         return
 
-    # Determine kind, score, and issue count from the resolved name
-    lowest_kind = None
-    lowest_score = 101.0
-    lowest_issues = 0
-    for dim in DIMENSIONS:
-        if dim.name == lowest_name:
-            ds = dim_scores.get(dim.name)
-            if ds:
-                lowest_score = float(ds.get("strict", ds["score"]))
-                lowest_kind = "mechanical"
-                lowest_issues = int(ds.get("failing", 0))
-            break
-    else:
-        for entry in scorecard_subjective:
-            if entry.get("name") == lowest_name:
-                lowest_score = float(entry.get("strict", entry.get("score", 100.0)))
-                lowest_kind = "subjective"
-                lowest_issues = 0
-                break
-
-    if lowest_name and lowest_score < 100:
-        if lowest_kind == "subjective":
-            print(
-                colorize(
-                    f"  Focus: {lowest_name} ({lowest_score:.1f}%) — re-review to improve",
-                    "cyan",
-                )
+    lowest_kind, lowest_score, lowest_issues = _lowest_focus_context(
+        lowest_name,
+        dim_scores,
+        scorecard_subjective,
+    )
+    if lowest_score >= 100:
+        return
+    if lowest_kind == "subjective":
+        print(
+            colorize(
+                f"  Focus: {lowest_name} ({lowest_score:.1f}%) — re-review to improve",
+                "cyan",
             )
-            print()
-            return
+        )
+        print()
+        return
 
-        potentials = merge_potentials(state.get("potentials", {}))
-        target_dim = next((d for d in DIMENSIONS if d.name == lowest_name), None)
-        if target_dim:
-            impact = 0.0
-            for det in target_dim.detectors:
-                impact = compute_score_impact(
-                    {
-                        k: {
-                            "score": v["score"],
-                            "tier": v.get("tier", 3),
-                            "detectors": v.get("detectors", {}),
-                        }
-                        for k, v in dim_scores.items()
-                        if "score" in v
-                    },
-                    potentials,
-                    det,
-                    lowest_issues,
-                )
-                if impact > 0:
-                    break
-
-            impact_str = f" for +{impact:.1f} pts" if impact > 0 else ""
-            print(
-                colorize(
-                    f"  Focus: {lowest_name} ({lowest_score:.1f}%) — "
-                    f"fix {lowest_issues} items{impact_str}",
-                    "cyan",
-                )
-            )
-            print()
+    impact = _mechanical_focus_impact(
+        lowest_name=lowest_name,
+        lowest_issues=lowest_issues,
+        dim_scores=dim_scores,
+        state=state,
+    )
+    if impact is None:
+        return
+    impact_str = f" for +{impact:.1f} pts" if impact > 0 else ""
+    print(
+        colorize(
+            f"  Focus: {lowest_name} ({lowest_score:.1f}%) — "
+            f"fix {lowest_issues} items{impact_str}",
+            "cyan",
+        )
+    )
+    print()
 
 
 def show_subjective_followup(
-    state: dict,
-    dim_scores: dict,
+    state: StateModel,
+    dim_scores: dict[str, Any],
     *,
     target_strict_score: float,
     objective_backlog: int = 0,
@@ -218,7 +257,9 @@ def show_subjective_followup(
         print()
 
 
-def show_agent_plan(narrative: dict, *, plan: dict | None = None) -> None:
+def show_agent_plan(
+    narrative: dict[str, Any], *, plan: dict[str, Any] | None = None
+) -> None:
     """Show concise action plan derived from narrative.actions.
 
     When a living *plan* is active, renders plan focus/progress instead.
@@ -248,7 +289,7 @@ def show_agent_plan(narrative: dict, *, plan: dict | None = None) -> None:
         print()
 
 
-def show_structural_areas(state: dict):
+def show_structural_areas(state: StateModel) -> None:
     """Show structural debt grouped by area when T3/T4 debt is significant."""
     sorted_areas = _collect_structural_areas(state)
     if sorted_areas is None:
@@ -271,7 +312,7 @@ def show_structural_areas(state: dict):
     _render_area_workflow(sorted_areas)
 
 
-def show_review_summary(state: dict):
+def show_review_summary(state: StateModel) -> None:
     """Show review issues summary if any exist."""
     issues = state.get("issues", {})
     review_open = [

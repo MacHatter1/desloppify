@@ -13,7 +13,7 @@ from desloppify.app.commands.helpers.state import state_path
 from desloppify.app.commands.helpers.guardrails import require_triage_current_or_exit
 from desloppify.core import config as config_mod  # noqa: F401 (compat export)
 from desloppify.core.exception_sets import PLAN_LOAD_EXCEPTIONS
-from desloppify.core.output_api import colorize
+from desloppify.core.output import colorize
 
 _logger = logging.getLogger(__name__)
 from desloppify.engine.plan import (
@@ -29,7 +29,7 @@ from desloppify.intelligence import narrative as narrative_mod
 from desloppify.state import coerce_assessment_score
 
 from .apply import _resolve_all_patterns, _write_resolve_query_entry
-from .suppress_cmd import cmd_suppress_pattern
+from .suppress import cmd_suppress_pattern
 from .persist import _save_state_or_exit
 from .queue_guard import _check_queue_order_guard
 from .render import (
@@ -49,16 +49,56 @@ from .selection import (
 )
 
 
+def _validate_fixed_note(args: argparse.Namespace) -> bool:
+    if args.status != "fixed":
+        return True
+    note = getattr(args, "note", None)
+    if validate_note_length(note):
+        return True
+    show_note_length_requirement(note)
+    return False
+
+
+def _update_living_plan_after_resolve(
+    *,
+    args: argparse.Namespace,
+    all_resolved: list[str],
+    attestation: str | None,
+) -> dict | None:
+    plan = None
+    try:
+        if not has_living_plan():
+            return None
+        plan = load_plan()
+        purged = purge_ids(plan, all_resolved)
+        append_log_entry(
+            plan,
+            "resolve",
+            issue_ids=all_resolved,
+            actor="user",
+            note=getattr(args, "note", None),
+            detail={"status": args.status, "attestation": attestation},
+        )
+        # Commit tracking: add to uncommitted on fix, remove on reopen
+        if args.status == "fixed":
+            add_uncommitted_issues(plan, all_resolved)
+        elif args.status == "open":
+            purge_uncommitted_ids(plan, all_resolved)
+        save_plan(plan)
+        if purged:
+            print(colorize(f"  Plan updated: {purged} item(s) removed from queue.", "dim"))
+    except PLAN_LOAD_EXCEPTIONS:
+        _logger.debug("plan update failed after resolve", exc_info=True)
+        print(colorize("  Warning: could not update living plan.", "yellow"), file=sys.stderr)
+    return plan
+
+
 def cmd_resolve(args: argparse.Namespace) -> None:
     """Resolve issue(s) matching one or more patterns."""
     attestation = getattr(args, "attest", None)
     _validate_resolve_inputs(args, attestation)
-
-    if args.status == "fixed":
-        note = getattr(args, "note", None)
-        if not validate_note_length(note):
-            show_note_length_requirement(note)
-            return
+    if not _validate_fixed_note(args):
+        return
 
     state_file = state_path(args)
     state = state_mod.load_state(state_file)
@@ -94,32 +134,11 @@ def cmd_resolve(args: argparse.Namespace) -> None:
 
     _save_state_or_exit(state, state_file)
 
-    plan = None
-    try:
-        if has_living_plan():
-            plan = load_plan()
-            purged = purge_ids(plan, all_resolved)
-            append_log_entry(
-                plan,
-                "resolve",
-                issue_ids=all_resolved,
-                actor="user",
-                note=getattr(args, "note", None),
-                detail={"status": args.status, "attestation": attestation},
-            )
-            # Commit tracking: add to uncommitted on fix, remove on reopen
-            if args.status == "fixed":
-                add_uncommitted_issues(plan, all_resolved)
-            elif args.status == "open":
-                purge_uncommitted_ids(plan, all_resolved)
-            if purged:
-                save_plan(plan)
-                print(colorize(f"  Plan updated: {purged} item(s) removed from queue.", "dim"))
-            else:
-                save_plan(plan)
-    except PLAN_LOAD_EXCEPTIONS as exc:
-        _logger.debug("plan update failed after resolve", exc_info=True)
-        print(colorize("  Warning: could not update living plan.", "yellow"), file=sys.stderr)
+    plan = _update_living_plan_after_resolve(
+        args=args,
+        all_resolved=all_resolved,
+        attestation=attestation,
+    )
 
     _print_resolve_summary(status=args.status, all_resolved=all_resolved)
     _print_wontfix_batch_warning(

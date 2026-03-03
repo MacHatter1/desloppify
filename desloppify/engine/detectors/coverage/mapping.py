@@ -8,7 +8,7 @@ import re
 from collections import deque
 from pathlib import Path
 
-from desloppify.core.text_api import PROJECT_ROOT
+from desloppify.core.text.text_api import get_project_root
 from desloppify.hook_registry import get_lang_hook
 from desloppify.engine.detectors.test_coverage.io import read_coverage_file
 
@@ -58,7 +58,7 @@ def import_based_mapping(
 
     # Build module-name->path index for resolving test imports.
     prod_by_module: dict[str, str] = {}
-    root_str = str(PROJECT_ROOT) + os.sep
+    root_str = str(get_project_root()) + os.sep
     for pf in production_files:
         rel_pf = pf[len(root_str) :] if pf.startswith(root_str) else pf
         module_name = rel_pf.replace("/", ".").replace("\\", ".")
@@ -363,7 +363,7 @@ def get_test_files_for_prod(
 ) -> list[str]:
     """Find which test files exercise a given production file."""
     parsed_imports_by_test = parsed_imports_by_test or {}
-    root_str = str(PROJECT_ROOT) + os.sep
+    root_str = str(get_project_root()) + os.sep
     rel_prod = prod_file[len(root_str):] if prod_file.startswith(root_str) else prod_file
     module_name = rel_prod.replace("/", ".").replace("\\", ".")
     if "." in module_name:
@@ -396,7 +396,7 @@ def build_test_import_index(
     lang_name: str,
 ) -> dict[str, set[str]]:
     """Parse test import sources once, producing a test->production import index."""
-    root_str = str(PROJECT_ROOT) + os.sep
+    root_str = str(get_project_root()) + os.sep
     prod_by_module: dict[str, str] = {}
     for pf in production_files:
         rel_pf = pf[len(root_str):] if pf.startswith(root_str) else pf

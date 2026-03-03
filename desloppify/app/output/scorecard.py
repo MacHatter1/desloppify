@@ -34,8 +34,8 @@ from desloppify.app.output.scorecard_parts.theme import (
     scale,
     score_color,
 )
-from desloppify.core.text_api import PROJECT_ROOT
-from desloppify.state import get_overall_score, get_strict_score
+from desloppify.core.text.text_api import get_project_root
+from desloppify.state import score_snapshot
 
 logger = logging.getLogger(__name__)
 
@@ -48,12 +48,13 @@ def generate_scorecard(state: dict, output_path: str | Path) -> Path:
 
     output_path = Path(output_path)
 
-    main_score = get_overall_score(state) or 0
-    strict_score = get_strict_score(state) or 0
+    scores = score_snapshot(state)
+    main_score = scores.overall or 0
+    strict_score = scores.strict or 0
 
-    project_name = resolve_project_name(PROJECT_ROOT)
+    project_name = resolve_project_name(get_project_root())
     package_version = resolve_package_version(
-        PROJECT_ROOT,
+        get_project_root(),
         version_getter=importlib_metadata.version,
         package_not_found_error=importlib_metadata.PackageNotFoundError,
     )
@@ -154,7 +155,7 @@ def get_badge_config(args, config: dict | None = None) -> tuple[Path | None, boo
     # Treat any rooted path as user-intended absolute-like input.
     is_root_anchored = bool(path.root)
     if not path.is_absolute() and not is_root_anchored:
-        path = PROJECT_ROOT / path
+        path = get_project_root() / path
     return path, False
 
 

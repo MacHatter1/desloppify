@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from desloppify.core.text_api import PROJECT_ROOT
+from desloppify.core.text.text_api import get_project_root
 from desloppify.core.fallbacks import log_best_effort_failure
 from desloppify.core.discovery_api import find_py_files
 from desloppify.languages.python.detectors.smells_ast import (
@@ -185,7 +185,7 @@ def _detect_swallowed_errors(
             )
 
 
-def detect_smells(
+def detect_smells_runtime(
     path: Path,
     *,
     smell_checks: list[dict],
@@ -200,7 +200,7 @@ def detect_smells(
     for filepath in files:
         try:
             file_path = (
-                Path(filepath) if Path(filepath).is_absolute() else PROJECT_ROOT / filepath
+                Path(filepath) if Path(filepath).is_absolute() else get_project_root() / filepath
             )
             content = file_path.read_text()
             lines = content.splitlines()
@@ -269,4 +269,4 @@ def detect_smells(
     return entries, len(files)
 
 
-__all__ = ["detect_smells"]
+__all__ = ["detect_smells_runtime"]

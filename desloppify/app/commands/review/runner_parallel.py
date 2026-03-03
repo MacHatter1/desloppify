@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import inspect
+import json
 import logging
 import subprocess  # nosec
 import threading
@@ -14,10 +15,14 @@ from concurrent.futures import (
     as_completed,
 )
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from desloppify.core.coercions_api import option_value
 from desloppify.core.fallbacks import log_best_effort_failure
+from desloppify.core.path_io_api import safe_write_text
+
+from .runner_process import _extract_payload_from_log
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +64,27 @@ class BatchExecutionOptions:
     max_parallel_workers: int | None = None
     heartbeat_seconds: float | None = 15.0
     clock_fn: Callable[[], float] = time.monotonic
+
+
+@dataclass(frozen=True)
+class BatchResult:
+    """Typed normalized batch payload passed to merge/import stages."""
+
+    batch_index: int
+    assessments: dict[str, float]
+    dimension_notes: dict[str, dict[str, Any]]
+    issues: list[dict[str, Any]]
+    quality: dict[str, float]
+
+    def to_dict(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "assessments": self.assessments,
+            "dimension_notes": self.dimension_notes,
+            "issues": self.issues,
+            "quality": self.quality,
+        }
+        payload["batch_index"] = self.batch_index
+        return payload
 
 
 def _coerce_batch_execution_options(
@@ -652,8 +678,65 @@ def _heartbeat(
             )
 
 
+def collect_batch_results(
+    *,
+    selected_indexes: list[int],
+    failures: list[int],
+    output_files: dict[int, Path],
+    allowed_dims: set[str],
+    extract_payload_fn,
+    normalize_result_fn,
+) -> tuple[list[BatchResult], list[int]]:
+    """Parse and normalize batch outputs, preserving prior failures."""
+    batch_results: list[BatchResult] = []
+    failure_set = set(failures)
+    for idx in selected_indexes:
+        had_execution_failure = idx in failure_set
+        raw_path = output_files[idx]
+        payload = None
+        parsed_from_log = False
+        if raw_path.exists():
+            try:
+                payload = extract_payload_fn(raw_path.read_text())
+            except OSError:
+                payload = None
+        if payload is None:
+            payload = _extract_payload_from_log(idx, raw_path, extract_payload_fn)
+            parsed_from_log = payload is not None
+        if payload is None:
+            failure_set.add(idx)
+            continue
+        if parsed_from_log:
+            try:
+                safe_write_text(raw_path, json.dumps(payload, indent=2) + "\n")
+            except OSError:
+                pass
+        try:
+            assessments, issues, dimension_notes, quality = normalize_result_fn(
+                payload,
+                allowed_dims,
+            )
+        except ValueError:
+            failure_set.add(idx)
+            continue
+        if had_execution_failure:
+            failure_set.discard(idx)
+        batch_results.append(
+            BatchResult(
+                batch_index=idx + 1,
+                assessments=assessments,
+                dimension_notes=dimension_notes,
+                issues=issues,
+                quality=quality,
+            )
+        )
+    return batch_results, sorted(failure_set)
+
+
 __all__ = [
+    "BatchResult",
     "BatchExecutionOptions",
     "BatchProgressEvent",
+    "collect_batch_results",
     "execute_batches",
 ]

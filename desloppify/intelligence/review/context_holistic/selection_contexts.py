@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from desloppify.engine._state.schema import StateModel
 import logging
 import re
 from collections import Counter
 from pathlib import Path
+from typing import Any
 
 from desloppify.core.discovery_api import rel, resolve_path
 from desloppify.intelligence.review._context.patterns import (
@@ -22,8 +24,8 @@ from desloppify.intelligence.review.context import file_excerpt, importer_count
 logger = logging.getLogger(__name__)
 
 
-def architecture_context(lang, file_contents: dict[str, str]) -> dict:
-    arch: dict = {}
+def architecture_context(lang, file_contents: dict[str, str]) -> dict[str, Any]:
+    arch: dict[str, Any] = {}
     if not lang.dep_graph:
         return arch
 
@@ -42,8 +44,8 @@ def architecture_context(lang, file_contents: dict[str, str]) -> dict:
     return arch
 
 
-def coupling_context(file_contents: dict[str, str]) -> dict:
-    coupling: dict = {}
+def coupling_context(file_contents: dict[str, str]) -> dict[str, Any]:
+    coupling: dict[str, Any] = {}
     module_level_io = []
     for filepath, content in file_contents.items():
         for idx, raw_line in enumerate(content.splitlines()[:50]):
@@ -68,7 +70,7 @@ def coupling_context(file_contents: dict[str, str]) -> dict:
     return coupling
 
 
-def naming_conventions_context(file_contents: dict[str, str]) -> dict:
+def naming_conventions_context(file_contents: dict[str, str]) -> dict[str, Any]:
     dir_styles: dict[str, Counter] = {}
     for filepath, content in file_contents.items():
         parts = Path(filepath).parts
@@ -94,7 +96,7 @@ def sibling_behavior_context(
     file_contents: dict[str, str],
     *,
     base_path: Path | str | None = None,
-) -> dict:
+) -> dict[str, Any]:
     root = Path(base_path).resolve() if base_path is not None else None
     boilerplate_names = frozenset({"__init__.py", "conftest.py", "setup.py", "__main__.py"})
 
@@ -132,7 +134,7 @@ def sibling_behavior_context(
         file_rel = _display_path(filepath)
         dir_imports.setdefault(dir_name, {})[file_rel] = _extract_imported_names(content)
 
-    sibling_behavior: dict = {}
+    sibling_behavior: dict[str, Any] = {}
     for dir_name, file_names_map in dir_imports.items():
         total = len(file_names_map)
         if total < 3:
@@ -162,7 +164,7 @@ def sibling_behavior_context(
     return sibling_behavior
 
 
-def error_strategy_context(file_contents: dict[str, str]) -> dict:
+def error_strategy_context(file_contents: dict[str, str]) -> dict[str, Any]:
     dir_errors: dict[str, Counter] = {}
     for filepath, content in file_contents.items():
         parts = Path(filepath).parts
@@ -181,17 +183,17 @@ def error_strategy_context(file_contents: dict[str, str]) -> dict:
     }
 
 
-def in_allowed_files(filepath: object, allowed_files: set[str] | None) -> bool:
+def in_allowed_files(filepath: str, allowed_files: set[str] | None) -> bool:
     if allowed_files is None:
         return True
-    return isinstance(filepath, str) and filepath in allowed_files
+    return filepath in allowed_files
 
 
 def dependencies_context(
-    state: dict,
+    state: StateModel,
     *,
     allowed_files: set[str] | None = None,
-) -> dict:
+) -> dict[str, Any]:
     cycle_issues = []
     issues = state.get("issues", {})
     if not isinstance(issues, dict):
@@ -214,12 +216,12 @@ def dependencies_context(
 
 def testing_context(
     lang,
-    state: dict,
+    state: StateModel,
     file_contents: dict[str, str],
     *,
     allowed_files: set[str] | None = None,
-) -> dict:
-    testing: dict = {"total_files": len(file_contents)}
+) -> dict[str, Any]:
+    testing: dict[str, Any] = {"total_files": len(file_contents)}
     if not lang.dep_graph:
         return testing
 
@@ -248,7 +250,7 @@ def testing_context(
     return testing
 
 
-def api_surface_context(lang, file_contents: dict[str, str]) -> dict:
+def api_surface_context(lang, file_contents: dict[str, str]) -> dict[str, Any]:
     api_surface_fn = getattr(lang, "review_api_surface_fn", None)
     if not callable(api_surface_fn):
         return {}

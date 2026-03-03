@@ -35,7 +35,7 @@ def test_detectors_layer_does_not_import_lang_layer():
 
 
 def test_review_cmd_uses_split_modules():
-    entrypoint_src = Path("desloppify/app/commands/review/entrypoint.py").read_text()
+    entrypoint_src = Path("desloppify/app/commands/review/cmd.py").read_text()
     assert "from .batch import _do_run_batches" in entrypoint_src
     assert "from .import_cmd import do_import" in entrypoint_src
     assert "from .prepare import do_prepare" in entrypoint_src

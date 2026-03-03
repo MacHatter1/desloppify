@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import importlib
+import logging
 from pathlib import Path
 from types import ModuleType
 
 from desloppify import languages as lang_mod
 from desloppify.app.commands.helpers.lang import resolve_lang
 from desloppify.core.exception_sets import CommandError
+
+logger = logging.getLogger(__name__)
 
 
 def _build_ext_to_lang_map() -> dict[str, str]:
@@ -76,8 +79,12 @@ def load_lang_move_module(lang_name: str) -> ModuleType:
     module_name = f"desloppify.languages.{lang_name}.move"
     try:
         return importlib.import_module(module_name)
-    except ImportError:
-        pass
+    except ImportError as exc:
+        logger.debug(
+            "Failed to load language-specific move module %s: %s",
+            module_name,
+            exc,
+        )
     # Fall back to the scaffold move module that provides default stubs.
     try:
         return importlib.import_module("desloppify.languages._framework.scaffold_move")

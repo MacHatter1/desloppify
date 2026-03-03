@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from desloppify.engine._state.schema import StateModel
 from collections.abc import Callable
 from typing import Any
 
@@ -9,7 +10,7 @@ from desloppify.state import utc_now
 
 
 def auto_resolve_review_issues(
-    state: dict[str, Any],
+    state: StateModel,
     *,
     new_ids: set[str],
     diff: dict[str, Any],

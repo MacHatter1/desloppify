@@ -8,7 +8,7 @@ import re
 from desloppify.app.commands.helpers.runtime import command_runtime
 from desloppify.app.commands.helpers.state import require_completed_scan
 from desloppify.app.commands.plan._resolve import resolve_ids_from_patterns
-from desloppify.core.output_api import colorize
+from desloppify.core.output import colorize
 from desloppify.app.commands.plan.reorder_handlers import resolve_target
 from desloppify.engine.plan import (
     add_to_cluster,
@@ -21,6 +21,7 @@ from desloppify.engine.plan import (
     remove_from_cluster,
     save_plan,
 )
+from desloppify.state import utc_now
 
 
 _LEADING_NUM_RE = re.compile(r'^\d+\.\s*')
@@ -300,9 +301,6 @@ def _cmd_cluster_update(args: argparse.Namespace) -> None:
         elif len(steps) == 1 and len(steps[0]) > 100:
             print(colorize("  Warning: only 1 step stored and it's quite long. Check shell quoting.", "yellow"))
     cluster["user_modified"] = True
-
-    from desloppify.state import utc_now
-
     cluster["updated_at"] = utc_now()
     append_log_entry(
         plan, "cluster_update", cluster_name=cluster_name, actor="user",

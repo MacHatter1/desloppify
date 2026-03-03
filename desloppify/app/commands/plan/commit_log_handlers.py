@@ -5,7 +5,10 @@ from __future__ import annotations
 import argparse
 import sys
 
-from desloppify.core.output_api import colorize
+from desloppify import state as state_mod
+from desloppify.core.config import load_config
+from desloppify.core.git_context import detect_git_context, update_pr_body
+from desloppify.core.output import colorize
 from desloppify.engine.plan import (
     append_log_entry,
     commit_tracking_summary,
@@ -20,8 +23,6 @@ from desloppify.engine.plan import (
 
 def _cmd_commit_log_status(plan: dict) -> None:
     """Show full commit-log status: uncommitted, committed, git context."""
-    from desloppify.core.git_context import detect_git_context
-
     git = detect_git_context()
     summary = commit_tracking_summary(plan)
 
@@ -35,8 +36,6 @@ def _cmd_commit_log_status(plan: dict) -> None:
             print(colorize("  Working tree has uncommitted changes", "yellow"))
     else:
         print(colorize("  Git: not available", "dim"))
-
-    from desloppify.core.config import load_config
 
     config = load_config()
     pr = config.get("commit_pr", 0)
@@ -61,8 +60,6 @@ def _cmd_commit_log_status(plan: dict) -> None:
 
 def _cmd_commit_log_record(args: argparse.Namespace, plan: dict) -> None:
     """Record a commit: capture HEAD, move uncommitted → committed, update PR."""
-    from desloppify.core.git_context import detect_git_context, update_pr_body
-
     sha = getattr(args, "sha", None)
     branch = getattr(args, "branch", None)
     note = getattr(args, "note", None)
@@ -115,14 +112,10 @@ def _cmd_commit_log_record(args: argparse.Namespace, plan: dict) -> None:
         print(colorize(f"  Note: {note}", "dim"))
 
     # Update PR if configured
-    from desloppify.core.config import load_config
-
     config = load_config()
     pr_number = config.get("commit_pr", 0)
     if pr_number:
         try:
-            from desloppify import state as state_mod
-
             state = state_mod.load_state()
             body = generate_pr_body(plan, state)
             ok = update_pr_body(pr_number, body)
@@ -175,8 +168,6 @@ def _cmd_commit_log_history(args: argparse.Namespace, plan: dict) -> None:
 def _cmd_commit_log_pr(plan: dict) -> None:
     """Print PR body markdown to stdout (dry run)."""
     try:
-        from desloppify import state as state_mod
-
         state = state_mod.load_state()
     except (OSError, ValueError, KeyError, TypeError):
         state = {"issues": {}}
@@ -185,10 +176,15 @@ def _cmd_commit_log_pr(plan: dict) -> None:
     print(body)
 
 
+_COMMIT_LOG_HANDLERS = {
+    "record": _cmd_commit_log_record,
+    "history": _cmd_commit_log_history,
+    "pr": lambda _args, plan: _cmd_commit_log_pr(plan),
+}
+
+
 def cmd_commit_log_dispatch(args: argparse.Namespace) -> None:
     """Route commit-log subcommands."""
-    from desloppify.core.config import load_config
-
     config = load_config()
     if not config.get("commit_tracking_enabled", True):
         print(colorize("  Commit tracking is disabled. Enable with: desloppify config set commit_tracking_enabled true", "yellow"))
@@ -196,15 +192,11 @@ def cmd_commit_log_dispatch(args: argparse.Namespace) -> None:
 
     plan = load_plan()
     action = getattr(args, "commit_log_action", None)
-
-    if action == "record":
-        _cmd_commit_log_record(args, plan)
-    elif action == "history":
-        _cmd_commit_log_history(args, plan)
-    elif action == "pr":
-        _cmd_commit_log_pr(plan)
-    else:
+    handler = _COMMIT_LOG_HANDLERS.get(action)
+    if handler is None:
         _cmd_commit_log_status(plan)
+        return
+    handler(args, plan)
 
 
 __all__ = ["cmd_commit_log_dispatch"]

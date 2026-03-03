@@ -7,6 +7,7 @@ import math
 from datetime import UTC, datetime
 from functools import partial
 from pathlib import Path
+from typing import Any
 
 from desloppify.core.exception_sets import CommandError
 from .batches_runtime import (
@@ -47,7 +48,7 @@ def do_run_batches(
     lang,
     state_file,
     *,
-    config: dict | None,
+    config: dict[str, Any] | None,
     run_stamp_fn,
     load_or_prepare_packet_fn,
     selected_batch_indexes_fn,

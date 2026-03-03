@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from desloppify.engine._state.schema import StateModel
+from typing import Any
+
 from desloppify import state as state_mod
-from desloppify.core.output_api import colorize
+from desloppify.core.output import colorize
 
 
-def score_snapshot_or_warn(state: dict):
+def score_snapshot_or_warn(state: StateModel):
     snapshot = state_mod.score_snapshot(state)
     if (
         snapshot.overall is None

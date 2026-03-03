@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from desloppify import state as state_mod
 from desloppify.core.exception_sets import PLAN_LOAD_EXCEPTIONS
-from desloppify.core.output_api import colorize
+from desloppify.core.output import colorize
 from desloppify.engine.plan import (
     append_log_entry,
     auto_cluster_issues,
@@ -142,6 +142,147 @@ def _clear_plan_start_scores_if_queue_empty(
     return True
 
 
+def _subjective_policy_context(
+    runtime: "ScanRuntime",
+    plan: dict[str, object],
+) -> tuple[float, object, bool]:
+    from desloppify.app.commands.helpers.score import target_strict_score_from_config
+    from desloppify.engine.plan import compute_subjective_visibility
+
+    target_strict = target_strict_score_from_config(runtime.config, fallback=95.0)
+    policy = compute_subjective_visibility(
+        runtime.state,
+        target_strict=target_strict,
+        plan=plan,
+    )
+    cycle_just_completed = not plan.get("plan_start_scores")
+    return target_strict, policy, cycle_just_completed
+
+
+def _sync_unscored_and_log(
+    plan: dict[str, object],
+    state: state_mod.StateModel,
+) -> bool:
+    changed = _sync_unscored_dimensions(plan, state, sync_unscored_dimensions)
+    if changed:
+        append_log_entry(plan, "sync_unscored", actor="system", detail={"changes": True})
+    return changed
+
+
+def _sync_stale_and_log(
+    plan: dict[str, object],
+    state: state_mod.StateModel,
+    *,
+    policy,
+    cycle_just_completed: bool,
+) -> bool:
+    changed = _sync_stale_dimensions(
+        plan,
+        state,
+        lambda p, s: sync_stale_dimensions(
+            p,
+            s,
+            policy=policy,
+            cycle_just_completed=cycle_just_completed,
+        ),
+    )
+    if changed:
+        append_log_entry(plan, "sync_stale", actor="system", detail={"changes": True})
+    return changed
+
+
+def _sync_auto_clusters_and_log(
+    plan: dict[str, object],
+    state: state_mod.StateModel,
+    *,
+    target_strict: float,
+    policy,
+    cycle_just_completed: bool,
+) -> bool:
+    changed = _sync_auto_clusters(
+        plan,
+        state,
+        target_strict=target_strict,
+        policy=policy,
+        cycle_just_completed=cycle_just_completed,
+    )
+    if changed:
+        append_log_entry(plan, "auto_cluster", actor="system", detail={"changes": True})
+    return changed
+
+
+def _sync_triage_and_log(
+    plan: dict[str, object],
+    state: state_mod.StateModel,
+) -> bool:
+    triage_sync = sync_triage_needed(plan, state)
+    if not triage_sync.changes:
+        return False
+    if triage_sync.injected:
+        print(
+            colorize(
+                "  Plan: planning mode needed — review issues changed since last triage.",
+                "cyan",
+            )
+        )
+        append_log_entry(plan, "sync_triage", actor="system", detail={"injected": True})
+    return True
+
+
+def _sync_communicate_score_and_log(
+    plan: dict[str, object],
+    state: state_mod.StateModel,
+    *,
+    policy,
+) -> bool:
+    communicate_sync = sync_communicate_score_needed(plan, state, policy=policy)
+    if not communicate_sync.changes:
+        return False
+    append_log_entry(
+        plan,
+        "sync_communicate_score",
+        actor="system",
+        detail={"injected": True},
+    )
+    return True
+
+
+def _sync_create_plan_and_log(
+    plan: dict[str, object],
+    state: state_mod.StateModel,
+    *,
+    policy,
+) -> bool:
+    create_plan_sync = sync_create_plan_needed(plan, state, policy=policy)
+    if not create_plan_sync.changes:
+        return False
+    if create_plan_sync.injected:
+        print(
+            colorize(
+                "  Plan: reviews complete — `workflow::create-plan` queued.",
+                "cyan",
+            )
+        )
+        append_log_entry(plan, "sync_create_plan", actor="system", detail={"injected": True})
+    return True
+
+
+def _sync_plan_start_scores_and_log(
+    plan: dict[str, object],
+    state: state_mod.StateModel,
+) -> bool:
+    seeded = _seed_plan_start_scores(plan, state)
+    if seeded:
+        append_log_entry(plan, "seed_start_scores", actor="system", detail={})
+        return True
+    # Only clear scores that existed before this reconcile pass —
+    # never clear scores we just seeded in the same scan.
+    cleared = _clear_plan_start_scores_if_queue_empty(state, plan)
+    if cleared:
+        append_log_entry(plan, "clear_start_scores", actor="system", detail={})
+    return cleared
+
+
 def reconcile_plan_post_scan(runtime: "ScanRuntime") -> None:
     """Reconcile plan queue metadata and stale subjective review dimensions."""
     try:
@@ -152,92 +293,38 @@ def reconcile_plan_post_scan(runtime: "ScanRuntime") -> None:
         if _apply_plan_reconciliation(plan, runtime.state, reconcile_plan_after_scan):
             dirty = True
 
-        unscored_changed = _sync_unscored_dimensions(plan, runtime.state, sync_unscored_dimensions)
-        if unscored_changed:
+        if _sync_unscored_and_log(plan, runtime.state):
             dirty = True
-            append_log_entry(plan, "sync_unscored", actor="system",
-                             detail={"changes": True})
 
-        from desloppify.app.commands.helpers.score import target_strict_score_from_config
-        _target_strict = target_strict_score_from_config(runtime.config, fallback=95.0)
-
-        # Compute subjective visibility policy once for consistent gating
-        from desloppify.engine.plan import compute_subjective_visibility
-        _policy = compute_subjective_visibility(
+        target_strict, policy, cycle_just_completed = _subjective_policy_context(
+            runtime,
+            plan,
+        )
+        if _sync_stale_and_log(
+            plan,
             runtime.state,
-            target_strict=_target_strict,
-            plan=plan,
-        )
-
-        # Detect cycle completion: plan_start_scores is empty when the
-        # previous cycle drained the queue and revealed scores.  In that
-        # case stale subjective dimensions should be prioritized over new
-        # objective issues so the user reviews before a new cycle begins.
-        _cycle_just_completed = not plan.get("plan_start_scores")
-
-        stale_changed = _sync_stale_dimensions(
-            plan, runtime.state,
-            lambda p, s: sync_stale_dimensions(
-                p, s, policy=_policy, cycle_just_completed=_cycle_just_completed,
-            ),
-        )
-        if stale_changed:
+            policy=policy,
+            cycle_just_completed=cycle_just_completed,
+        ):
             dirty = True
-            append_log_entry(plan, "sync_stale", actor="system",
-                             detail={"changes": True})
 
-        auto_changed = _sync_auto_clusters(
-            plan, runtime.state, target_strict=_target_strict, policy=_policy,
-            cycle_just_completed=_cycle_just_completed,
-        )
-        if auto_changed:
+        if _sync_auto_clusters_and_log(
+            plan,
+            runtime.state,
+            target_strict=target_strict,
+            policy=policy,
+            cycle_just_completed=cycle_just_completed,
+        ):
             dirty = True
-            append_log_entry(plan, "auto_cluster", actor="system",
-                             detail={"changes": True})
 
-        triage_sync = sync_triage_needed(plan, runtime.state)
-        if triage_sync.changes:
+        if _sync_triage_and_log(plan, runtime.state):
             dirty = True
-            if triage_sync.injected:
-                print(
-                    colorize(
-                        "  Plan: planning mode needed — review issues changed since last triage.",
-                        "cyan",
-                    )
-                )
-                append_log_entry(plan, "sync_triage", actor="system",
-                                 detail={"injected": True})
-
-        communicate_sync = sync_communicate_score_needed(plan, runtime.state, policy=_policy)
-        if communicate_sync.changes:
+        if _sync_communicate_score_and_log(plan, runtime.state, policy=policy):
             dirty = True
-            append_log_entry(plan, "sync_communicate_score", actor="system",
-                             detail={"injected": True})
-
-        create_plan_sync = sync_create_plan_needed(plan, runtime.state, policy=_policy)
-        if create_plan_sync.changes:
+        if _sync_create_plan_and_log(plan, runtime.state, policy=policy):
             dirty = True
-            if create_plan_sync.injected:
-                print(
-                    colorize(
-                        "  Plan: reviews complete — `workflow::create-plan` queued.",
-                        "cyan",
-                    )
-                )
-                append_log_entry(plan, "sync_create_plan", actor="system",
-                                 detail={"injected": True})
-
-        seeded = _seed_plan_start_scores(plan, runtime.state)
-        if seeded:
+        if _sync_plan_start_scores_and_log(plan, runtime.state):
             dirty = True
-            append_log_entry(plan, "seed_start_scores", actor="system",
-                             detail={})
-        # Only clear scores that existed before this reconcile pass —
-        # never clear scores we just seeded in the same scan.
-        if not seeded and _clear_plan_start_scores_if_queue_empty(runtime.state, plan):
-            dirty = True
-            append_log_entry(plan, "clear_start_scores", actor="system",
-                             detail={})
 
         if dirty:
             save_plan(plan, plan_path)

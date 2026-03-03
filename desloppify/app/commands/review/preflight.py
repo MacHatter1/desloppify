@@ -11,8 +11,8 @@ import re
 import sys
 
 from desloppify.core.exception_sets import CommandError
-from desloppify.core.output_api import colorize
-from desloppify.engine.work_queue import queue_context
+from desloppify.core.output import colorize
+from desloppify.engine._work_queue.context import queue_context
 from desloppify.state import StateModel, save_state
 
 from .helpers import parse_dimensions

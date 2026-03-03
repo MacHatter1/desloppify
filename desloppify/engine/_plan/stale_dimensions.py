@@ -13,12 +13,15 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass, field
 
+from desloppify.engine._plan.promoted_ids import promoted_insertion_index
 from desloppify.engine._plan.schema import PlanModel, ensure_plan_defaults
 from desloppify.engine._plan.subjective_policy import (
     NON_OBJECTIVE_DETECTORS,
     SubjectiveVisibility,
 )
 from desloppify.engine._state.schema import StateModel
+from desloppify.engine._work_queue.helpers import slugify
+from desloppify.engine.planning.scorecard_projection import all_subjective_entries
 
 SUBJECTIVE_PREFIX = "subjective::"
 TRIAGE_ID = "triage::pending"  # deprecated, kept for migration
@@ -73,11 +76,6 @@ class UnscoredDimensionSyncResult:
 
 def _current_stale_ids(state: StateModel) -> set[str]:
     """Return the set of ``subjective::<slug>`` IDs that are currently stale."""
-    from desloppify.engine._work_queue.helpers import slugify
-    from desloppify.engine.planning.scorecard_projection import (
-        all_subjective_entries,
-    )
-
     dim_scores = state.get("dimension_scores", {}) or {}
     if not dim_scores:
         return set()
@@ -99,8 +97,6 @@ def current_unscored_ids(state: StateModel) -> set[str]:
     (common before any reviews have been run), falls through to
     ``dimension_scores`` which carries placeholder metadata from scan.
     """
-    from desloppify.engine._work_queue.helpers import slugify
-
     # Primary source: subjective_assessments with placeholder=True
     assessments = state.get("subjective_assessments")
     if isinstance(assessments, dict) and assessments:
@@ -149,11 +145,6 @@ def current_under_target_ids(
     These are dimensions whose assessment is still current (not needing refresh)
     but whose score hasn't reached the target yet.
     """
-    from desloppify.engine._work_queue.helpers import slugify
-    from desloppify.engine.planning.scorecard_projection import (
-        all_subjective_entries,
-    )
-
     dim_scores = state.get("dimension_scores", {}) or {}
     if not dim_scores:
         return set()
@@ -175,26 +166,6 @@ def current_under_target_ids(
         if fid not in stale_ids and fid not in unscored_ids:
             under_target.add(fid)
     return under_target
-
-
-# ---------------------------------------------------------------------------
-# Promoted-aware insertion helper
-# ---------------------------------------------------------------------------
-
-def _after_promoted(order: list[str], plan: PlanModel) -> int:
-    """Return the insertion index just after the last promoted item in *order*.
-
-    When no promoted items are present (or none are in *order*), returns 0
-    so callers fall back to existing front-of-queue behavior.
-    """
-    promoted = set(plan.get("promoted_ids", []))
-    if not promoted:
-        return 0
-    last_idx = -1
-    for i, fid in enumerate(order):
-        if fid in promoted:
-            last_idx = i
-    return last_idx + 1 if last_idx >= 0 else 0
 
 
 # ---------------------------------------------------------------------------
@@ -233,7 +204,7 @@ def sync_unscored_dimensions(
 
     # --- Inject: prepend unscored IDs after any promoted items -------------
     existing = set(order)
-    insert_at = _after_promoted(order, plan)
+    insert_at = promoted_insertion_index(order, plan)
     for uid in reversed(sorted(unscored_ids)):
         if uid not in existing:
             order.insert(insert_at, uid)
@@ -315,7 +286,7 @@ def sync_stale_dimensions(
         if cycle_just_completed and has_real_items:
             # Post-cycle: front-of-queue after promoted items so subjective
             # review happens before the new objective cycle begins.
-            insert_at = _after_promoted(order, plan)
+            insert_at = promoted_insertion_index(order, plan)
             for sid in reversed(sorted(injectable_ids)):
                 if sid not in existing:
                     order.insert(insert_at, sid)
@@ -430,7 +401,7 @@ def sync_triage_needed(
 
         if new_since_triage:
             # New review issues appeared — re-triage needed
-            insert_at = _after_promoted(order, plan)
+            insert_at = promoted_insertion_index(order, plan)
             stage_names = ("observe", "reflect", "organize", "commit")
             existing = set(order)
             injected_count = 0

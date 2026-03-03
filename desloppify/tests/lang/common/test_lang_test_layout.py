@@ -14,7 +14,7 @@ try:
 except ImportError:
     setuptools = None  # type: ignore[assignment]
 
-from desloppify.core.text_api import PROJECT_ROOT
+from desloppify.core.text.text_api import get_project_root
 from desloppify.engine.policy.zones import FileZoneMap, Zone
 from desloppify.core.discovery_api import rel
 from desloppify.languages import available_langs, get_lang
@@ -28,7 +28,7 @@ def _full_langs() -> list[str]:
 
 
 def _load_pyproject() -> dict:
-    return tomllib.loads((PROJECT_ROOT / "pyproject.toml").read_text())
+    return tomllib.loads((get_project_root() / "pyproject.toml").read_text())
 
 
 def _lang_test_rel_path(lang: str) -> str:
@@ -58,7 +58,7 @@ def test_pyproject_excludes_tests_from_packages():
 
 def test_each_lang_has_colocated_tests_dir():
     for lang in _full_langs():
-        test_dir = PROJECT_ROOT / _lang_test_rel_path(lang)
+        test_dir = get_project_root() / _lang_test_rel_path(lang)
         assert test_dir.is_dir(), f"missing tests dir for {lang}: {test_dir}"
         init_file = test_dir / "__init__.py"
         assert init_file.is_file(), f"missing tests/__init__.py for {lang}"
@@ -67,7 +67,7 @@ def test_each_lang_has_colocated_tests_dir():
 def test_colocated_lang_tests_are_classified_as_test_zone():
     for lang in _full_langs():
         cfg = get_lang(lang)
-        test_dir = PROJECT_ROOT / _lang_test_rel_path(lang)
+        test_dir = get_project_root() / _lang_test_rel_path(lang)
         files = sorted(str(p) for p in test_dir.glob("test_*.py"))
         files += [str(test_dir / "__init__.py")]
         files = [f for f in files if Path(f).exists()]
@@ -99,7 +99,7 @@ def test_packaging_includes_lang_plugin_tests():
     excludes = find_cfg.get("exclude", [])
 
     pkgs = set(
-        setuptools.find_packages(str(PROJECT_ROOT), include=includes, exclude=excludes)
+        setuptools.find_packages(str(get_project_root()), include=includes, exclude=excludes)
     )
 
     missing = [
@@ -120,7 +120,7 @@ def test_packaging_includes_lang_plugin_tests():
 def test_validate_lang_structure_against_importlib_resolved_path():
     """validate_lang_structure passes at the path Python actually resolves.
 
-    test_each_lang_has_colocated_tests_dir checks PROJECT_ROOT, which always
+    test_each_lang_has_colocated_tests_dir checks get_project_root(), which always
     passes in source mode even after a bad wheel build. This test uses importlib
     to find where Python has actually resolved each language package — in a wheel
     install that excluded tests/, that's site-packages/desloppify/languages/{lang}/

@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
+from desloppify.app.commands.helpers.queue_progress import (
+    QueueBreakdown,
+    format_plan_delta,
+    format_queue_block,
+)
 from desloppify.app.commands.next_parts.render_support import (
     is_auto_fix_command,
     scorecard_subjective,
@@ -12,16 +15,14 @@ from desloppify.app.commands.next_parts.render_support import (
 from desloppify.app.commands.scan.scan_reporting_subjective import (
     build_subjective_followup,
 )
-from desloppify.engine.work_queue import ATTEST_EXAMPLE
+from desloppify.core.config import load_config
+from desloppify.engine._work_queue.core import ATTEST_EXAMPLE
 from desloppify.intelligence.integrity import (
     is_holistic_subjective_issue,
     unassessed_subjective_dimensions,
 )
-from desloppify.core.output_api import colorize, log
-from desloppify.scoring import compute_health_breakdown
-
-if TYPE_CHECKING:
-    from desloppify.app.commands.helpers.queue_progress import QueueBreakdown
+from desloppify.core.output import colorize, log
+from desloppify.engine._scoring.results.core import compute_health_breakdown
 
 
 def render_uncommitted_reminder(plan: dict | None) -> None:
@@ -29,8 +30,6 @@ def render_uncommitted_reminder(plan: dict | None) -> None:
     if plan is None:
         return
     try:
-        from desloppify.core.config import load_config
-
         config = load_config()
         if not config.get("commit_tracking_enabled", True):
             return
@@ -86,6 +85,157 @@ def render_single_item_resolution_hint(items: list[dict]) -> None:
     )
 
 
+def _render_frozen_queue_status(
+    *,
+    strict_score: float | None,
+    queue_total: int,
+    plan_start_strict: float | None,
+    breakdown: QueueBreakdown | None,
+) -> bool:
+    if queue_total <= 0 or plan_start_strict is None:
+        return False
+    if breakdown is not None:
+        block = format_queue_block(
+            breakdown, frozen_score=plan_start_strict, live_score=strict_score
+        )
+        print()
+        for text, style in block:
+            print(colorize(text, style))
+        print(colorize(
+            "  Score will not update until the queue is clear and you run `desloppify scan`.",
+            "dim",
+        ))
+        return True
+
+    delta_str = ""
+    if strict_score is not None:
+        delta_str = format_plan_delta(strict_score, plan_start_strict)
+    if delta_str:
+        score_line = (
+            f"\n  Score: strict {strict_score:.1f}/100 "
+            f"(plan start: {plan_start_strict:.1f}, {delta_str})"
+        )
+    else:
+        score_line = f"\n  Score (frozen at plan start): strict {plan_start_strict:.1f}/100"
+    print(colorize(score_line, "cyan"))
+    print(
+        colorize(
+            f"  Queue: {queue_total} item{'s' if queue_total != 1 else ''}"
+            " remaining. Score will not update until the queue is clear and you run `desloppify scan`.",
+            "dim",
+        )
+    )
+    return True
+
+
+def _render_north_star(
+    *,
+    strict_score: float | None,
+    target_strict_score: float,
+) -> None:
+    if strict_score is None:
+        return
+    gap = round(float(target_strict_score) - float(strict_score), 1)
+    if gap > 0:
+        print(
+            colorize(
+                f"\n  North star: strict {strict_score:.1f}/100 → target {target_strict_score:.1f} (+{gap:.1f} needed)",
+                "cyan",
+            )
+        )
+        return
+    print(
+        colorize(
+            f"\n  North star: strict {strict_score:.1f}/100 meets target {target_strict_score:.1f}",
+            "green",
+        )
+    )
+
+
+def _render_live_queue_block(
+    *,
+    breakdown: QueueBreakdown | None,
+    queue_total: int,
+    plan_start_strict: float | None,
+) -> None:
+    if breakdown is None or queue_total <= 0 or plan_start_strict is not None:
+        return
+    block = format_queue_block(breakdown)
+    for text, style in block:
+        print(colorize(text, style))
+
+
+def _objective_remaining(
+    queue_total: int,
+    breakdown: QueueBreakdown | None,
+) -> int:
+    if breakdown is None:
+        return max(0, queue_total)
+    return max(0, breakdown.queue_total - breakdown.subjective)
+
+
+def _render_subjective_bottleneck(dim_scores: dict) -> None:
+    try:
+        health_breakdown = compute_health_breakdown(dim_scores)
+        subjective_drag = sum(
+            float(e.get("overall_drag", 0) or 0)
+            for e in health_breakdown.get("entries", [])
+            if isinstance(e, dict) and e.get("component") == "subjective"
+        )
+        mechanical_drag = sum(
+            float(e.get("overall_drag", 0) or 0)
+            for e in health_breakdown.get("entries", [])
+            if isinstance(e, dict) and e.get("component") != "subjective"
+        )
+        if subjective_drag <= mechanical_drag or subjective_drag <= 5.0:
+            return
+        print(colorize(
+            f"\n  Subjective dimensions are the main bottleneck "
+            f"(-{subjective_drag:.0f} pts vs -{mechanical_drag:.0f} pts mechanical).",
+            "yellow",
+        ))
+        print(colorize(
+            "  Code fixes alone won't close the gap — run "
+            "`desloppify review --run-batches --runner codex --parallel --scan-after-import` "
+            "to re-score.",
+            "yellow",
+        ))
+    except (ImportError, TypeError, ValueError, KeyError) as exc:
+        log(f"  subjective bottleneck banner skipped: {exc}")
+
+
+def _subjective_summary_parts(
+    *,
+    followup,
+    unassessed_subjective: list[str],
+    subjective_entries: list[dict],
+    issues_scoped: dict,
+    coverage_open: int,
+) -> list[str]:
+    parts: list[str] = []
+    low_dims = len(followup.low_assessed)
+    unassessed_count = len(unassessed_subjective)
+    stale_count = sum(1 for entry in subjective_entries if entry.get("stale"))
+    open_review_count = sum(
+        1
+        for issue in issues_scoped.values()
+        if issue.get("status") == "open" and issue.get("detector") == "review"
+    )
+    if low_dims:
+        parts.append(f"{low_dims} dimension{'s' if low_dims != 1 else ''} below target")
+    if stale_count:
+        parts.append(f"{stale_count} stale")
+    if unassessed_count:
+        parts.append(f"{unassessed_count} unassessed")
+    if open_review_count:
+        parts.append(
+            f"{open_review_count} review issue{'s' if open_review_count != 1 else ''} open"
+        )
+    if coverage_open > 0:
+        parts.append(f"{coverage_open} file{'s' if coverage_open != 1 else ''} need review")
+    return parts
+
+
 def render_followup_nudges(
     state: dict,
     dim_scores: dict,
@@ -95,12 +245,8 @@ def render_followup_nudges(
     target_strict_score: float,
     queue_total: int = 0,
     plan_start_strict: float | None = None,
-    breakdown: "QueueBreakdown | None" = None,
+    breakdown: QueueBreakdown | None = None,
 ) -> None:
-    from desloppify.app.commands.helpers.queue_progress import (
-        format_queue_block,
-    )
-
     subjective_threshold = target_strict_score
     subjective_entries = scorecard_subjective(state, dim_scores)
     followup = build_subjective_followup(
@@ -111,88 +257,29 @@ def render_followup_nudges(
         max_integrity_items=5,
     )
     unassessed_subjective = unassessed_subjective_dimensions(dim_scores)
-    # Show frozen plan-start score + queue block when in an active cycle
-    if queue_total > 0 and plan_start_strict is not None and breakdown is not None:
-        frozen = plan_start_strict
-        block = format_queue_block(breakdown, frozen_score=frozen, live_score=strict_score)
-        print()
-        for text, style in block:
-            print(colorize(text, style))
-        print(colorize(
-            "  Score will not update until the queue is clear and you run `desloppify scan`.",
-            "dim",
-        ))
-    elif queue_total > 0 and plan_start_strict is not None:
-        from desloppify.app.commands.helpers.queue_progress import format_plan_delta
-        delta_str = format_plan_delta(strict_score, plan_start_strict) if strict_score is not None else ""
-        if delta_str:
-            score_line = f"\n  Score: strict {strict_score:.1f}/100 (plan start: {plan_start_strict:.1f}, {delta_str})"
-        else:
-            score_line = f"\n  Score (frozen at plan start): strict {plan_start_strict:.1f}/100"
-        print(colorize(score_line, "cyan"))
-        print(
-            colorize(
-                f"  Queue: {queue_total} item{'s' if queue_total != 1 else ''}"
-                " remaining. Score will not update until the queue is clear and you run `desloppify scan`.",
-                "dim",
-            )
+    rendered_frozen = _render_frozen_queue_status(
+        strict_score=strict_score,
+        queue_total=queue_total,
+        plan_start_strict=plan_start_strict,
+        breakdown=breakdown,
+    )
+    if not rendered_frozen:
+        _render_north_star(
+            strict_score=strict_score,
+            target_strict_score=target_strict_score,
         )
-    elif strict_score is not None:
-        gap = round(float(target_strict_score) - float(strict_score), 1)
-        if gap > 0:
-            print(
-                colorize(
-                    f"\n  North star: strict {strict_score:.1f}/100 → target {target_strict_score:.1f} (+{gap:.1f} needed)",
-                    "cyan",
-                )
-            )
-        else:
-            print(
-                colorize(
-                    f"\n  North star: strict {strict_score:.1f}/100 meets target {target_strict_score:.1f}",
-                    "green",
-                )
-            )
-    # Show queue block after north star when no frozen score
-    if breakdown is not None and queue_total > 0 and plan_start_strict is None:
-        block = format_queue_block(breakdown)
-        for text, style in block:
-            print(colorize(text, style))
+    _render_live_queue_block(
+        breakdown=breakdown,
+        queue_total=queue_total,
+        plan_start_strict=plan_start_strict,
+    )
 
     # Subjective bottleneck banner — only shown when the objective queue is
     # clear.  While objective items remain, the queue is the single authority
     # on what to work on next; no need to distract with subjective advice.
-    _objective_remaining = max(
-        0,
-        (breakdown.queue_total - breakdown.subjective) if breakdown else queue_total,
-    )
-    if strict_score is not None and dim_scores and _objective_remaining <= 0:
-        try:
-            health_breakdown = compute_health_breakdown(dim_scores)
-            subjective_drag = sum(
-                float(e.get("overall_drag", 0) or 0)
-                for e in health_breakdown.get("entries", [])
-                if isinstance(e, dict) and e.get("component") == "subjective"
-            )
-            mechanical_drag = sum(
-                float(e.get("overall_drag", 0) or 0)
-                for e in health_breakdown.get("entries", [])
-                if isinstance(e, dict) and e.get("component") != "subjective"
-            )
-            if subjective_drag > mechanical_drag and subjective_drag > 5.0:
-                print(colorize(
-                    f"\n  Subjective dimensions are the main bottleneck "
-                    f"(-{subjective_drag:.0f} pts vs -{mechanical_drag:.0f} pts mechanical).",
-                    "yellow",
-                ))
-                print(colorize(
-                    "  Code fixes alone won't close the gap — run "
-                    "`desloppify review --run-batches --runner codex --parallel --scan-after-import` "
-                    "to re-score.",
-                    "yellow",
-                ))
-        except (ImportError, TypeError, ValueError, KeyError) as exc:
-            log(f"  subjective bottleneck banner skipped: {exc}")
+    objective_remaining = _objective_remaining(queue_total, breakdown)
+    if strict_score is not None and dim_scores and objective_remaining <= 0:
+        _render_subjective_bottleneck(dim_scores)
 
     # Integrity penalty/warn lines preserved (anti-gaming safeguard, must remain visible).
     for style, message in followup.integrity_lines:
@@ -210,25 +297,13 @@ def render_followup_nudges(
     coverage_open, _coverage_reasons, _holistic_reasons = subjective_coverage_breakdown(
         issues_scoped
     )
-    parts: list[str] = []
-    low_dims = len(followup.low_assessed)
-    unassessed_count = len(unassessed_subjective)
-    stale_count = sum(1 for e in subjective_entries if e.get("stale"))
-    open_review = [
-        f for f in issues_scoped.values()
-        if f.get("status") == "open" and f.get("detector") == "review"
-    ]
-    if low_dims:
-        parts.append(f"{low_dims} dimension{'s' if low_dims != 1 else ''} below target")
-    if stale_count:
-        parts.append(f"{stale_count} stale")
-    if unassessed_count:
-        parts.append(f"{unassessed_count} unassessed")
-    if len(open_review):
-        parts.append(f"{len(open_review)} review issue{'s' if len(open_review) != 1 else ''} open")
-    if coverage_open > 0:
-        parts.append(f"{coverage_open} file{'s' if coverage_open != 1 else ''} need review")
-
+    parts = _subjective_summary_parts(
+        followup=followup,
+        unassessed_subjective=unassessed_subjective,
+        subjective_entries=subjective_entries,
+        issues_scoped=issues_scoped,
+        coverage_open=coverage_open,
+    )
     if parts:
         print(colorize(f"\n  Subjective: {', '.join(parts)}.", "cyan"))
         print(colorize("  Run `desloppify show subjective` for details.", "dim"))

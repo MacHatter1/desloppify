@@ -36,7 +36,7 @@ from desloppify.languages.typescript.phases import (
     TS_SKIP_DIRS,
     TS_SKIP_NAMES,
 )
-from desloppify.core.output_api import (
+from desloppify.core.output import (
     colorize,
     display_entries,
     print_table,

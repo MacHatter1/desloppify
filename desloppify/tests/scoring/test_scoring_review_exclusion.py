@@ -4,14 +4,12 @@ from __future__ import annotations
 
 import pytest
 
-from desloppify.scoring import (
-    SCORING_MODES,
-    compute_score_bundle,
+from desloppify.engine._scoring.policy.core import SCORING_MODES
+from desloppify.engine._scoring.results.core import compute_score_bundle
+from desloppify.engine._scoring.detection import (
     detector_pass_rate,
     detector_stats_by_mode,
 )
-
-
 def _issue(
     detector: str,
     *,

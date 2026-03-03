@@ -4,8 +4,32 @@ from __future__ import annotations
 
 from desloppify import state as state_mod
 from desloppify.app.commands.helpers.query import write_query
-from desloppify.core.output_api import colorize, print_table
-from desloppify.scoring import compute_health_breakdown
+from desloppify.core.output import colorize, print_table
+from desloppify.engine._scoring.results.core import compute_health_breakdown
+
+
+def _status_plan_payload(plan: dict | None) -> dict:
+    if not plan:
+        return {}
+    if not (plan.get("queue_order") or plan.get("clusters") or plan.get("skipped")):
+        return {}
+    return {
+        "plan": {
+            "active": True,
+            "focus": plan.get("active_cluster"),
+            "total_ordered": len(plan.get("queue_order", [])),
+            "total_skipped": len(plan.get("skipped", {})),
+            "plan_overrides_narrative": True,
+        }
+    }
+
+
+def _suppression_style(last_pct: float) -> str:
+    if last_pct >= 30:
+        return "red"
+    if last_pct >= 10:
+        return "yellow"
+    return "dim"
 
 
 def show_tier_progress_table(by_tier: dict) -> None:
@@ -88,19 +112,7 @@ def write_status_query(
             "score_breakdown": compute_health_breakdown(dim_scores) if dim_scores else None,
             "next_command": status_next_command(narrative),
             "narrative": narrative,
-            **(
-                {
-                    "plan": {
-                        "active": True,
-                        "focus": plan.get("active_cluster"),
-                        "total_ordered": len(plan.get("queue_order", [])),
-                        "total_skipped": len(plan.get("skipped", {})),
-                        "plan_overrides_narrative": True,
-                    }
-                }
-                if plan and (plan.get("queue_order") or plan.get("clusters") or plan.get("skipped"))
-                else {}
-            ),
+            **_status_plan_payload(plan),
         }
     )
 
@@ -116,7 +128,7 @@ def show_ignore_summary(ignores: list[str], suppression: dict) -> None:
     last_pct = float(suppression.get("last_suppressed_pct", 0.0) or 0.0)
 
     if last_raw > 0:
-        style = "red" if last_pct >= 30 else "yellow" if last_pct >= 10 else "dim"
+        style = _suppression_style(last_pct)
         print(
             colorize(
                 f"  Ignore suppression (last scan): {last_ignored}/{last_raw} issues hidden ({last_pct:.1f}%)",
@@ -145,4 +157,3 @@ __all__ = [
     "status_next_command",
     "write_status_query",
 ]
-

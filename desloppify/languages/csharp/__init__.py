@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from desloppify.core.text_api import get_area
+from desloppify.core.text.text_api import get_area
 from desloppify.engine.detectors.base import FunctionInfo
 from desloppify.engine.policy.zones import COMMON_ZONE_RULES, Zone, ZoneRule
 from desloppify.hook_registry import register_lang_hooks
@@ -34,7 +34,7 @@ from desloppify.languages.csharp.extractors import (
     extract_csharp_functions,
     find_csharp_files,
 )
-from desloppify.languages.csharp.phases import _phase_coupling, _phase_structural
+from desloppify.languages.csharp.phases import phase_coupling, phase_structural
 from desloppify.languages.csharp.review import (
     HOLISTIC_REVIEW_DIMENSIONS as CSHARP_HOLISTIC_REVIEW_DIMENSIONS,
 )
@@ -113,8 +113,8 @@ class CSharpConfig(LangConfig):
             entry_patterns=CSHARP_ENTRY_PATTERNS,
             barrel_names={"Program.cs"},
             phases=[
-                DetectorPhase("Structural analysis", _phase_structural),
-                DetectorPhase("Coupling + cycles + orphaned", _phase_coupling),
+                DetectorPhase("Structural analysis", phase_structural),
+                DetectorPhase("Coupling + cycles + orphaned", phase_coupling),
                 *all_treesitter_phases("csharp"),
                 detector_phase_signature(),
                 detector_phase_test_coverage(),
@@ -163,3 +163,43 @@ class CSharpConfig(LangConfig):
             extract_functions=_extract_csharp_functions,
             zone_rules=CSHARP_ZONE_RULES,
         )
+
+__all__ = [
+    "Path",
+    "get_area",
+    "FunctionInfo",
+    "COMMON_ZONE_RULES",
+    "Zone",
+    "ZoneRule",
+    "register_lang_hooks",
+    "register_lang",
+    "detector_phase_security",
+    "detector_phase_signature",
+    "detector_phase_test_coverage",
+    "shared_subjective_duplicates_tail",
+    "DetectorPhase",
+    "LangConfig",
+    "LangSecurityResult",
+    "LangValueSpec",
+    "all_treesitter_phases",
+    "csharp_move_helpers",
+    "csharp_test_coverage_hooks",
+    "get_detect_commands",
+    "build_csharp_dep_graph",
+    "detect_csharp_security",
+    "CSHARP_FILE_EXCLUSIONS",
+    "extract_csharp_functions",
+    "find_csharp_files",
+    "phase_coupling",
+    "phase_structural",
+    "CSHARP_HOLISTIC_REVIEW_DIMENSIONS",
+    "CSHARP_LOW_VALUE_PATTERN",
+    "CSHARP_MIGRATION_MIXED_EXTENSIONS",
+    "CSHARP_MIGRATION_PATTERN_PAIRS",
+    "CSHARP_REVIEW_GUIDANCE",
+    "csharp_review_api_surface",
+    "csharp_review_module_patterns",
+    "CSHARP_ENTRY_PATTERNS",
+    "CSHARP_ZONE_RULES",
+    "CSharpConfig",
+]

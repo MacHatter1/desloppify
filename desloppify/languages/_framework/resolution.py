@@ -12,6 +12,15 @@ from .discovery import load_all
 _MARKER_GLOB_CHARS = ("*", "?", "[")
 
 
+def _reset_dynamic_registries_for_refresh() -> None:
+    """Reset registries that plugins populate at import time."""
+    from desloppify.core.registry import reset_registered_detectors
+    from desloppify.engine._scoring.policy.core import reset_registered_scoring_policies
+
+    reset_registered_detectors()
+    reset_registered_scoring_policies()
+
+
 def make_lang_config(name: str, cfg_cls: type) -> LangConfig:
     """Instantiate and validate a language config."""
     try:
@@ -31,6 +40,7 @@ def get_lang(name: str, *, refresh_registry: bool = False) -> LangConfig:
     Test doubles that store plain classes are instantiated on demand as a fallback.
     """
     if refresh_registry:
+        _reset_dynamic_registries_for_refresh()
         load_all(force_reload=True)
     elif not registry_state.is_registered(name):
         load_all()
@@ -54,6 +64,8 @@ def auto_detect_lang(
     counts actual source files to pick the dominant language instead of relying
     on first-match ordering.
     """
+    if refresh_registry:
+        _reset_dynamic_registries_for_refresh()
     load_all(force_reload=refresh_registry)
     candidates: list[str] = []
     configs: dict[str, LangConfig] = {}
@@ -103,5 +115,7 @@ def _detect_marker_exists(project_root: Path, marker: str) -> bool:
 
 def available_langs(*, refresh_registry: bool = False) -> list[str]:
     """Return list of registered language names."""
+    if refresh_registry:
+        _reset_dynamic_registries_for_refresh()
     load_all(force_reload=refresh_registry)
     return sorted(registry_state.all_keys())

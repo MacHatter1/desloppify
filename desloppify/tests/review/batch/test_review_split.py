@@ -53,7 +53,7 @@ class TestSubmoduleImports:
             "desloppify.intelligence.review.prepare",
             "desloppify.intelligence.review.importing.per_file",
             "desloppify.intelligence.review.importing.holistic",
-            "desloppify.intelligence.review.importing.shared",
+            "desloppify.intelligence.review.importing.helpers",
             "desloppify.intelligence.review.remediation",
         ],
     )

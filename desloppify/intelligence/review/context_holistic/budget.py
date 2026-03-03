@@ -10,350 +10,49 @@ from pathlib import Path
 from desloppify.core.discovery_api import rel
 from desloppify.intelligence.review.context import file_excerpt
 
+from .budget_analysis import (
+    _count_signature_params,
+    _extract_type_names,
+    _score_clamped,
+    _strip_docstring,
+)
+from .budget_patterns import (
+    _census_type_strategies,
+    _collect_enum_defs,
+    _collect_typed_dict_defs,
+    _find_delegation_heavy_classes,
+    _find_dict_any_annotations,
+    _find_enum_bypass,
+    _find_facade_modules,
+    _find_python_passthrough_wrappers,
+    _find_typed_dict_usage_violations,
+)
+
+
 _DEF_SIGNATURE_RE = re.compile(
     r"(?:^|\n)\s*(?:async\s+def|def|async\s+function|function)\s+\w+\s*\(([^)]*)\)",
     re.MULTILINE,
 )
+
 _TS_PASSTHROUGH_RE = re.compile(
     r"\bfunction\s+(\w+)\s*\([^)]*\)\s*\{\s*return\s+(\w+)\s*\(",
     re.MULTILINE,
 )
+
 _INTERFACE_RE = re.compile(
     r"\binterface\s+([A-Za-z_]\w*)\b|\bclass\s+([A-Za-z_]\w*Protocol)\b"
 )
+
 _IMPLEMENTS_RE = re.compile(r"\bclass\s+\w+\s+implements\s+([^{:\n]+)")
+
 _INHERITS_RE = re.compile(r"\bclass\s+\w+\s*(?:\(([^)\n]+)\)\s*:|:\s*([^\n{]+))")
+
 _CHAIN_RE = re.compile(r"\b(?:\w+\.){2,}\w+\b")
+
 _CONFIG_BAG_RE = re.compile(
     r"\b(?:config|configs|options|opts|params|ctx|context)\b",
     re.IGNORECASE,
 )
-
-
-def _count_signature_params(params_blob: str) -> int:
-    """Best-effort parameter counting for function signatures."""
-    cleaned = params_blob.strip()
-    if not cleaned:
-        return 0
-    parts = [part.strip() for part in cleaned.split(",") if part.strip()]
-    filtered = [part for part in parts if part not in {"self", "cls", "this"}]
-    return len(filtered)
-
-
-def _extract_type_names(blob: str) -> list[str]:
-    """Extract candidate type names from implements/inherits blobs."""
-    names: list[str] = []
-    for raw in re.split(r"[,\s()]+", blob):
-        token = raw.strip()
-        if not token:
-            continue
-        token = token.split(".")[-1]
-        token = token.split("<")[0]
-        token = token.strip(":")
-        if not token or not re.match(r"^[A-Za-z_]\w*$", token):
-            continue
-        names.append(token)
-    return names
-
-
-def _score_clamped(raw: float) -> int:
-    """Clamp score-like values to [0, 100]."""
-    return int(max(0, min(100, round(raw))))
-
-
-def _strip_docstring(body: list[ast.stmt]) -> list[ast.stmt]:
-    """Strip a leading docstring from a function/method body."""
-    if (
-        body
-        and isinstance(body[0], ast.Expr)
-        and isinstance(body[0].value, ast.Constant)
-        and isinstance(body[0].value.value, str)
-    ):
-        return body[1:]
-    return body
-
-
-def _python_passthrough_target(stmt: ast.stmt) -> str | None:
-    """Return passthrough call target when stmt is `return target(...)`."""
-    if not isinstance(stmt, ast.Return):
-        return None
-    value = stmt.value
-    if not isinstance(value, ast.Call):
-        return None
-    target = value.func
-    if isinstance(target, ast.Name):
-        return target.id
-    return None
-
-
-def _find_python_passthrough_wrappers(tree: ast.Module) -> list[tuple[str, str]]:
-    """Find Python wrapper pairs via AST traversal."""
-    wrappers: list[tuple[str, str]] = []
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
-            continue
-
-        body = _strip_docstring(list(node.body))
-        if len(body) != 1:
-            continue
-
-        target_name = _python_passthrough_target(body[0])
-        if target_name and node.name != target_name:
-            wrappers.append((node.name, target_name))
-    return wrappers
-
-
-def _is_delegation_stmt(stmt: ast.stmt) -> str | None:
-    """Return the delegate attribute name if *stmt* is a pure delegation.
-
-    Matches patterns like:
-    - ``return self.x.method(...)``
-    - ``return self.x``  (property forwarding)
-    - ``self.x.method(...)``  (void delegation)
-    """
-    # Unwrap Expr nodes (void calls like ``self.x.do()``)
-    if isinstance(stmt, ast.Expr):
-        value = stmt.value
-    elif isinstance(stmt, ast.Return) and stmt.value is not None:
-        value = stmt.value
-    else:
-        return None
-
-    # ``self.x.method(...)`` or ``self.x(...)``
-    if isinstance(value, ast.Call):
-        value = value.func
-
-    # Walk the attribute chain to find ``self.<attr>``
-    node = value
-    depth = 0
-    while isinstance(node, ast.Attribute):
-        node = node.value
-        depth += 1
-    if depth < 1 or not isinstance(node, ast.Name) or node.id != "self":
-        return None
-
-    # The first attribute after self — walk back down from the outermost
-    # Attribute to find the one whose .value is the Name("self") node.
-    first = value
-    while isinstance(first, ast.Attribute) and isinstance(first.value, ast.Attribute):
-        first = first.value
-    if isinstance(first, ast.Attribute) and isinstance(first.value, ast.Name):
-        return first.attr
-    return None
-
-
-def _find_delegation_heavy_classes(tree: ast.Module) -> list[dict]:
-    """Find classes where most methods delegate to a single inner object."""
-    results: list[dict] = []
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.ClassDef):
-            continue
-
-        methods: list[ast.FunctionDef | ast.AsyncFunctionDef] = [
-            child
-            for child in node.body
-            if isinstance(child, ast.FunctionDef | ast.AsyncFunctionDef)
-            and child.name != "__init__"
-        ]
-        if len(methods) <= 3:
-            continue
-
-        # Track which methods delegate to which attribute
-        delegating_methods: dict[str, list[str]] = {}  # attr -> [method_names]
-        for method in methods:
-            body = _strip_docstring(list(method.body))
-            if len(body) != 1:
-                continue
-            attr = _is_delegation_stmt(body[0])
-            if attr:
-                delegating_methods.setdefault(attr, []).append(method.name)
-
-        if not delegating_methods:
-            continue
-
-        # Use the most common delegate target
-        top_attr = max(delegating_methods, key=lambda a: len(delegating_methods[a]))
-        delegate_count = len(delegating_methods[top_attr])
-        ratio = delegate_count / len(methods)
-        if ratio > 0.5:
-            results.append(
-                {
-                    "class_name": node.name,
-                    "line": node.lineno,
-                    "delegation_ratio": round(ratio, 2),
-                    "method_count": len(methods),
-                    "delegate_count": delegate_count,
-                    "delegate_target": top_attr,
-                    "sample_methods": delegating_methods[top_attr][:5],
-                }
-            )
-    return results
-
-
-def _find_facade_modules(tree: ast.Module, *, loc: int) -> dict | None:
-    """Detect modules where >70% of public names come from imports."""
-    import_names: set[str] = set()
-    defined_names: set[str] = set()
-
-    for node in ast.iter_child_nodes(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                name = alias.asname or alias.name.split(".")[-1]
-                import_names.add(name)
-        elif isinstance(node, ast.ImportFrom):
-            for alias in node.names:
-                if alias.name == "*":
-                    continue
-                name = alias.asname or alias.name
-                import_names.add(name)
-        elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
-            defined_names.add(node.name)
-        elif isinstance(node, ast.ClassDef):
-            defined_names.add(node.name)
-        elif isinstance(node, ast.Assign):
-            for target in node.targets:
-                if isinstance(target, ast.Name) and target.id == "__all__":
-                    continue
-                if isinstance(target, ast.Name):
-                    defined_names.add(target.id)
-
-    # Remove private names
-    public_imports = {n for n in import_names if not n.startswith("_")}
-    public_defs = {n for n in defined_names if not n.startswith("_")}
-
-    total_public = len(public_imports | public_defs)
-    if total_public < 3:
-        return None
-
-    # Re-exported = imported names that aren't shadowed by a local definition
-    re_exported = public_imports - public_defs
-    re_export_ratio = len(re_exported) / total_public
-
-    if re_export_ratio < 0.7 or len(public_defs) > 3:
-        return None
-
-    return {
-        "re_export_ratio": round(re_export_ratio, 2),
-        "defined_symbols": len(public_defs),
-        "re_exported_symbols": len(re_exported),
-        "samples": sorted(re_exported)[:5],
-        "loc": loc,
-    }
-
-
-def _collect_typed_dict_defs(
-    tree: ast.Module, accumulator: dict[str, set[str]]
-) -> None:
-    """Collect TypedDict class definitions from a single file's AST."""
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.ClassDef):
-            continue
-        is_typed_dict = any(
-            (isinstance(b, ast.Name) and b.id == "TypedDict")
-            or (isinstance(b, ast.Attribute) and b.attr == "TypedDict")
-            for b in node.bases
-        )
-        if not is_typed_dict:
-            continue
-        fields: set[str] = set()
-        for child in node.body:
-            if isinstance(child, ast.AnnAssign) and isinstance(child.target, ast.Name):
-                fields.add(child.target.id)
-        if fields:
-            accumulator[node.name] = fields
-
-
-_VIOLATION_METHODS = frozenset({"get", "setdefault", "pop"})
-
-
-def _find_typed_dict_usage_violations(
-    parsed_trees: dict[str, ast.Module],
-    typed_dicts: dict[str, set[str]],
-) -> list[dict]:
-    """Find .get()/.setdefault()/.pop() calls on TypedDict-annotated variables.
-
-    *parsed_trees* maps absolute file paths to pre-parsed ASTs (built during
-    the main collection loop to avoid redundant parses).
-
-    Returns a list of violation dicts with file, typed_dict_name, violation_type,
-    line, field (when extractable), and count.
-    """
-    if not typed_dicts:
-        return []
-
-    violations: list[dict] = []
-    for filepath, tree in parsed_trees.items():
-        rpath = rel(filepath)
-
-        # Collect variable names annotated with known TypedDict types
-        typed_vars: dict[str, str] = {}  # var_name -> TypedDict name
-        for node in ast.walk(tree):
-            if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
-                ann = node.annotation
-                ann_name = None
-                if isinstance(ann, ast.Name):
-                    ann_name = ann.id
-                elif isinstance(ann, ast.Attribute):
-                    ann_name = ann.attr
-                if ann_name in typed_dicts:
-                    typed_vars[node.target.id] = ann_name
-            # Also check function param annotations
-            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
-                for arg in node.args.args + node.args.kwonlyargs:
-                    ann = arg.annotation
-                    if ann is None:
-                        continue
-                    ann_name = None
-                    if isinstance(ann, ast.Name):
-                        ann_name = ann.id
-                    elif isinstance(ann, ast.Attribute):
-                        ann_name = ann.attr
-                    if ann_name in typed_dicts:
-                        typed_vars[arg.arg] = ann_name
-
-        if not typed_vars:
-            continue
-
-        # Scan for violation calls — collect per (td_name, method, field)
-        hits: list[tuple[str, str, str | None, int]] = []
-        for node in ast.walk(tree):
-            if not isinstance(node, ast.Call):
-                continue
-            func = node.func
-            if not isinstance(func, ast.Attribute):
-                continue
-            if func.attr not in _VIOLATION_METHODS:
-                continue
-            if not isinstance(func.value, ast.Name) or func.value.id not in typed_vars:
-                continue
-            td_name = typed_vars[func.value.id]
-            # Extract the field name from the first argument if it's a string constant
-            field: str | None = None
-            if node.args and isinstance(node.args[0], ast.Constant):
-                val = node.args[0].value
-                if isinstance(val, str):
-                    field = val
-            hits.append((td_name, func.attr, field, node.lineno))
-
-        # Group by (td_name, method, field) for compact reporting
-        groups: dict[tuple[str, str, str | None], list[int]] = {}
-        for td_name, method, field, lineno in hits:
-            groups.setdefault((td_name, method, field), []).append(lineno)
-
-        for (td_name, method, field), lines in groups.items():
-            entry: dict = {
-                "file": rpath,
-                "typed_dict_name": td_name,
-                "violation_type": method,
-                "line": lines[0],
-                "count": len(lines),
-            }
-            if field is not None:
-                entry["field"] = field
-            violations.append(entry)
-
-    return violations
-
 
 def _compute_sub_axes(
     *,
@@ -366,6 +65,8 @@ def _compute_sub_axes(
     facade_modules: list,
     typed_dict_violation_files: set,
     total_typed_dict_violations: int,
+    dict_any_count: int = 0,
+    enum_bypass_count: int = 0,
 ) -> dict[str, float]:
     """Compute all 6 sub-axis scores for the abstractions dimension."""
     abstraction_leverage = _score_clamped(
@@ -399,6 +100,8 @@ def _compute_sub_axes(
         100
         - (len(typed_dict_violation_files) * 6)
         - (total_typed_dict_violations * 1.5)
+        - (dict_any_count * 1.0)
+        - (enum_bypass_count * 2.0)
     )
     return {
         "abstraction_leverage": abstraction_leverage,
@@ -408,6 +111,80 @@ def _compute_sub_axes(
         "definition_directness": definition_directness,
         "type_discipline": type_discipline,
     }
+
+def _build_abstraction_leverage_context(
+    *,
+    util_files: list[dict],
+    wrappers_by_file: list[dict[str, object]],
+) -> dict[str, object]:
+    context: dict[str, object] = {}
+    if util_files:
+        context["util_files"] = sorted(util_files, key=lambda item: -item["loc"])[:20]
+    if wrappers_by_file:
+        context["pass_through_wrappers"] = wrappers_by_file[:20]
+    return context
+
+
+def _build_indirection_cost_context(
+    *,
+    indirection_hotspots: list[dict[str, object]],
+    wide_param_bags: list[dict[str, object]],
+) -> dict[str, object]:
+    context: dict[str, object] = {}
+    if indirection_hotspots:
+        context["indirection_hotspots"] = indirection_hotspots[:20]
+    if wide_param_bags:
+        context["wide_param_bags"] = wide_param_bags[:20]
+    return context
+
+
+def _build_interface_honesty_context(
+    *,
+    one_impl_interfaces: list[dict[str, object]],
+) -> dict[str, object]:
+    if one_impl_interfaces:
+        return {"one_impl_interfaces": one_impl_interfaces[:20]}
+    return {}
+
+
+def _build_delegation_density_context(
+    *,
+    delegation_classes: list[dict],
+) -> dict[str, object]:
+    if delegation_classes:
+        return {"delegation_heavy_classes": delegation_classes}
+    return {}
+
+
+def _build_definition_directness_context(
+    *,
+    facade_modules: list[dict],
+) -> dict[str, object]:
+    if facade_modules:
+        return {"facade_modules": facade_modules}
+    return {}
+
+
+def _build_type_discipline_context(
+    *,
+    typed_dict_violations: list[dict],
+    dict_any_annotations: list[dict] | None = None,
+    enum_bypass_patterns: list[dict] | None = None,
+    type_strategy_census: dict[str, list[dict]] | None = None,
+) -> dict[str, object]:
+    context: dict[str, object] = {}
+    if typed_dict_violations:
+        context["typed_dict_violations"] = typed_dict_violations
+    if dict_any_annotations:
+        context["dict_any_annotations"] = dict_any_annotations
+    if enum_bypass_patterns:
+        context["enum_bypass_patterns"] = enum_bypass_patterns
+    if type_strategy_census:
+        context["type_strategy_census"] = {
+            strategy: len(items)
+            for strategy, items in type_strategy_census.items()
+        }
+    return context
 
 
 def _assemble_context(
@@ -425,11 +202,14 @@ def _assemble_context(
     typed_dict_violations: list,
     total_typed_dict_violations: int,
     sub_axes: dict[str, float],
+    dict_any_annotations: list | None = None,
+    enum_bypass_patterns: list | None = None,
+    type_strategy_census: dict | None = None,
 ) -> dict:
     """Build the final context dict from collected data and sub-axis scores."""
-    util_files = sorted(util_files, key=lambda item: -item["loc"])[:20]
+    util_list = sorted(util_files, key=lambda item: -item["loc"])[:20]
     context: dict[str, object] = {
-        "util_files": util_files,
+        "util_files": util_list,
         "summary": {
             "wrapper_rate": round(wrapper_rate, 3),
             "total_wrappers": total_wrappers,
@@ -440,23 +220,42 @@ def _assemble_context(
             "delegation_heavy_class_count": len(delegation_classes),
             "facade_module_count": len(facade_modules),
             "typed_dict_violation_count": total_typed_dict_violations,
+            "dict_any_annotation_count": len(dict_any_annotations or []),
+            "enum_bypass_count": len(enum_bypass_patterns or []),
         },
         "sub_axes": sub_axes,
     }
-    if wrappers_by_file:
-        context["pass_through_wrappers"] = wrappers_by_file[:20]
-    if one_impl_interfaces:
-        context["one_impl_interfaces"] = one_impl_interfaces[:20]
-    if indirection_hotspots:
-        context["indirection_hotspots"] = indirection_hotspots[:20]
-    if wide_param_bags:
-        context["wide_param_bags"] = wide_param_bags[:20]
-    if delegation_classes:
-        context["delegation_heavy_classes"] = delegation_classes
-    if facade_modules:
-        context["facade_modules"] = facade_modules
-    if typed_dict_violations:
-        context["typed_dict_violations"] = typed_dict_violations
+
+    context.update(
+        _build_abstraction_leverage_context(
+            util_files=util_files,
+            wrappers_by_file=wrappers_by_file,
+        )
+    )
+    context.update(
+        _build_indirection_cost_context(
+            indirection_hotspots=indirection_hotspots,
+            wide_param_bags=wide_param_bags,
+        )
+    )
+    context.update(
+        _build_interface_honesty_context(one_impl_interfaces=one_impl_interfaces)
+    )
+    context.update(
+        _build_delegation_density_context(delegation_classes=delegation_classes)
+    )
+    context.update(
+        _build_definition_directness_context(facade_modules=facade_modules)
+    )
+    context.update(
+        _build_type_discipline_context(
+            typed_dict_violations=typed_dict_violations,
+            dict_any_annotations=dict_any_annotations,
+            enum_bypass_patterns=enum_bypass_patterns,
+            type_strategy_census=type_strategy_census,
+        )
+    )
+
     return context
 
 
@@ -589,6 +388,17 @@ def _abstractions_context(file_contents: dict[str, str]) -> dict:
     total_typed_dict_violations = sum(v.get("count", 1) for v in typed_dict_violations)
     typed_dict_violation_files = {v["file"] for v in typed_dict_violations}
 
+    # dict[str, Any] annotation scanner
+    all_td_names = set(typed_dict_defs.keys())
+    dict_any_annotations = _find_dict_any_annotations(parsed_trees, all_td_names)[:30]
+
+    # Enum bypass scanner
+    enum_defs = _collect_enum_defs(parsed_trees)
+    enum_bypass_patterns = _find_enum_bypass(parsed_trees, enum_defs)[:30]
+
+    # Type strategy census
+    type_strategy_census = _census_type_strategies(parsed_trees)
+
     # ── Sort ──────────────────────────────────────────────────
 
     wrappers_by_file.sort(key=lambda item: -int(item["count"]))
@@ -620,6 +430,8 @@ def _abstractions_context(file_contents: dict[str, str]) -> dict:
         facade_modules=facade_modules,
         typed_dict_violation_files=typed_dict_violation_files,
         total_typed_dict_violations=total_typed_dict_violations,
+        dict_any_count=len(dict_any_annotations),
+        enum_bypass_count=len(enum_bypass_patterns),
     )
 
     return _assemble_context(
@@ -636,8 +448,10 @@ def _abstractions_context(file_contents: dict[str, str]) -> dict:
         typed_dict_violations=typed_dict_violations,
         total_typed_dict_violations=total_typed_dict_violations,
         sub_axes=sub_axes,
+        dict_any_annotations=dict_any_annotations,
+        enum_bypass_patterns=enum_bypass_patterns,
+        type_strategy_census=type_strategy_census,
     )
-
 
 def _codebase_stats(file_contents: dict[str, str]) -> dict[str, int]:
     total_loc = sum(len(content.splitlines()) for content in file_contents.values())
@@ -645,3 +459,16 @@ def _codebase_stats(file_contents: dict[str, str]) -> dict[str, int]:
         "total_files": len(file_contents),
         "total_loc": total_loc,
     }
+
+__all__ = [
+    "_abstractions_context",
+    "_assemble_context",
+    "_build_abstraction_leverage_context",
+    "_build_definition_directness_context",
+    "_build_delegation_density_context",
+    "_build_indirection_cost_context",
+    "_build_interface_honesty_context",
+    "_build_type_discipline_context",
+    "_codebase_stats",
+    "_compute_sub_axes",
+]

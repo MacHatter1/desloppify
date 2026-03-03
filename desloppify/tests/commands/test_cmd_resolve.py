@@ -13,7 +13,7 @@ import desloppify.engine.plan as plan_mod
 import desloppify.intelligence.narrative as narrative_mod
 import desloppify.state as state_mod
 from desloppify.app.commands.resolve.cmd import cmd_suppress_pattern, cmd_resolve
-from desloppify.engine.work_queue import ATTEST_EXAMPLE
+from desloppify.engine._work_queue.core import ATTEST_EXAMPLE
 
 
 @pytest.fixture(autouse=True)

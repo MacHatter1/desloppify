@@ -17,7 +17,7 @@ from desloppify.app.commands.helpers.state import state_path
 from desloppify.core.discovery_api import rel
 from desloppify.intelligence import narrative as narrative_mod
 from desloppify.languages._framework.base.types import FixResult
-from desloppify.core.output_api import colorize
+from desloppify.core.output import colorize
 
 from .options import _COMMAND_POST_FIX
 

@@ -10,6 +10,8 @@ from desloppify import state as state_mod
 from desloppify.app.commands.helpers.runtime import command_runtime
 from desloppify.app.commands.helpers.state import require_completed_scan, state_path
 from desloppify.app.commands.plan._resolve import resolve_ids_from_patterns
+from desloppify.app.commands.plan.triage_playbook import TRIAGE_STAGE_DEPENDENCIES
+from desloppify.app.commands.resolve.cmd import cmd_resolve
 from desloppify.app.commands.resolve.selection import (
     show_attestation_requirement,
     show_note_length_requirement,
@@ -17,7 +19,7 @@ from desloppify.app.commands.resolve.selection import (
     validate_note_length,
 )
 from desloppify.core.exception_sets import PLAN_LOAD_EXCEPTIONS
-from desloppify.core.output_api import colorize
+from desloppify.core.output import colorize
 from desloppify.engine.plan import (
     annotate_issue,
     append_log_entry,
@@ -27,12 +29,22 @@ from desloppify.engine.plan import (
     load_plan,
     plan_path_for_state,
     purge_ids,
+    purge_uncommitted_ids,
     save_plan,
     set_focus,
     skip_items,
+    TRIAGE_IDS,
+    TRIAGE_STAGE_IDS,
     unskip_items,
 )
-from desloppify.engine.work_queue import ATTEST_EXAMPLE
+from desloppify.engine._plan.skip_policy import (
+    SKIP_KIND_LABELS,
+    skip_kind_from_flags,
+    skip_kind_requires_attestation,
+    skip_kind_requires_note,
+    skip_kind_state_status,
+)
+from desloppify.engine._work_queue.core import ATTEST_EXAMPLE
 from desloppify.core.discovery_api import safe_write_text
 
 
@@ -142,6 +154,54 @@ def cmd_plan_note(args: argparse.Namespace) -> None:
 # Skip / unskip
 # ---------------------------------------------------------------------------
 
+
+def _validate_skip_requirements(
+    *,
+    kind: str,
+    attestation: str | None,
+    note: str | None,
+) -> bool:
+    if not skip_kind_requires_attestation(kind):
+        return True
+    if not validate_attestation(attestation):
+        show_attestation_requirement(
+            "Permanent skip" if kind == "permanent" else "False positive",
+            attestation,
+            ATTEST_EXAMPLE,
+        )
+        return False
+    if skip_kind_requires_note(kind) and not note:
+        print(
+            colorize("  --permanent requires --note to explain the decision.", "yellow"),
+            file=sys.stderr,
+        )
+        return False
+    return True
+
+
+def _apply_state_skip_resolution(
+    *,
+    kind: str,
+    state_file: Path | None,
+    issue_ids: list[str],
+    note: str | None,
+    attestation: str | None,
+) -> dict | None:
+    status = skip_kind_state_status(kind)
+    if status is None:
+        return None
+    state_data = state_mod.load_state(state_file)
+    for fid in issue_ids:
+        state_mod.resolve_issues(
+            state_data,
+            fid,
+            status,
+            note or "",
+            attestation=attestation,
+        )
+    return state_data
+
+
 def cmd_plan_skip(args: argparse.Namespace) -> None:
     """Skip issues — unified command for temporary/permanent/false-positive."""
     runtime = command_runtime(args)
@@ -157,29 +217,13 @@ def cmd_plan_skip(args: argparse.Namespace) -> None:
     note: str | None = getattr(args, "note", None)
     attestation: str | None = getattr(args, "attest", None)
 
-    # Determine skip kind
-    if false_positive:
-        kind = "false_positive"
-    elif permanent:
-        kind = "permanent"
-    else:
-        kind = "temporary"
-
-    # Validate requirements for permanent/false_positive
-    if kind in ("permanent", "false_positive"):
-        if not validate_attestation(attestation):
-            show_attestation_requirement(
-                "Permanent skip" if kind == "permanent" else "False positive",
-                attestation,
-                ATTEST_EXAMPLE,
-            )
-            return
-        if kind == "permanent" and not note:
-            print(
-                colorize("  --permanent requires --note to explain the decision.", "yellow"),
-                file=sys.stderr,
-            )
-            return
+    kind = skip_kind_from_flags(permanent=permanent, false_positive=false_positive)
+    if not _validate_skip_requirements(
+        kind=kind,
+        attestation=attestation,
+        note=note,
+    ):
+        return
 
     state_file = runtime.state_path
     plan_file = _plan_file_for_state(state_file)
@@ -190,14 +234,13 @@ def cmd_plan_skip(args: argparse.Namespace) -> None:
         return
 
     # For permanent/false_positive: delegate to state layer for score impact
-    state_data: dict | None = None
-    if kind in ("permanent", "false_positive"):
-        state_data = state_mod.load_state(state_file)
-        status = "wontfix" if kind == "permanent" else "false_positive"
-        for fid in issue_ids:
-            state_mod.resolve_issues(
-                state_data, fid, status, note or "", attestation=attestation
-            )
+    state_data = _apply_state_skip_resolution(
+        kind=kind,
+        state_file=state_file,
+        issue_ids=issue_ids,
+        note=note,
+        attestation=attestation,
+    )
 
     scan_count = state.get("scan_count", 0)
     count = skip_items(
@@ -230,8 +273,7 @@ def cmd_plan_skip(args: argparse.Namespace) -> None:
     else:
         save_plan(plan, plan_file)
 
-    label = {"temporary": "Skipped", "permanent": "Wontfixed", "false_positive": "Marked false positive"}
-    print(colorize(f"  {label[kind]} {count} item(s).", "green"))
+    print(colorize(f"  {SKIP_KIND_LABELS[kind]} {count} item(s).", "green"))
     if review_after:
         print(colorize(f"  Will re-surface after {review_after} scan(s).", "dim"))
 
@@ -306,8 +348,7 @@ def cmd_plan_reopen(args: argparse.Namespace) -> None:
     plan = load_plan(plan_file)
 
     # Remove from commit tracking uncommitted list
-    from desloppify.engine.plan import purge_uncommitted_ids as _purge_uncommitted
-    _purge_uncommitted(plan, reopened)
+    purge_uncommitted_ids(plan, reopened)
 
     skipped = plan.get("skipped", {})
     count = 0
@@ -408,9 +449,6 @@ def _blocked_triage_stages(plan: dict) -> dict[str, list[str]]:
     Uses the dependency graph and confirmed-stage metadata directly —
     no state needed, no queue item construction.
     """
-    from desloppify.app.commands.plan.triage_playbook import TRIAGE_STAGE_DEPENDENCIES
-    from desloppify.engine.plan import TRIAGE_IDS, TRIAGE_STAGE_IDS
-
     order_set = set(plan.get("queue_order", []))
     present = order_set & TRIAGE_IDS
     if not present:
@@ -514,10 +552,6 @@ def cmd_plan_resolve(args: argparse.Namespace) -> None:
         save_plan(plan)
     except PLAN_LOAD_EXCEPTIONS as exc:
         print(colorize(f"  Note: unable to append plan resolve log entry ({exc}).", "dim"))
-
-    # Deferred import: cmd_resolve has a heavy import chain that isn't needed
-    # for synthetic-ID handling above.
-    from desloppify.app.commands.resolve.cmd import cmd_resolve
 
     # Build a Namespace that cmd_resolve expects
     resolve_args = argparse.Namespace(

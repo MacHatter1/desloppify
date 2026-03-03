@@ -13,13 +13,12 @@ from desloppify.engine.detectors.security import detect_security_issues
 from desloppify.engine.policy.zones import ZONE_POLICIES, FileZoneMap, Zone
 from desloppify.intelligence.narrative.headline import _compute_headline
 from desloppify.languages.typescript.detectors.security import detect_ts_security
-from desloppify.scoring import (
+from desloppify.engine._scoring.policy.core import (
     DIMENSIONS,
     FILE_BASED_DETECTORS,
     SECURITY_EXCLUDED_ZONES,
-    compute_dimension_scores,
 )
-
+from desloppify.engine._scoring.results.core import compute_dimension_scores
 # ── Helpers ──────────────────────────────────────────────────
 
 

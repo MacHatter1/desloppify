@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 import os
 
-from desloppify.core.text_api import PROJECT_ROOT
+from desloppify.core.text.text_api import get_project_root
 from desloppify.engine.policy.zones import FileZoneMap, Zone
 
 from .heuristics import _has_testable_logic, _is_runtime_entrypoint
@@ -17,7 +17,7 @@ _MAX_NO_TESTS_ENTRIES = 50
 
 def _normalize_graph_paths(graph: dict) -> dict:
     """Normalize graph paths to relative paths."""
-    root_prefix = str(PROJECT_ROOT) + os.sep
+    root_prefix = str(get_project_root()) + os.sep
 
     def _to_rel(path: str) -> str:
         return path[len(root_prefix) :] if path.startswith(root_prefix) else path
@@ -44,7 +44,7 @@ def _discover_scorable_and_tests(
     extra_test_files: set[str] | None,
 ) -> tuple[set[str], set[str], set[str], int]:
     """Return (production_files, test_files, scorable_files, potential)."""
-    root_prefix = str(PROJECT_ROOT) + os.sep
+    root_prefix = str(get_project_root()) + os.sep
 
     def _to_rel(path: str) -> str:
         return path[len(root_prefix) :] if path.startswith(root_prefix) else path

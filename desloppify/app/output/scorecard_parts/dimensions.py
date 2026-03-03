@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from desloppify.engine.planning.scorecard_policy import (
-    _DEFAULT_ELEGANCE_COMPONENTS,
-    _ELEGANCE_COMPONENTS_BY_LANG,
-    _SCORECARD_MAX_DIMENSIONS as SCORECARD_MAX_DIMENSIONS,
-    _SUBJECTIVE_SCORECARD_ORDER_BY_LANG,
-    _SUBJECTIVE_SCORECARD_ORDER_DEFAULT,
+    DEFAULT_ELEGANCE_COMPONENTS,
+    ELEGANCE_COMPONENTS_BY_LANG,
+    SCORECARD_MAX_DIMENSIONS,
+    SUBJECTIVE_SCORECARD_ORDER_BY_LANG,
+    SUBJECTIVE_SCORECARD_ORDER_DEFAULT,
 )
 
 
@@ -76,7 +76,7 @@ def collapse_elegance_dimensions(
 ) -> list[tuple[str, dict]]:
     """Collapse High/Mid/Low elegance rows into one aggregate display row."""
     component_names = set(
-        _ELEGANCE_COMPONENTS_BY_LANG.get(lang_key or "", _DEFAULT_ELEGANCE_COMPONENTS)
+        ELEGANCE_COMPONENTS_BY_LANG.get(lang_key or "", DEFAULT_ELEGANCE_COMPONENTS)
     )
     elegance_rows = [
         (name, data) for name, data in active_dims if name in component_names
@@ -162,9 +162,9 @@ def limit_scorecard_dimensions(
         return mechanical[:max_rows]
 
     budget = max_rows - len(mechanical)
-    preferred_order = _SUBJECTIVE_SCORECARD_ORDER_BY_LANG.get(
+    preferred_order = SUBJECTIVE_SCORECARD_ORDER_BY_LANG.get(
         lang_key or "",
-        _SUBJECTIVE_SCORECARD_ORDER_DEFAULT,
+        SUBJECTIVE_SCORECARD_ORDER_DEFAULT,
     )
 
     remaining = {name: (name, data) for name, data in subjective}

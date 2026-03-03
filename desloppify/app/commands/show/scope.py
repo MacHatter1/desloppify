@@ -2,16 +2,19 @@
 
 from __future__ import annotations
 
+from desloppify.engine._state.schema import StateModel
 from dataclasses import dataclass
+from typing import Any
 
-from desloppify import scoring as scoring_mod
 from desloppify import state as state_mod
 from desloppify.core import registry as registry_mod
-from desloppify.engine.work_queue import (
+from desloppify.engine._work_queue.core import (
     QueueBuildOptions,
     build_work_queue,
 )
-from desloppify.core.output_api import colorize
+from desloppify.engine._scoring.policy.core import DIMENSIONS
+from desloppify.engine._scoring.subjective.core import DISPLAY_NAMES
+from desloppify.core.output import colorize
 
 
 @dataclass(frozen=True)
@@ -41,7 +44,7 @@ def _resolve_mechanical_dimension(pattern: str, lowered: str) -> ResolvedEntity 
     if not detectors:
         return None
     dim_display = pattern
-    for dim in scoring_mod.DIMENSIONS:
+    for dim in DIMENSIONS:
         dim_lowered = dim.name.lower().replace(" ", "_")
         if dim.name.lower() == lowered or dim_lowered == lowered:
             dim_display = dim.name
@@ -58,9 +61,9 @@ def _resolve_mechanical_dimension(pattern: str, lowered: str) -> ResolvedEntity 
 def _resolve_subjective_dimension(
     pattern: str,
     lowered: str,
-    state: dict,
+    state: StateModel,
 ) -> ResolvedEntity | None:
-    display_name = scoring_mod.DISPLAY_NAMES.get(lowered)
+    display_name = DISPLAY_NAMES.get(lowered)
     if not display_name:
         for key in state.get("dimension_scores") or {}:
             if key.lower().replace(" ", "_") == lowered:
@@ -81,7 +84,7 @@ def _resolve_subjective_dimension(
     )
 
 
-def resolve_entity(pattern: str, state: dict) -> ResolvedEntity:
+def resolve_entity(pattern: str, state: StateModel) -> ResolvedEntity:
     """Classify a user pattern as a dimension, special view, or passthrough.
 
     Resolution priority:
@@ -118,7 +121,7 @@ def resolve_entity(pattern: str, state: dict) -> ResolvedEntity:
 def _build_dimension_lookup() -> dict[str, list[str]]:
     """Build a map from dimension name/key (lowered) to detector names."""
     lookup: dict[str, list[str]] = {}
-    for dim in scoring_mod.DIMENSIONS:
+    for dim in DIMENSIONS:
         detectors = list(dim.detectors) if hasattr(dim, "detectors") else []
         lookup[dim.name.lower()] = detectors
         # Also index by underscore key: "file_health" -> detectors
@@ -126,11 +129,11 @@ def _build_dimension_lookup() -> dict[str, list[str]]:
         if key not in lookup:
             lookup[key] = detectors
     # Also add DISPLAY_NAMES reverse lookup (e.g. "abstraction_fit" -> "Abstraction Fit")
-    for key, display in scoring_mod.DISPLAY_NAMES.items():
+    for key, display in DISPLAY_NAMES.items():
         normalized_key = key.lower().replace(" ", "_")
         normalized_display = display.lower()
         # Find which dimension this belongs to via get_dimension_for_detector or direct name match
-        for dim in scoring_mod.DIMENSIONS:
+        for dim in DIMENSIONS:
             dim_lower = dim.name.lower()
             if normalized_display == dim_lower or normalized_key == dim_lower.replace(" ", "_"):
                 detectors = list(dim.detectors) if hasattr(dim, "detectors") else []
@@ -142,8 +145,8 @@ def _build_dimension_lookup() -> dict[str, list[str]]:
 
 
 def _lookup_dimension_score(
-    state: dict, display_name: str,
-) -> tuple[dict, str]:
+    state: StateModel, display_name: str,
+) -> tuple[dict[str, Any], str]:
     """Find dimension_scores entry with case-insensitive fallback.
 
     Returns (dim_data_dict, resolved_display_name).
@@ -188,12 +191,12 @@ def resolve_show_scope(args) -> tuple[bool, str | None, str, str | None]:
 
 
 def load_matches(
-    state: dict,
+    state: StateModel,
     *,
     scope: str | None,
     status_filter: str,
     chronic: bool,
-) -> list[dict]:
+) -> list[dict[str, Any]]:
     """Load matching issues from the ranked queue."""
     queue = build_work_queue(
         state,
@@ -208,7 +211,12 @@ def load_matches(
     return [item for item in queue.get("items", []) if item.get("kind") == "issue"]
 
 
-def resolve_noise(config: dict, matches: list[dict], *, no_budget: bool = False):
+def resolve_noise(
+    config: dict[str, Any],
+    matches: list[dict[str, Any]],
+    *,
+    no_budget: bool = False,
+) -> tuple[list[dict[str, Any]], dict[str, int], int, int, str | None]:
     """Apply detector/global noise budget to show matches.
 
     When *no_budget* is True, all matches are surfaced (nothing hidden).

@@ -2,21 +2,22 @@
 
 from __future__ import annotations
 
+from desloppify.engine._state.schema import StateModel
 from pathlib import Path
 from typing import Any
 
 
-def empty_plan(state: dict[str, Any], lang_name: str) -> str:
+def render_empty_remediation_plan(state: StateModel, lang_name: str) -> str:
     """Build the empty remediation plan output."""
     from desloppify.intelligence.review._prepare.remediation_engine import (
-        empty_plan as _empty_plan,
+        render_empty_remediation_plan as _render_empty_remediation_plan,
     )
 
-    return _empty_plan(state, lang_name)
+    return _render_empty_remediation_plan(state, lang_name)
 
 
 def generate_remediation_plan(
-    state: dict[str, Any],
+    state: StateModel,
     lang_name: str,
     *,
     output_path: Path | None = None,
@@ -33,4 +34,4 @@ def generate_remediation_plan(
     )
 
 
-__all__ = ["empty_plan", "generate_remediation_plan"]
+__all__ = ["generate_remediation_plan", "render_empty_remediation_plan"]

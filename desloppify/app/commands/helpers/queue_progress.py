@@ -2,15 +2,20 @@
 
 from __future__ import annotations
 
+import importlib
 import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from desloppify import state as state_mod
 from desloppify.core.exception_sets import PLAN_LOAD_EXCEPTIONS
-from desloppify.core.output_api import colorize
+from desloppify.core.output import colorize
+from desloppify.engine._work_queue import core as work_queue_core_mod
+from desloppify.engine._work_queue.helpers import is_subjective_queue_item
+from desloppify.engine._work_queue.plan_order import collapse_clusters
+from desloppify.engine import plan as plan_mod
 
 _logger = logging.getLogger(__name__)
-from desloppify.engine.work_queue import is_subjective_queue_item
 
 if TYPE_CHECKING:
     from desloppify.engine._work_queue.context import QueueContext
@@ -55,14 +60,11 @@ def plan_aware_queue_breakdown(
     When *context* is provided, its ``plan`` and ``policy`` are forwarded to
     ``build_work_queue`` so the counts agree with the caller's resolution.
     """
-    from desloppify.engine._work_queue.plan_order import collapse_clusters
-    from desloppify.engine.work_queue import QueueBuildOptions, build_work_queue
-
     effective_plan = context.plan if context is not None else plan
 
-    result = build_work_queue(
+    result = work_queue_core_mod.build_work_queue(
         state,
-        options=QueueBuildOptions(
+        options=work_queue_core_mod.QueueBuildOptions(
             status="open",
             count=None,
             plan=effective_plan if context is None else None,
@@ -352,17 +354,17 @@ def print_execution_or_reveal(
         objective_remaining = remaining - breakdown.subjective - breakdown.workflow
         if objective_remaining > 0:
             # Compute live score for delta display alongside frozen
-            from desloppify import state as state_mod
             print_frozen_score_with_queue_context(
                 plan, remaining, breakdown=breakdown,
-                live_score=state_mod.get_strict_score(state),
+                live_score=state_mod.score_snapshot(state).strict,
             )
             return
 
     # Live scores (or phase transition): show current scores
-    from desloppify.app.commands.helpers.score_update import print_score_update
-
-    print_score_update(state, prev)
+    score_update_mod = importlib.import_module(
+        "desloppify.app.commands.helpers.score_update"
+    )
+    score_update_mod.print_score_update(state, prev)
 
     # Phase transition: objective drained but subjective/workflow remains
     if remaining > 0 and frozen_strict is not None:
@@ -375,10 +377,8 @@ def show_score_with_plan_context(state: dict, prev) -> None:
     Encapsulates the common load_plan + PLAN_LOAD_EXCEPTIONS + reveal
     choreography so command modules don't each repeat it.
     """
-    from desloppify.engine.plan import load_plan
-
     try:
-        plan = load_plan()
+        plan = plan_mod.load_plan()
     except PLAN_LOAD_EXCEPTIONS:
         plan = None
     print_execution_or_reveal(state, prev, plan)

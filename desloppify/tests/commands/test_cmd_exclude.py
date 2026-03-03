@@ -1,10 +1,10 @@
-"""Tests for desloppify.app.commands.exclude_cmd."""
+"""Tests for desloppify.app.commands.exclude."""
 
 from __future__ import annotations
 
 from types import SimpleNamespace
 
-import desloppify.app.commands.exclude_cmd as exclude_mod
+import desloppify.app.commands.exclude as exclude_mod
 from desloppify.app.commands.helpers.runtime import CommandRuntime
 
 

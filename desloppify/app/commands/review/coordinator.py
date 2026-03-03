@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from desloppify.engine._state.schema import StateModel
 import json
 import subprocess  # nosec
 from hashlib import sha256
@@ -204,7 +205,7 @@ def _git_drift_reasons(
 
 def build_review_packet_payload(
     *,
-    state: dict[str, Any],
+    state: StateModel,
     lang,
     config: dict[str, Any],
     context: ReviewPacketContext,
@@ -257,7 +258,7 @@ def write_review_packet_snapshot(
 
 def prepare_review_packet_snapshot(
     *,
-    state: dict[str, Any],
+    state: StateModel,
     lang,
     config: dict[str, Any],
     context: ReviewPacketContext,

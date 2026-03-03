@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from desloppify.engine._state.schema import StateModel
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -51,7 +52,7 @@ def resolve_review_packet_context(args: Any) -> ReviewPacketContext:
 
 def build_holistic_packet(
     *,
-    state: dict[str, Any],
+    state: StateModel,
     lang: Any,
     config: dict[str, Any],
     context: ReviewPacketContext,

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from desloppify.state import StateModel, get_strict_score
+from desloppify.state import StateModel, score_snapshot
 
 from ._constants import _history_strict
 
@@ -54,7 +54,7 @@ def _detect_milestone(
     state: StateModel, _diff: dict | None, history: list[dict],
 ) -> str | None:
     """Detect notable milestones worth celebrating."""
-    strict_score = get_strict_score(state)
+    strict_score = score_snapshot(state).strict
     stats = state.get("stats", {})
 
     # Check T1 clear

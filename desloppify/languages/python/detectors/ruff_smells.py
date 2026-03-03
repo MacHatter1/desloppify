@@ -31,7 +31,7 @@ import subprocess
 from collections import defaultdict
 from pathlib import Path
 
-from desloppify.core.text_api import PROJECT_ROOT
+from desloppify.core.text.text_api import get_project_root
 from desloppify.core.discovery_api import (
     collect_exclude_dirs as _collect_exclude_dirs,
 )
@@ -95,7 +95,7 @@ def detect_with_ruff_smells(path: Path) -> list[dict] | None:
             cmd,
             capture_output=True,
             text=True,
-            cwd=PROJECT_ROOT,
+            cwd=get_project_root(),
             timeout=60,
         )
     except FileNotFoundError:

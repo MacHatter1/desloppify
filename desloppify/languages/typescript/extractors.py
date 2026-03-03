@@ -5,7 +5,7 @@ import logging
 import re
 from pathlib import Path
 
-from desloppify.core.text_api import PROJECT_ROOT
+from desloppify.core.text.text_api import get_project_root
 from desloppify.engine.detectors.base import FunctionInfo
 from desloppify.languages.typescript.extractors_components import (
     detect_passthrough_components,
@@ -102,7 +102,7 @@ def extract_ts_functions(filepath: str) -> list[FunctionInfo]:
     Uses brace-tracking to determine function boundaries.
     Returns FunctionInfo with normalized body and hash for comparison.
     """
-    p = Path(filepath) if Path(filepath).is_absolute() else PROJECT_ROOT / filepath
+    p = Path(filepath) if Path(filepath).is_absolute() else get_project_root() / filepath
     try:
         content = p.read_text()
     except (OSError, UnicodeDecodeError) as exc:

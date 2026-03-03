@@ -12,18 +12,19 @@ from pathlib import Path
 from typing import Any
 
 from desloppify.app.commands.helpers.query import write_query
-from . import runner_helpers as runner_helpers_mod
 from .runtime import setup_lang_concrete
 from desloppify.core.coercions_api import coerce_positive_int
 from desloppify.core.discovery_api import safe_write_text
 from desloppify.intelligence import narrative as narrative_mod
 from desloppify.intelligence import review as review_mod
 from desloppify.core.exception_sets import CommandError
-from desloppify.core.output_api import colorize
+from desloppify.core.output import colorize
 
 from .helpers import parse_dimensions
 from .import_cmd import do_import, do_validate_import
 from .batch import FOLLOWUP_SCAN_TIMEOUT_SECONDS
+from .runner_packets import run_stamp, sha256_file, write_packet_snapshot
+from .runner_process import FollowupScanDeps, run_followup_scan
 from .runtime_paths import (
     blind_packet_path as _blind_packet_path,
     external_session_root as _external_session_root,
@@ -58,7 +59,7 @@ def _parse_iso(raw: object) -> datetime | None:
 
 
 def _session_id() -> str:
-    return f"ext_{runner_helpers_mod.run_stamp()}_{secrets.token_hex(4)}"
+    return f"ext_{run_stamp()}_{secrets.token_hex(4)}"
 
 
 def _session_dir(session_id: str) -> Path:
@@ -149,9 +150,9 @@ def _prepare_packet_snapshot(
     packet["next_command"] = next_command
     write_query(packet)
 
-    stamp = runner_helpers_mod.run_stamp()
+    stamp = run_stamp()
     blind_packet_path = _blind_packet_path()
-    packet_path, blind_path = runner_helpers_mod.write_packet_snapshot(
+    packet_path, blind_path = write_packet_snapshot(
         packet,
         stamp=stamp,
         review_packet_dir=_review_packet_dir(),
@@ -228,7 +229,7 @@ def do_external_start(args, state, lang, *, config: dict[str, Any] | None = None
         lang,
         config=config,
     )
-    packet_hash = runner_helpers_mod.sha256_file(blind_path)
+    packet_hash = sha256_file(blind_path)
     if not isinstance(packet_hash, str):
         raise CommandError(f"Error: failed to hash blind packet: {blind_path}")
 
@@ -419,7 +420,7 @@ def do_external_submit(
     raw_payload = _load_json_object(issues_path, label="external issues")
     canonical_payload = _canonical_external_payload(raw_payload, session=session)
 
-    stamp = runner_helpers_mod.run_stamp()
+    stamp = run_stamp()
     session_dir = session_path.parent
     canonical_path = session_dir / f"canonical_import_{stamp}.json"
     safe_write_text(canonical_path, json.dumps(canonical_payload, indent=2) + "\n")
@@ -453,10 +454,10 @@ def do_external_submit(
     safe_write_text(session_path, json.dumps(session, indent=2) + "\n")
 
     if scan_after_import:
-        code = runner_helpers_mod.run_followup_scan(
+        code = run_followup_scan(
             lang_name=lang.name,
             scan_path=scan_path,
-            deps=runner_helpers_mod.FollowupScanDeps(
+            deps=FollowupScanDeps(
                 project_root=_runtime_project_root(),
                 timeout_seconds=FOLLOWUP_SCAN_TIMEOUT_SECONDS,
                 python_executable=sys.executable,

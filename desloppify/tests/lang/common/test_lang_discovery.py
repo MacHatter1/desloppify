@@ -7,7 +7,7 @@ import importlib
 import pytest
 
 import desloppify.core.registry as core_registry_mod
-import desloppify.scoring as scoring_mod
+import desloppify.engine._scoring.policy.core as scoring_policy_mod
 from desloppify.languages import discovery as discovery_mod
 from desloppify.languages import registry_state
 from desloppify.languages._framework.discovery import load_all, raise_load_errors
@@ -51,7 +51,7 @@ def test_load_all_uses_plugin_file_naming_convention(monkeypatch, tmp_path):
     assert len(imported) == 1
 
 
-def test_load_all_force_reload_resets_runtime_registries_and_reimports(monkeypatch, tmp_path):
+def test_load_all_force_reload_reimports_without_reset_side_effects(monkeypatch, tmp_path):
     plugin_file = tmp_path / "plugin_go.py"
     plugin_file.write_text("# plugin placeholder\n")
 
@@ -74,24 +74,27 @@ def test_load_all_force_reload_resets_runtime_registries_and_reimports(monkeypat
         lambda: reset_calls.append("detectors"),
     )
     monkeypatch.setattr(
-        scoring_mod,
+        scoring_policy_mod,
         "reset_registered_scoring_policies",
         lambda: reset_calls.append("scoring"),
     )
     registry_state.set_load_attempted(True)
     registry_state.set_load_errors({".stale": RuntimeError("old")})
 
-    load_all(force_reload=True)
+    try:
+        load_all(force_reload=True)
 
-    assert reset_calls == ["detectors", "scoring"]
-    assert ".plugin_go" in imported
-    assert registry_state.was_load_attempted() is True
-    assert registry_state.get_load_errors() == {}
-
-    # Restore registry contents cleared by force_reload.
-    for name, cfg in saved_registry.items():
-        if not registry_state.is_registered(name):
-            registry_state.register(name, cfg)
+        # force_reload should only clear/reload language discovery state;
+        # registry resets are now explicit at call sites.
+        assert reset_calls == []
+        assert ".plugin_go" in imported
+        assert registry_state.was_load_attempted() is True
+        assert registry_state.get_load_errors() == {}
+    finally:
+        # Restore registry contents cleared by force_reload.
+        for name, cfg in saved_registry.items():
+            if not registry_state.is_registered(name):
+                registry_state.register(name, cfg)
 
 
 def test_discovery_module_exports_expected_callables():

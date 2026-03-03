@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from desloppify.core.text_api import PROJECT_ROOT
+from desloppify.core.text.text_api import get_project_root
 from desloppify.core.config import (
     MAX_TARGET_STRICT_SCORE,
     MIN_TARGET_STRICT_SCORE,
@@ -21,9 +21,8 @@ from desloppify.intelligence.narrative.types import (
 from desloppify.state import (
     Issue,
     StateModel,
-    get_overall_score,
-    get_strict_score,
     path_scoped_issues,
+    score_snapshot as state_score_snapshot,
 )
 
 _RISK_SEVERITY_ORDER = {
@@ -148,7 +147,7 @@ def resolve_badge_path(project_root: Path) -> tuple[str, Path]:
 
 def compute_badge_status() -> BadgeStatus:
     """Check configured scorecard path and whether README references it."""
-    project_root = PROJECT_ROOT
+    project_root = get_project_root()
     scorecard_rel, scorecard_path = resolve_badge_path(project_root)
     generated = scorecard_path.exists()
 
@@ -274,7 +273,8 @@ def scoped_issues(state: StateModel) -> dict[str, Issue]:
 
 
 def score_snapshot(state: StateModel) -> tuple[float | None, float | None]:
-    return get_strict_score(state), get_overall_score(state)
+    scores = state_score_snapshot(state)
+    return scores.strict, scores.overall
 
 
 __all__ = [
@@ -290,4 +290,3 @@ __all__ = [
     "score_snapshot",
     "scoped_issues",
 ]
-

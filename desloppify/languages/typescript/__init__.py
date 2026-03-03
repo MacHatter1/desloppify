@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from desloppify.core.text_api import get_area
+from desloppify.core.text.text_api import get_area
 from desloppify.core.source_discovery import find_ts_files
 from desloppify.engine.detectors.base import FunctionInfo
 from desloppify.engine.policy.zones import COMMON_ZONE_RULES, Zone, ZoneRule
@@ -300,3 +300,55 @@ class TypeScriptConfig(LangConfig):
             extract_functions=_ts_extract_functions,
             zone_rules=TS_ZONE_RULES,
         )
+
+__all__ = [
+    "Path",
+    "get_area",
+    "find_ts_files",
+    "FunctionInfo",
+    "COMMON_ZONE_RULES",
+    "Zone",
+    "ZoneRule",
+    "register_lang_hooks",
+    "register_lang",
+    "detector_phase_security",
+    "detector_phase_signature",
+    "detector_phase_test_coverage",
+    "shared_subjective_duplicates_tail",
+    "BoundaryRule",
+    "DetectorPhase",
+    "FixerConfig",
+    "FixResult",
+    "LangConfig",
+    "LangSecurityResult",
+    "make_cohesion_phase",
+    "ts_commands_mod",
+    "ts_fixers_mod",
+    "ts_test_coverage_hooks",
+    "deps_detector_mod",
+    "logs_detector_mod",
+    "smells_detector_mod",
+    "unused_detector_mod",
+    "detect_ts_security_result",
+    "extract_ts_functions",
+    "TS_COMPLEXITY_SIGNALS",
+    "TS_GOD_RULES",
+    "TS_SKIP_DIRS",
+    "TS_SKIP_NAMES",
+    "phase_coupling",
+    "phase_deprecated",
+    "phase_exports",
+    "phase_logs",
+    "phase_smells",
+    "phase_structural",
+    "phase_unused",
+    "TS_HOLISTIC_REVIEW_DIMENSIONS",
+    "TS_LOW_VALUE_PATTERN",
+    "TS_MIGRATION_MIXED_EXTENSIONS",
+    "TS_MIGRATION_PATTERN_PAIRS",
+    "TS_REVIEW_GUIDANCE",
+    "ts_review_api_surface",
+    "ts_review_module_patterns",
+    "TS_ZONE_RULES",
+    "TypeScriptConfig",
+]

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import desloppify.app.commands.exclude_cmd as exclude_cmd_mod
+import desloppify.app.commands.exclude as exclude_cmd_mod
 import desloppify.app.commands.plan._resolve as plan_resolve_mod
 import desloppify.app.commands.plan.cluster_handlers as plan_cluster_handlers_mod
 import desloppify.app.commands.plan.cmd as plan_cmd_mod
@@ -20,7 +20,7 @@ import desloppify.app.commands.scan.scan_reporting_text as scan_reporting_text_m
 import desloppify.app.commands.scan.scan_wontfix as scan_wontfix_mod
 import desloppify.core.coercions_api as coercions_api_mod
 import desloppify.core.enums as enums_mod
-import desloppify.core.query_paths as query_paths_mod
+import desloppify.core.search.search_query_paths as query_paths_mod
 import desloppify.engine.planning.scorecard_policy as scorecard_policy_mod
 import desloppify.engine.planning.triage as planning_triage_mod
 import desloppify.languages._framework.scaffold_move as scaffold_move_mod
@@ -54,7 +54,7 @@ def test_direct_coverage_scan_plan_go_modules_smoke():
     assert callable(go_commands_mod.get_detect_commands)
     assert callable(go_deps_mod.build_dep_graph)
     assert callable(go_move_mod.find_replacements)
-    assert callable(go_phases_mod._phase_structural)
+    assert callable(go_phases_mod.phase_structural)
     assert callable(go_review_mod.api_surface)
     assert callable(resolve_apply_mod._resolve_all_patterns)
     assert callable(resolve_cmd_mod.cmd_resolve)
