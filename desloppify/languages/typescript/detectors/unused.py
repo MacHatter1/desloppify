@@ -12,14 +12,14 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-from desloppify.core.discovery_api import (
+from desloppify.core.discovery.api import (
     find_ts_files,
     read_file_text,
     rel,
     resolve_path,
     safe_write_text,
 )
-from desloppify.core.output import colorize, print_table
+from desloppify.core.output.terminal import colorize, print_table
 from desloppify.core.text.text_api import get_project_root, strip_c_style_comments
 
 TS6133_RE = re.compile(

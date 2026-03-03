@@ -13,17 +13,17 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+import desloppify.app.commands.review.batch.scope as review_scope_mod
 import desloppify.app.commands.review.runner_failures as runner_failures_mod
 import desloppify.app.commands.review.runner_packets as runner_packets_mod
 import desloppify.app.commands.review.runner_parallel as runner_parallel_mod
 import desloppify.app.commands.review.runner_process as runner_process_mod
 from desloppify import state as state_mod
-from desloppify.app.commands.review import batches_scope as review_scope_mod
-from desloppify.app.commands.review.batch import (
+from desloppify.app.commands.review.batch.orchestrator import (
     _do_run_batches,
 )
-from desloppify.app.commands.review.import_cmd import do_import as _do_import
-from desloppify.app.commands.review.import_cmd import (
+from desloppify.app.commands.review.importing.cmd import do_import as _do_import
+from desloppify.app.commands.review.importing.cmd import (
     do_validate_import as _do_validate_import,
 )
 from desloppify.app.commands.review.prepare import do_prepare as _do_prepare
@@ -272,7 +272,7 @@ class TestCmdReviewPrepare:
     def test_do_import_untrusted_assessment_only_payload_imports_issues_only(self, empty_state, tmp_path):
         from unittest.mock import MagicMock
 
-        from desloppify.app.commands.review.import_cmd import do_import as _do_import
+        from desloppify.app.commands.review.importing.cmd import do_import as _do_import
 
         empty_state["subjective_assessments"] = {
             "naming_quality": {"score": 90, "source": "per_file", "assessed_at": "2026-02-01T00:00:00Z"},
@@ -296,7 +296,7 @@ class TestCmdReviewPrepare:
     def test_do_import_allows_override_with_note(self, empty_state, tmp_path):
         from unittest.mock import MagicMock, patch
 
-        from desloppify.app.commands.review.import_cmd import do_import as _do_import
+        from desloppify.app.commands.review.importing.cmd import do_import as _do_import
 
         empty_state["subjective_assessments"] = {
             "naming_quality": {"score": 90, "source": "per_file", "assessed_at": "2026-02-01T00:00:00Z"},
@@ -349,7 +349,7 @@ class TestCmdReviewPrepare:
     ):
         from unittest.mock import MagicMock
 
-        from desloppify.app.commands.review.import_cmd import do_import as _do_import
+        from desloppify.app.commands.review.importing.cmd import do_import as _do_import
 
         payload = {
             "assessments": {"naming_quality": 40},
@@ -375,7 +375,7 @@ class TestCmdReviewPrepare:
     def test_trusted_internal_import_clears_provisional_flags(self, empty_state, tmp_path):
         from unittest.mock import MagicMock
 
-        from desloppify.app.commands.review.import_cmd import do_import as _do_import
+        from desloppify.app.commands.review.importing.cmd import do_import as _do_import
 
         empty_state["subjective_assessments"] = {
             "naming_quality": {
@@ -414,7 +414,7 @@ class TestCmdReviewPrepare:
     def test_do_import_rebases_on_latest_saved_state(self, tmp_path):
         from unittest.mock import MagicMock
 
-        from desloppify.app.commands.review.import_cmd import do_import as _do_import
+        from desloppify.app.commands.review.importing.cmd import do_import as _do_import
 
         state_file = tmp_path / "state.json"
         latest_state = build_empty_state()
@@ -482,7 +482,7 @@ class TestCmdReviewPrepare:
     ):
         from unittest.mock import MagicMock
 
-        from desloppify.app.commands.review.import_cmd import do_import as _do_import
+        from desloppify.app.commands.review.importing.cmd import do_import as _do_import
 
         blind_packet = tmp_path / "review_packet_blind.json"
         blind_packet.write_text(
@@ -771,7 +771,7 @@ class TestCmdReviewPrepare:
                 return_value=(mock_lang_with_zones, file_list),
             ),
             patch(
-                "desloppify.app.commands.review.batch.review_mod.prepare_holistic_review",
+                "desloppify.app.commands.review.batch.orchestrator.review_mod.prepare_holistic_review",
                 return_value=prepared,
             ),
             patch(
@@ -790,7 +790,7 @@ class TestCmdReviewPrepare:
                 runs_dir,
             ),
             patch(
-                "desloppify.app.commands.review.batch._do_import",
+                "desloppify.app.commands.review.batch.orchestrator._do_import",
             ) as mock_import,
         ):
             _do_run_batches(
@@ -986,11 +986,11 @@ class TestCmdReviewPrepare:
 
         with (
             patch(
-                "desloppify.app.commands.review.batch.subprocess.run",
+                "desloppify.app.commands.review.batch.orchestrator.subprocess.run",
                 side_effect=fake_subprocess_run,
             ),
             patch(
-                "desloppify.app.commands.review.batch._do_import",
+                "desloppify.app.commands.review.batch.orchestrator._do_import",
                 side_effect=fake_import,
             ),
             patch(
@@ -1120,11 +1120,11 @@ class TestCmdReviewPrepare:
 
         with (
             patch(
-                "desloppify.app.commands.review.batch.subprocess.run",
+                "desloppify.app.commands.review.batch.orchestrator.subprocess.run",
                 side_effect=fake_subprocess_run,
             ),
             patch(
-                "desloppify.app.commands.review.batch._do_import",
+                "desloppify.app.commands.review.batch.orchestrator._do_import",
                 side_effect=fake_import,
             ),
             patch(
@@ -1217,18 +1217,18 @@ class TestCmdReviewPrepare:
 
         with (
             patch(
-                "desloppify.app.commands.review.batch.subprocess.run",
+                "desloppify.app.commands.review.batch.orchestrator.subprocess.run",
                 side_effect=fake_subprocess_run,
             ),
             patch(
-                "desloppify.app.commands.review.batch._do_import",
+                "desloppify.app.commands.review.batch.orchestrator._do_import",
             ),
             patch(
-                "desloppify.app.commands.review.batch.execute_batches",
+                "desloppify.app.commands.review.batch.orchestrator.execute_batches",
                 side_effect=fake_execute_batches,
             ),
             patch(
-                "desloppify.app.commands.review.batch.collect_batch_results",
+                "desloppify.app.commands.review.batch.orchestrator.collect_batch_results",
                 return_value=(
                     [
                         runner_helpers_mod.BatchResult(
@@ -1348,11 +1348,11 @@ class TestCmdReviewPrepare:
 
         with (
             patch(
-                "desloppify.app.commands.review.batch.subprocess.run",
+                "desloppify.app.commands.review.batch.orchestrator.subprocess.run",
                 side_effect=fake_subprocess_run,
             ),
             patch(
-                "desloppify.app.commands.review.batch._do_import",
+                "desloppify.app.commands.review.batch.orchestrator._do_import",
                 side_effect=fake_import,
             ),
             patch(
@@ -1488,11 +1488,11 @@ class TestCmdReviewPrepare:
 
         with (
             patch(
-                "desloppify.app.commands.review.batch.subprocess.run",
+                "desloppify.app.commands.review.batch.orchestrator.subprocess.run",
                 side_effect=fake_subprocess_run,
             ),
             patch(
-                "desloppify.app.commands.review.batch._do_import",
+                "desloppify.app.commands.review.batch.orchestrator._do_import",
                 side_effect=fake_import,
             ),
             patch(
@@ -1569,7 +1569,7 @@ class TestCmdReviewPrepare:
 
         with (
             patch(
-                "desloppify.app.commands.review.batch.subprocess.run",
+                "desloppify.app.commands.review.batch.orchestrator.subprocess.run",
                 side_effect=fake_subprocess_run,
             ),
             patch(
@@ -1678,11 +1678,11 @@ class TestCmdReviewPrepare:
 
         with (
             patch(
-                "desloppify.app.commands.review.batch.subprocess.run",
+                "desloppify.app.commands.review.batch.orchestrator.subprocess.run",
                 side_effect=fake_subprocess_run,
             ),
             patch(
-                "desloppify.app.commands.review.batch._do_import",
+                "desloppify.app.commands.review.batch.orchestrator._do_import",
                 side_effect=fake_import,
             ),
             patch(
@@ -2250,22 +2250,22 @@ class TestCmdReviewPrepare:
 
         with (
             patch(
-                "desloppify.app.commands.review.batch._do_import",
+                "desloppify.app.commands.review.batch.orchestrator._do_import",
             ),
             patch(
-                "desloppify.app.commands.review.batch.execute_batches",
+                "desloppify.app.commands.review.batch.orchestrator.execute_batches",
                 return_value=[],
             ),
             patch(
-                "desloppify.app.commands.review.batch.collect_batch_results",
+                "desloppify.app.commands.review.batch.orchestrator.collect_batch_results",
                 return_value=([{"assessments": {}, "dimension_notes": {}, "issues": []}], []),
             ),
             patch(
-                "desloppify.app.commands.review.batch._merge_batch_results",
+                "desloppify.app.commands.review.batch.orchestrator._merge_batch_results",
                 return_value={"assessments": {}, "dimension_notes": {}, "issues": []},
             ),
             patch(
-                "desloppify.app.commands.review.batch.run_followup_scan",
+                "desloppify.app.commands.review.batch.orchestrator.run_followup_scan",
                 return_value=7,
             ),
             patch(
@@ -2327,7 +2327,7 @@ class TestCmdReviewPrepare:
 
         with (
             patch(
-                "desloppify.app.commands.review.batch.execute_batches",
+                "desloppify.app.commands.review.batch.orchestrator.execute_batches",
                 side_effect=KeyboardInterrupt,
             ),
             patch(

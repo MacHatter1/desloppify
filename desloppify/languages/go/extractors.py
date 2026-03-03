@@ -9,7 +9,7 @@ import hashlib
 import re
 from pathlib import Path
 
-from desloppify.core.discovery_api import find_source_files, resolve_path
+from desloppify.core.discovery.api import find_source_files, resolve_path
 from desloppify.engine.detectors.base import FunctionInfo
 
 GO_FILE_EXCLUSIONS = ["vendor", "testdata", ".git", "node_modules"]

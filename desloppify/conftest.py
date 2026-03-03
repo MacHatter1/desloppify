@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from desloppify.core.runtime_state import RuntimeContext, runtime_scope
-from desloppify.core.source_discovery import clear_source_file_cache_for_tests
+from desloppify.core.discovery.source import clear_source_file_cache_for_tests
 
 
 @pytest.fixture()

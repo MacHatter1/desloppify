@@ -6,9 +6,9 @@ from pathlib import Path
 import pytest
 
 import desloppify.core._internal.text_utils as utils_text_mod
-import desloppify.core.paths_api as paths_api_mod
+import desloppify.core.discovery.paths as paths_api_mod
 import desloppify.core.tooling as tooling_mod
-from desloppify.core.discovery_api import (
+from desloppify.core.discovery.api import (
     clear_source_file_cache_for_tests,
     find_source_files,
     get_exclusions,
@@ -17,8 +17,8 @@ from desloppify.core.discovery_api import (
     resolve_path,
     set_exclusions,
 )
-from desloppify.core.grep import grep_count_files, grep_files, grep_files_containing
-from desloppify.core.paths_api import read_code_snippet
+from desloppify.core.search.grep import grep_count_files, grep_files, grep_files_containing
+from desloppify.core.discovery.paths import read_code_snippet
 from desloppify.core.tooling import check_tool_staleness, compute_tool_hash
 
 

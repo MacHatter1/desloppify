@@ -5,8 +5,8 @@ import logging
 import re
 from pathlib import Path
 
-from desloppify.core.fallbacks import log_best_effort_failure
-from desloppify.core.file_paths import resolve_scan_file
+from desloppify.core.output.fallbacks import log_best_effort_failure
+from desloppify.core.discovery.file_paths import resolve_scan_file
 
 logger = logging.getLogger(__name__)
 

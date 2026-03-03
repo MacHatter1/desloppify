@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from desloppify.app.commands.review import batch_core as batch_core_mod
-from desloppify.app.commands.review.batch_scoring import (
+import desloppify.app.commands.review.batch.core as batch_core_mod
+from desloppify.app.commands.review.batch.scoring import (
     DimensionMergeScorer,
     ScoreInputs,
 )

@@ -4,9 +4,9 @@ from types import SimpleNamespace
 
 import pytest
 
+import desloppify.app.commands.scan.artifacts as scan_artifacts_mod
 import desloppify.app.commands.scan.cmd as scan_cmd_mod
-import desloppify.app.commands.scan.scan_artifacts as scan_artifacts_mod
-import desloppify.app.commands.scan.scan_preflight as scan_preflight_mod
+import desloppify.app.commands.scan.preflight as scan_preflight_mod
 import desloppify.intelligence.narrative as narrative_mod
 import desloppify.languages as lang_mod
 from desloppify.app.commands.scan.cmd import (

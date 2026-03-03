@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 
-from desloppify.core.output import colorize
+from desloppify.core.output.terminal import colorize
 
 
 class LangRuntimeOptionsError(ValueError):

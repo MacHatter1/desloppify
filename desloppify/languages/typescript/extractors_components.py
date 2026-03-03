@@ -6,7 +6,7 @@ import logging
 import re
 from pathlib import Path
 
-from desloppify.core.discovery_api import find_tsx_files
+from desloppify.core.discovery.api import find_tsx_files
 from desloppify.core.text.text_api import get_project_root
 from desloppify.engine.detectors.base import ClassInfo
 from desloppify.engine.detectors.passthrough import (

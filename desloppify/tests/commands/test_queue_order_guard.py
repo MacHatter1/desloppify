@@ -28,7 +28,7 @@ def _get_guard_fn():
         stub = MagicMock()
         modules_to_stub = [
             "desloppify.app.commands.helpers.score_update",
-            "desloppify.app.commands.scan.scan_helpers",
+            "desloppify.app.commands.scan.helpers",
         ]
         saved = {}
         for mod_name in modules_to_stub:

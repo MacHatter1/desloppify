@@ -16,7 +16,7 @@ from pathlib import Path
 from desloppify.app.commands.review.runner_failures import (
     TRANSIENT_RUNNER_PHRASES as _TRANSIENT_RUNNER_PHRASES,
 )
-from desloppify.core.fallbacks import log_best_effort_failure
+from desloppify.core.output.fallbacks import log_best_effort_failure
 
 logger = logging.getLogger(__name__)
 

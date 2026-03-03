@@ -11,10 +11,10 @@ from desloppify.app.commands.helpers.runtime import CommandRuntime
 from desloppify.app.commands.helpers.state import state_path
 from desloppify.app.commands.registry import get_command_handlers
 from desloppify.core.config import load_config
-from desloppify.core.discovery_api import set_exclusions
+from desloppify.core.discovery.api import set_exclusions
 from desloppify.core.exception_sets import CommandError
-from desloppify.core.output import colorize
-from desloppify.core.paths_api import get_default_path, get_project_root
+from desloppify.core.output.terminal import colorize
+from desloppify.core.discovery.paths import get_default_path, get_project_root
 from desloppify.core.registry import detector_names, on_detector_registered
 from desloppify.core.runtime_state import runtime_scope
 from desloppify.languages import available_langs

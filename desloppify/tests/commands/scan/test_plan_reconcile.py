@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
-import desloppify.app.commands.scan.scan_plan_reconcile as reconcile_mod
+import desloppify.app.commands.scan.plan_reconcile as reconcile_mod
 
 
 def _runtime(*, state=None) -> SimpleNamespace:

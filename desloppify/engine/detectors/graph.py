@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from desloppify.core.discovery_api import (
+from desloppify.core.discovery.api import (
     get_exclusions,
     matches_exclusion,
     rel,

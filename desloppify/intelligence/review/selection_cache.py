@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime
 
-from desloppify.core.discovery_api import rel
+from desloppify.core.discovery.api import rel
 
 logger = logging.getLogger(__name__)
 

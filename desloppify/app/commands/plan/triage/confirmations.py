@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 
 from desloppify.app.commands.helpers.runtime import command_runtime
-from desloppify.core.output import colorize
+from desloppify.core.output.terminal import colorize
 from desloppify.engine.plan import (
     append_log_entry,
     collect_triage_input,

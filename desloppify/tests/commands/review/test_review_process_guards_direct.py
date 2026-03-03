@@ -10,8 +10,8 @@ from unittest.mock import patch
 
 import pytest
 
-from desloppify.app.commands.review.batches_scope import require_batches
-from desloppify.app.commands.review.import_helpers import (
+from desloppify.app.commands.review.batch.scope import require_batches
+from desloppify.app.commands.review.importing.helpers import (
     ImportPayloadLoadError,
     assessment_mode_label,
     load_import_issues_data,

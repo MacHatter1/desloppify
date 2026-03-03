@@ -11,7 +11,7 @@ from desloppify.app.commands.helpers.queue_progress import show_score_with_plan_
 from desloppify.app.commands.helpers.runtime import command_runtime
 from desloppify.core import config as config_mod
 from desloppify.core.exception_sets import CommandError
-from desloppify.core.output import colorize
+from desloppify.core.output.terminal import colorize
 from desloppify.core.tooling import check_config_staleness
 from desloppify.engine._work_queue.core import ATTEST_EXAMPLE
 from desloppify.intelligence import narrative as narrative_mod

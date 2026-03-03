@@ -2,7 +2,7 @@
 
 import pytest
 
-import desloppify.core.discovery_api as discovery_api_mod
+import desloppify.core.discovery.api as discovery_api_mod
 from desloppify.languages.csharp import CSharpConfig
 
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from desloppify.core.issues_render import issue_weight, render_issue_detail
+from desloppify.core.output.issues import issue_weight, render_issue_detail
 from desloppify.intelligence.review._prepare.remediation_engine import (
     render_empty_remediation_plan,
 )

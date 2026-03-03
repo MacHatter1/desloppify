@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime
 
-from desloppify.core.issues_render import issue_weight
+from desloppify.core.output.issues import issue_weight
 from desloppify.engine._work_queue.helpers import detail_dict
 
 logger = logging.getLogger(__name__)

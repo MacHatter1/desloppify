@@ -7,7 +7,7 @@ import logging
 import os
 from pathlib import Path
 
-from desloppify.core.discovery_api import read_file_text, rel
+from desloppify.core.discovery.api import read_file_text, rel
 from desloppify.engine.policy.zones import EXCLUDED_ZONES, Zone
 
 logger = logging.getLogger(__name__)

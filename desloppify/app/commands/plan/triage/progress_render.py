@@ -13,7 +13,7 @@ from desloppify.app.commands.plan.triage_playbook import (
     TRIAGE_STAGE_DEPENDENCIES,
     TRIAGE_STAGE_LABELS,
 )
-from desloppify.core.output import colorize
+from desloppify.core.output.terminal import colorize
 
 
 def _print_stage_progress(stages: dict, plan: dict | None = None) -> None:

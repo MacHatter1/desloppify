@@ -7,7 +7,7 @@ import importlib.util
 import logging
 from pathlib import Path
 
-from desloppify.core.paths_api import get_project_root
+from desloppify.core.discovery.paths import get_project_root
 
 from . import registry_state
 

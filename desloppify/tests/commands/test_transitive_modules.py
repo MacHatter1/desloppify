@@ -2,7 +2,7 @@
 
 Tests cover:
   1. desloppify.app.commands.resolve.render
-  2. desloppify.app.commands.status_parts.strict_target
+  2. desloppify.app.commands.status.strict_target
   3. desloppify.app.commands._show_terminal
   4. desloppify.app.commands.viz
   5. desloppify.app.commands.review.cmd
@@ -250,7 +250,7 @@ class TestPrintSubjectiveResetHint:
 
 # ── 2. status_parts/strict_target.py ────────────────────────────────────────
 
-from desloppify.app.commands.status_parts.strict_target import (  # noqa: E402
+from desloppify.app.commands.status.strict_target import (  # noqa: E402
     format_strict_target_progress,
 )
 

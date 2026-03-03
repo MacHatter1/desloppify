@@ -845,20 +845,20 @@ class TestImportLinterAdapter:
 # ── collect_exclude_dirs ─────────────────────────────────────────────────────
 
 
-from desloppify.core.source_discovery import collect_exclude_dirs  # noqa: E402
+from desloppify.core.discovery.source import collect_exclude_dirs  # noqa: E402
 
 
 class TestCollectExcludeDirs:
     def test_returns_absolute_paths(self, tmp_path):
         with patch(
-            "desloppify.core.source_discovery.get_exclusions", return_value=()
+            "desloppify.core.discovery.source.get_exclusions", return_value=()
         ):
             result = collect_exclude_dirs(tmp_path)
         assert all(p.startswith(str(tmp_path)) for p in result)
 
     def test_includes_default_non_glob_entries(self, tmp_path):
         with patch(
-            "desloppify.core.source_discovery.get_exclusions", return_value=()
+            "desloppify.core.discovery.source.get_exclusions", return_value=()
         ):
             result = collect_exclude_dirs(tmp_path)
         basenames = {p.rsplit("/", 1)[-1] for p in result}
@@ -870,7 +870,7 @@ class TestCollectExcludeDirs:
 
     def test_excludes_glob_patterns(self, tmp_path):
         with patch(
-            "desloppify.core.source_discovery.get_exclusions", return_value=()
+            "desloppify.core.discovery.source.get_exclusions", return_value=()
         ):
             result = collect_exclude_dirs(tmp_path)
         # *.egg-info and .venv* are glob patterns and should be excluded
@@ -878,7 +878,7 @@ class TestCollectExcludeDirs:
 
     def test_includes_runtime_exclusions(self, tmp_path):
         with patch(
-            "desloppify.core.source_discovery.get_exclusions",
+            "desloppify.core.discovery.source.get_exclusions",
             return_value=("vendor", "third_party"),
         ):
             result = collect_exclude_dirs(tmp_path)
@@ -888,7 +888,7 @@ class TestCollectExcludeDirs:
 
     def test_skips_runtime_glob_exclusions(self, tmp_path):
         with patch(
-            "desloppify.core.source_discovery.get_exclusions",
+            "desloppify.core.discovery.source.get_exclusions",
             return_value=("vendor/**",),
         ):
             result = collect_exclude_dirs(tmp_path)
@@ -898,7 +898,7 @@ class TestCollectExcludeDirs:
     def test_deduplicates(self, tmp_path):
         """Runtime exclusion that overlaps with DEFAULT_EXCLUSIONS doesn't produce dupes."""
         with patch(
-            "desloppify.core.source_discovery.get_exclusions",
+            "desloppify.core.discovery.source.get_exclusions",
             return_value=("node_modules",),
         ):
             result = collect_exclude_dirs(tmp_path)

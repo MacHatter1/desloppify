@@ -2,8 +2,8 @@
 
 from types import SimpleNamespace
 
-import desloppify.app.commands.scan.scan_workflow as scan_workflow_mod
-from desloppify.app.commands.scan.scan_workflow import (
+import desloppify.app.commands.scan.workflow as scan_workflow_mod
+from desloppify.app.commands.scan.workflow import (
     ScanRuntime,
     ScanStateContractError,
     _augment_with_stale_wontfix_issues,

@@ -5,16 +5,16 @@ import re
 import subprocess
 from pathlib import Path
 
-from desloppify.core.discovery_api import (
+from desloppify.core.discovery.api import (
     collect_exclude_dirs as _collect_exclude_dirs,
 )
-from desloppify.core.discovery_api import (
+from desloppify.core.discovery.api import (
     find_py_files,
 )
-from desloppify.core.discovery_api import (
+from desloppify.core.discovery.api import (
     get_exclusions as _get_exclusions,
 )
-from desloppify.core.discovery_api import (
+from desloppify.core.discovery.api import (
     matches_exclusion as _matches_exclusion,
 )
 from desloppify.core.text.text_api import get_project_root

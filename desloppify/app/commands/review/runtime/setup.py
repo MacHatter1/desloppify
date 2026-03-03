@@ -6,8 +6,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from desloppify.core.file_paths import rel
-from desloppify.core.output import log
+from desloppify.core.discovery.file_paths import rel
+from desloppify.core.output.terminal import log
 from desloppify.engine.policy.zones import FileZoneMap
 from desloppify.languages import runtime as lang_runtime_mod
 

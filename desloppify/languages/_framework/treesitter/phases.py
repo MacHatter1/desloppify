@@ -10,7 +10,7 @@ duplicating the phase construction logic.
 
 from __future__ import annotations
 
-from desloppify.core.output import log
+from desloppify.core.output.terminal import log
 from desloppify.languages._framework.base.types import DetectorPhase
 from desloppify.state import make_issue
 

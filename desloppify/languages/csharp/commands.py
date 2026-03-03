@@ -6,8 +6,8 @@ import argparse
 import json
 from pathlib import Path
 
-from desloppify.core.discovery_api import rel
-from desloppify.core.output import colorize, print_table
+from desloppify.core.discovery.api import rel
+from desloppify.core.output.terminal import colorize, print_table
 from desloppify.engine.detectors.dupes import detect_duplicates
 from desloppify.engine.detectors.orphaned import (
     OrphanedDetectionOptions,

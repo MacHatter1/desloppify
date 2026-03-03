@@ -6,7 +6,7 @@ import ast
 import logging
 from pathlib import Path
 
-from desloppify.core.discovery_api import find_py_files, rel
+from desloppify.core.discovery.api import find_py_files, rel
 
 logger = logging.getLogger(__name__)
 

@@ -6,9 +6,9 @@ import argparse
 import urllib.error
 import urllib.request
 
-from desloppify.core.output import colorize
-from desloppify.core.path_io_api import safe_write_text
-from desloppify.core.paths_api import get_project_root
+from desloppify.core.output.terminal import colorize
+from desloppify.core.discovery.path_io import safe_write_text
+from desloppify.core.discovery.paths import get_project_root
 from desloppify.core.skill_docs import (
     SKILL_BEGIN,
     SKILL_END,

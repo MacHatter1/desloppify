@@ -11,7 +11,7 @@ from desloppify.app.commands.helpers.runtime import command_runtime
 from desloppify.app.commands.helpers.score import target_strict_score_from_config
 from desloppify.app.commands.helpers.state import require_completed_scan
 from desloppify.core.exception_sets import PLAN_LOAD_EXCEPTIONS
-from desloppify.core.output import colorize
+from desloppify.core.output.terminal import colorize
 from desloppify.core.skill_docs import check_skill_version
 from desloppify.core.tooling import check_config_staleness
 from desloppify.engine.plan import load_plan

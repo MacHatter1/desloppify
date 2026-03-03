@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from desloppify.app.commands.status_parts import render as status_render
-from desloppify.app.commands.status_parts import render_dimensions as render_dims_mod
+from desloppify.app.commands.status import render as status_render
+from desloppify.app.commands.status import render_dimensions as render_dims_mod
 
 
 def _subjective_dim(score: float, strict: float, dimension_key: str) -> dict:

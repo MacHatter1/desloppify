@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-import desloppify.core.discovery_api as discovery_api_mod
+import desloppify.core.discovery.api as discovery_api_mod
 from desloppify.languages.csharp.extractors import (
     extract_csharp_classes,
     extract_csharp_functions,

@@ -19,8 +19,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from desloppify.core.fallbacks import log_best_effort_failure
-from desloppify.core.path_io_api import safe_write_text
+from desloppify.core.output.fallbacks import log_best_effort_failure
+from desloppify.core.discovery.path_io import safe_write_text
 
 from .runner_process import _extract_payload_from_log
 

@@ -6,7 +6,7 @@ import logging
 from datetime import UTC
 from datetime import datetime as _dt
 
-from desloppify.core.fallbacks import log_best_effort_failure
+from desloppify.core.output.fallbacks import log_best_effort_failure
 from desloppify.intelligence.narrative._constants import (
     _FEEDBACK_URL,
     _REMINDER_DECAY_THRESHOLD,

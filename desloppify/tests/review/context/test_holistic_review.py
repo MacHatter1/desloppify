@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-import desloppify.core.discovery_api as _discovery_api_mod
+import desloppify.core.discovery.api as _discovery_api_mod
 from desloppify.engine._scoring.detection import detector_pass_rate
 from desloppify.engine._scoring.policy.core import HOLISTIC_POTENTIAL
 from desloppify.engine.detectors.review_coverage import detect_holistic_review_staleness

@@ -22,9 +22,9 @@ from desloppify.app.commands.plan.queue_render import cmd_plan_queue
 from desloppify.app.commands.plan.reorder_handlers import cmd_plan_reorder
 from desloppify.app.commands.plan.triage_handlers import cmd_plan_triage
 from desloppify.core.config import load_config
-from desloppify.core.discovery_api import safe_write_text
-from desloppify.core.fallbacks import warn_best_effort
-from desloppify.core.output import colorize
+from desloppify.core.discovery.api import safe_write_text
+from desloppify.core.output.fallbacks import warn_best_effort
+from desloppify.core.output.terminal import colorize
 from desloppify.core.tooling import check_config_staleness
 from desloppify.engine import planning as planning_mod
 from desloppify.engine._plan.annotations import annotation_counts

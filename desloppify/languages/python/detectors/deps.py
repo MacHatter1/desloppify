@@ -8,7 +8,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-from desloppify.core.discovery_api import find_py_files, resolve_path
+from desloppify.core.discovery.api import find_py_files, resolve_path
 from desloppify.core.text.text_api import get_project_root
 from desloppify.engine.detectors.graph import finalize_graph
 from desloppify.languages.python.detectors.deps_dynamic import (

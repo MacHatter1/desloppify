@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from desloppify.app.commands.helpers.query import write_query
 from desloppify.app.commands.helpers.score import target_strict_score_from_config
-from desloppify.core.output import colorize
+from desloppify.core.output.terminal import colorize
 
 from .render import show_subjective_followup
 from .scope import _detector_names_hint, _lookup_dimension_score, load_matches

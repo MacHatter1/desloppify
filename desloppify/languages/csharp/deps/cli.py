@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from desloppify.core.discovery_api import rel
-from desloppify.core.output import colorize, print_table
+from desloppify.core.discovery.api import rel
+from desloppify.core.output.terminal import colorize, print_table
 from desloppify.engine.detectors.graph import detect_cycles, get_coupling_score
 
 

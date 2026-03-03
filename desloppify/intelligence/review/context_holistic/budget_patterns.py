@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import ast
 
-from desloppify.core.discovery_api import rel
+from desloppify.core.discovery.api import rel
 from desloppify.intelligence.review.context_holistic.budget_analysis import (
     _strip_docstring,
 )

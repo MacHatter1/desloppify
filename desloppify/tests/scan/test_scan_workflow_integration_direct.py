@@ -6,12 +6,12 @@ from types import SimpleNamespace
 
 from desloppify import state as state_mod
 from desloppify.app.commands.helpers.runtime import CommandRuntime
-from desloppify.app.commands.scan.scan_workflow import (
+from desloppify.app.commands.scan.workflow import (
     ScanRuntime,
     merge_scan_results,
     prepare_scan_runtime,
 )
-from desloppify.core.file_paths import rel
+from desloppify.core.discovery.file_paths import rel
 from desloppify.engine.plan import empty_plan, load_plan, save_plan
 
 

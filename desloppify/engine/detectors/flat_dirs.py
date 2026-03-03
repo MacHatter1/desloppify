@@ -5,7 +5,7 @@ from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
-from desloppify.core.file_paths import resolve_scan_file
+from desloppify.core.discovery.file_paths import resolve_scan_file
 
 logger = logging.getLogger(__name__)
 

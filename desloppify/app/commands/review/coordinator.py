@@ -12,12 +12,12 @@ from typing import Any
 from desloppify.engine._state.schema import StateModel
 
 from . import runner_packets as runner_packets_mod
-from .packet_build import (
+from .packet.build import (
     ReviewPacketContext,
     build_holistic_packet,
     require_non_empty_packet,
 )
-from .packet_policy import redacted_review_config
+from .packet.policy import redacted_review_config
 from .runtime import setup_lang_concrete
 from .runtime_paths import (
     blind_packet_path,

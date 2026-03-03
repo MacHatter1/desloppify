@@ -36,3 +36,4 @@ pytest-full.xml
 /.claude/skills/
 /.agents/skills/
 /skills/
+.claude/worktrees/

@@ -12,7 +12,7 @@ from desloppify.app.commands.helpers.lang import resolve_lang
 from desloppify.app.commands.helpers.queue_progress import show_score_with_plan_context
 from desloppify.app.commands.helpers.state import state_path
 from desloppify.core.exception_sets import PLAN_LOAD_EXCEPTIONS
-from desloppify.core.output import colorize
+from desloppify.core.output.terminal import colorize
 from desloppify.engine.plan import (
     add_uncommitted_issues,
     append_log_entry,

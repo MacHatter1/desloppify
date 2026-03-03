@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from desloppify.core.output import colorize
+from desloppify.core.output.terminal import colorize
 from desloppify.engine.plan import TRIAGE_IDS
 
 

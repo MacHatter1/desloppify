@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from desloppify.core.registry import DetectorMeta, register_detector
-from desloppify.core.source_discovery import find_source_files
+from desloppify.core.discovery.source import find_source_files
 from desloppify.engine._scoring.policy.core import (
     DetectorScoringPolicy,
     register_scoring_policy,
@@ -235,9 +235,10 @@ def generic_lang(
     file_finder = make_file_finder(extensions, opts.exclude)
     extract_fn = noop_extract_functions
     dep_graph_fn = empty_dep_graph
+    ts_spec = opts.treesitter_spec
     has_treesitter = False
 
-    if opts.treesitter_spec is not None:
+    if ts_spec is not None:
         from desloppify.languages._framework.treesitter import is_available
 
         if is_available():
@@ -249,12 +250,9 @@ def generic_lang(
             )
 
             has_treesitter = True
-            extract_fn = make_ts_extractor(opts.treesitter_spec, file_finder)
-            if (
-                opts.treesitter_spec.import_query
-                and opts.treesitter_spec.resolve_import
-            ):
-                dep_graph_fn = make_ts_dep_builder(opts.treesitter_spec, file_finder)
+            extract_fn = make_ts_extractor(ts_spec, file_finder)
+            if ts_spec.import_query and ts_spec.resolve_import:
+                dep_graph_fn = make_ts_dep_builder(ts_spec, file_finder)
 
     # ── Build phases: tool-specific + structural + coupling + shared ──
     phases = [
@@ -264,21 +262,21 @@ def generic_lang(
 
     # Add structural phase (with AST complexity if tree-sitter available).
     phases.append(_make_structural_phase(
-        opts.treesitter_spec if has_treesitter else None,
+        ts_spec if has_treesitter else None,
     ))
 
     # Add tree-sitter-powered AST phases when available.
-    if has_treesitter:
+    if has_treesitter and ts_spec is not None:
         from desloppify.languages._framework.treesitter.phases import (
             make_ast_smells_phase,
             make_cohesion_phase,
             make_unused_imports_phase,
         )
 
-        phases.append(make_ast_smells_phase(opts.treesitter_spec))
-        phases.append(make_cohesion_phase(opts.treesitter_spec))
-        if opts.treesitter_spec.import_query:
-            phases.append(make_unused_imports_phase(opts.treesitter_spec))
+        phases.append(make_ast_smells_phase(ts_spec))
+        phases.append(make_cohesion_phase(ts_spec))
+        if ts_spec.import_query:
+            phases.append(make_unused_imports_phase(ts_spec))
 
     # Signature analysis — uses lang.extract_functions (no tree-sitter needed).
     if extract_fn is not noop_extract_functions:
@@ -346,7 +344,7 @@ def generic_lang(
 
 def _make_structural_phase(treesitter_spec=None) -> DetectorPhase:
     """Create a structural analysis phase for generic plugins."""
-    from desloppify.core.output import log
+    from desloppify.core.output.terminal import log
     from desloppify.engine.detectors.base import ComplexitySignal
 
     signals = [
@@ -467,7 +465,7 @@ def _extract_ts_classes(path, treesitter_spec, file_finder):
 
 def _make_coupling_phase(dep_graph_fn) -> DetectorPhase:
     """Create a coupling phase for generic plugins with a dep graph."""
-    from desloppify.core.output import log
+    from desloppify.core.output.terminal import log
 
     def run(path, lang):
         from desloppify.languages._framework.base.shared_phases import (

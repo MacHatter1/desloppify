@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-from desloppify.app.commands.scan.scan_preflight import scan_queue_preflight
+from desloppify.app.commands.scan.preflight import scan_queue_preflight
 from desloppify.core.exception_sets import CommandError
 
 # ── CI profile bypass ───────────────────────────────────────
@@ -27,7 +27,7 @@ def test_no_plan_file_passes():
     """When no plan exists, scan is allowed."""
     args = SimpleNamespace(profile=None, force_rescan=False)
     with patch(
-        "desloppify.app.commands.scan.scan_preflight.load_plan",
+        "desloppify.app.commands.scan.preflight.load_plan",
         side_effect=OSError("no plan"),
     ):
         scan_queue_preflight(args)
@@ -37,7 +37,7 @@ def test_plan_without_start_scores_passes():
     """Plan without plan_start_scores means no active cycle."""
     args = SimpleNamespace(profile=None, force_rescan=False)
     with patch(
-        "desloppify.app.commands.scan.scan_preflight.load_plan",
+        "desloppify.app.commands.scan.preflight.load_plan",
         return_value={},
     ):
         scan_queue_preflight(args)
@@ -54,16 +54,16 @@ def test_queue_clear_allows_scan():
     plan = {"plan_start_scores": {"strict": 80.0}}
     with (
         patch(
-            "desloppify.app.commands.scan.scan_preflight.load_plan",
+            "desloppify.app.commands.scan.preflight.load_plan",
             return_value=plan,
         ),
         patch(
-            "desloppify.app.commands.scan.scan_preflight.state_path",
+            "desloppify.app.commands.scan.preflight.state_path",
             return_value="/tmp/test-state.json",
         ),
-        patch("desloppify.app.commands.scan.scan_preflight.state_mod") as mock_state_mod,
+        patch("desloppify.app.commands.scan.preflight.state_mod") as mock_state_mod,
         patch(
-            "desloppify.app.commands.scan.scan_preflight.plan_aware_queue_breakdown",
+            "desloppify.app.commands.scan.preflight.plan_aware_queue_breakdown",
             return_value=QueueBreakdown(queue_total=0, workflow=0),
         ),
     ):
@@ -82,16 +82,16 @@ def test_queue_remaining_blocks_scan():
     plan = {"plan_start_scores": {"strict": 80.0}}
     with (
         patch(
-            "desloppify.app.commands.scan.scan_preflight.load_plan",
+            "desloppify.app.commands.scan.preflight.load_plan",
             return_value=plan,
         ),
         patch(
-            "desloppify.app.commands.scan.scan_preflight.state_path",
+            "desloppify.app.commands.scan.preflight.state_path",
             return_value="/tmp/test-state.json",
         ),
-        patch("desloppify.app.commands.scan.scan_preflight.state_mod") as mock_state_mod,
+        patch("desloppify.app.commands.scan.preflight.state_mod") as mock_state_mod,
         patch(
-            "desloppify.app.commands.scan.scan_preflight.plan_aware_queue_breakdown",
+            "desloppify.app.commands.scan.preflight.plan_aware_queue_breakdown",
             return_value=QueueBreakdown(queue_total=5, workflow=0),
         ),
         pytest.raises(CommandError) as exc_info,
@@ -112,16 +112,16 @@ def test_queue_with_only_workflow_items_allows_scan():
     assert breakdown.actionable == 0  # precondition
     with (
         patch(
-            "desloppify.app.commands.scan.scan_preflight.load_plan",
+            "desloppify.app.commands.scan.preflight.load_plan",
             return_value=plan,
         ),
         patch(
-            "desloppify.app.commands.scan.scan_preflight.state_path",
+            "desloppify.app.commands.scan.preflight.state_path",
             return_value="/tmp/test-state.json",
         ),
-        patch("desloppify.app.commands.scan.scan_preflight.state_mod") as mock_state_mod,
+        patch("desloppify.app.commands.scan.preflight.state_mod") as mock_state_mod,
         patch(
-            "desloppify.app.commands.scan.scan_preflight.plan_aware_queue_breakdown",
+            "desloppify.app.commands.scan.preflight.plan_aware_queue_breakdown",
             return_value=breakdown,
         ),
     ):
@@ -159,11 +159,11 @@ def test_force_rescan_with_valid_attest_passes():
     plan = {"plan_start_scores": {"strict": 80.0}}
     with (
         patch(
-            "desloppify.app.commands.scan.scan_preflight.load_plan",
+            "desloppify.app.commands.scan.preflight.load_plan",
             return_value=plan,
         ),
         patch(
-            "desloppify.app.commands.scan.scan_preflight.save_plan",
+            "desloppify.app.commands.scan.preflight.save_plan",
         ) as mock_save,
     ):
         scan_queue_preflight(args)
@@ -180,7 +180,7 @@ def test_force_rescan_tolerates_missing_plan():
         attest="I understand this is not the intended workflow",
     )
     with patch(
-        "desloppify.app.commands.scan.scan_preflight.load_plan",
+        "desloppify.app.commands.scan.preflight.load_plan",
         side_effect=OSError("no plan"),
     ):
         scan_queue_preflight(args)

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from desloppify.app.commands.review.packet_policy import (
+from desloppify.app.commands.review.packet.policy import (
     DEFAULT_REVIEW_BATCH_MAX_FILES,
     coerce_review_batch_file_limit,
     redacted_review_config,

@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from desloppify import state as state_mod
 from desloppify.core.exception_sets import PLAN_LOAD_EXCEPTIONS
-from desloppify.core.output import colorize
+from desloppify.core.output.terminal import colorize
 from desloppify.engine import plan as plan_mod
 from desloppify.engine._work_queue import core as work_queue_core_mod
 from desloppify.engine._work_queue.helpers import is_subjective_queue_item

@@ -12,15 +12,15 @@ from typing import Any
 import desloppify.languages as lang_api
 from desloppify.app.output._viz_cmd_context import load_cmd_context
 from desloppify.app.output.tree_text import render_tree_lines
-from desloppify.core.discovery_api import find_source_files, rel, safe_write_text
-from desloppify.core.fallbacks import (
+from desloppify.core.discovery.api import find_source_files, rel, safe_write_text
+from desloppify.core.output.fallbacks import (
     log_best_effort_failure,
     print_write_error,
     warn_best_effort,
 )
-from desloppify.core.file_paths import resolve_scan_file
-from desloppify.core.output import colorize
-from desloppify.core.output_contract import OutputResult
+from desloppify.core.discovery.file_paths import resolve_scan_file
+from desloppify.core.output.terminal import colorize
+from desloppify.core.output.contract import OutputResult
 from desloppify.state import score_snapshot
 
 D3_CDN_URL = "https://d3js.org/d3.v7.min.js"

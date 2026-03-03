@@ -6,22 +6,22 @@ import argparse
 from pathlib import Path
 
 from desloppify import languages as lang_mod
-from desloppify.app.commands.move.move_apply import apply_file_move
-from desloppify.app.commands.move.move_directory import run_directory_move
-from desloppify.app.commands.move.move_language import (
+from desloppify.app.commands.move.apply import apply_file_move
+from desloppify.app.commands.move.directory import run_directory_move
+from desloppify.app.commands.move.language import (
     load_lang_move_module,
     resolve_lang_for_file_move,
     resolve_move_verify_hint,
     supported_ext_hint,
 )
-from desloppify.app.commands.move.move_planning import (
+from desloppify.app.commands.move.planning import (
     compute_replacements,
     resolve_dest,
 )
-from desloppify.app.commands.move.move_reporting import print_file_move_plan
-from desloppify.core.discovery_api import rel, resolve_path
+from desloppify.app.commands.move.reporting import print_file_move_plan
+from desloppify.core.discovery.api import rel, resolve_path
 from desloppify.core.exception_sets import CommandError
-from desloppify.core.output import colorize
+from desloppify.core.output.terminal import colorize
 
 
 def cmd_move(args: argparse.Namespace) -> None:

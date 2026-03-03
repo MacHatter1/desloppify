@@ -13,15 +13,15 @@ from typing import Any
 
 from desloppify.app.commands.helpers.query import write_query
 from desloppify.core.coercions_api import coerce_positive_int
-from desloppify.core.discovery_api import safe_write_text
+from desloppify.core.discovery.api import safe_write_text
 from desloppify.core.exception_sets import CommandError
-from desloppify.core.output import colorize
+from desloppify.core.output.terminal import colorize
 from desloppify.intelligence import narrative as narrative_mod
 from desloppify.intelligence import review as review_mod
 
-from .batch import FOLLOWUP_SCAN_TIMEOUT_SECONDS
+from .batch.orchestrator import FOLLOWUP_SCAN_TIMEOUT_SECONDS
 from .helpers import parse_dimensions
-from .import_cmd import do_import, do_validate_import
+from .importing.cmd import do_import, do_validate_import
 from .runner_packets import run_stamp, sha256_file, write_packet_snapshot
 from .runner_process import FollowupScanDeps, run_followup_scan
 from .runtime import setup_lang_concrete

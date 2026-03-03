@@ -6,7 +6,7 @@ import logging
 import re
 from pathlib import Path
 
-from desloppify.core.fallbacks import log_best_effort_failure
+from desloppify.core.output.fallbacks import log_best_effort_failure
 from desloppify.core.signal_patterns import SERVICE_ROLE_TOKEN_RE, is_server_only_path
 from desloppify.engine.detectors.security import rules as security_detector_mod
 from desloppify.engine.policy.zones import FileZoneMap, Zone

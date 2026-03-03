@@ -7,8 +7,8 @@ from pathlib import Path
 from typing import Any
 
 from desloppify.core.coercions_api import coerce_confidence
-from desloppify.core.file_paths import rel
-from desloppify.core.output import log
+from desloppify.core.discovery.file_paths import rel
+from desloppify.core.output.terminal import log
 from desloppify.core.text.text_api import get_project_root
 from desloppify.engine.detectors.base import ComplexitySignal
 from desloppify.engine.detectors.complexity import detect_complexity

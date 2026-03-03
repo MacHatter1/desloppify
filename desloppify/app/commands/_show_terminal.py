@@ -6,8 +6,8 @@ import logging
 import random
 from pathlib import Path
 
-from desloppify.core.discovery_api import rel
-from desloppify.core.output import colorize
+from desloppify.core.discovery.api import rel
+from desloppify.core.output.terminal import colorize
 
 _logger = logging.getLogger(__name__)
 

@@ -14,7 +14,7 @@ import hashlib
 import re
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Any, Literal, TypedDict, cast
+from typing import Any, Literal, TypedDict
 
 from desloppify.core.registry import JUDGMENT_DETECTORS
 from desloppify.engine._state.schema import StateModel
@@ -149,7 +149,7 @@ def _extract_signals(issues: list[dict[str, Any]]) -> ConcernSignals:
             parsed = _parse_complexity_signals(detail)
             for key in ("max_params", "max_nesting"):
                 if key in parsed:
-                    _update_max_signal(signals, cast(SignalKey, key), parsed[key])
+                    _update_max_signal(signals, key, parsed[key])
 
         if det == "smells" and detail.get("smell_id") == "monster_function":
             _update_max_signal(signals, "monster_loc", detail.get("loc", 0))

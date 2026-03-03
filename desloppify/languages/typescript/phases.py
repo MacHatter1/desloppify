@@ -8,9 +8,9 @@ import re
 from collections import defaultdict
 from pathlib import Path
 
-from desloppify.core.discovery_api import rel
-from desloppify.core.output import log
-from desloppify.core.paths_api import get_src_path
+from desloppify.core.discovery.api import rel
+from desloppify.core.output.terminal import log
+from desloppify.core.discovery.paths import get_src_path
 from desloppify.engine.detectors import complexity as complexity_detector_mod
 from desloppify.engine.detectors import coupling as coupling_detector_mod
 from desloppify.engine.detectors import flat_dirs as flat_dirs_detector_mod

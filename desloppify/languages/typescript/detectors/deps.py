@@ -8,10 +8,10 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-from desloppify.core.file_paths import rel, resolve_path
-from desloppify.core.grep import grep_files
-from desloppify.core.output import colorize, print_table
-from desloppify.core.source_discovery import (
+from desloppify.core.discovery.file_paths import rel, resolve_path
+from desloppify.core.search.grep import grep_files
+from desloppify.core.output.terminal import colorize, print_table
+from desloppify.core.discovery.source import (
     find_source_files,
     find_ts_files,
 )

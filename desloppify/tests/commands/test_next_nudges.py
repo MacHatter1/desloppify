@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-import desloppify.app.commands.next_parts.render_nudges as nudges_mod
+import desloppify.app.commands.next.render_nudges as nudges_mod
 
 
 def test_render_uncommitted_reminder_prints_when_enabled(monkeypatch, capsys) -> None:

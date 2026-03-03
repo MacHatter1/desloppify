@@ -12,7 +12,7 @@ from desloppify.core.config import (
     unset_config_value,
 )
 from desloppify.core.exception_sets import CommandError
-from desloppify.core.output import colorize
+from desloppify.core.output.terminal import colorize
 
 
 def cmd_config(args: argparse.Namespace) -> None:

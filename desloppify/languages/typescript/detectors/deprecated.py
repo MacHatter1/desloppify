@@ -8,10 +8,10 @@ import re
 from pathlib import Path
 from typing import Any
 
-from desloppify.core.discovery_api import find_ts_files, rel, resolve_path
-from desloppify.core.fallbacks import log_best_effort_failure
-from desloppify.core.grep import grep_count_files, grep_files
-from desloppify.core.output import colorize, print_table
+from desloppify.core.discovery.api import find_ts_files, rel, resolve_path
+from desloppify.core.output.fallbacks import log_best_effort_failure
+from desloppify.core.search.grep import grep_count_files, grep_files
+from desloppify.core.output.terminal import colorize, print_table
 from desloppify.core.signal_patterns import DEPRECATION_MARKER_RE
 from desloppify.languages.typescript.detectors.contracts import DetectorResult
 

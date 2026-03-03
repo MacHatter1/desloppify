@@ -11,22 +11,11 @@ from desloppify.app.commands.helpers.runtime_options import (
     print_lang_runtime_options_error,
 )
 from desloppify.app.commands.helpers.score import target_strict_score_from_config
-from desloppify.app.commands.scan import scan_preflight as scan_preflight_mod
-from desloppify.app.commands.scan.plan_nudge import (
-    print_plan_workflow_nudge as _print_plan_workflow_nudge_impl,
-)
-from desloppify.app.commands.scan.reporting.agent_context import (
-    auto_update_skill,
-    print_llm_summary,
-)
-from desloppify.app.commands.scan.reporting.integrity_report import (
-    show_post_scan_analysis,
-)
-from desloppify.app.commands.scan.scan_artifacts import (
+from desloppify.app.commands.scan.artifacts import (
     build_scan_query_payload,
     emit_scorecard_badge,
 )
-from desloppify.app.commands.scan.scan_helpers import (  # noqa: F401 (re-exports)
+from desloppify.app.commands.scan.helpers import (  # noqa: F401 (re-exports)
     _audit_excluded_dirs,
     _collect_codebase_metrics,
     _effective_include_slow,
@@ -34,18 +23,28 @@ from desloppify.app.commands.scan.scan_helpers import (  # noqa: F401 (re-export
     _warn_explicit_lang_with_no_files,
     format_delta,
 )
-from desloppify.app.commands.scan.scan_orchestrator import ScanOrchestrator
-from desloppify.app.commands.scan.scan_reporting_dimensions import (
+from desloppify.app.commands.scan.orchestrator import ScanOrchestrator
+from desloppify.app.commands.scan.plan_nudge import (
+    print_plan_workflow_nudge as _print_plan_workflow_nudge_impl,
+)
+from desloppify.app.commands.scan.reporting.agent_context import (
+    auto_update_skill,
+    print_llm_summary,
+)
+from desloppify.app.commands.scan.reporting.dimensions import (
     show_dimension_deltas,
     show_score_model_breakdown,
     show_scorecard_subjective_measures,
 )
-from desloppify.app.commands.scan.scan_reporting_summary import (  # noqa: F401
+from desloppify.app.commands.scan.reporting.integrity_report import (
+    show_post_scan_analysis,
+)
+from desloppify.app.commands.scan.reporting.summary import (  # noqa: F401
     show_diff_summary,
     show_score_delta,
     show_strict_target_progress,
 )
-from desloppify.app.commands.scan.scan_workflow import (
+from desloppify.app.commands.scan.workflow import (
     ScanStateContractError,
     merge_scan_results,
     persist_reminder_history,
@@ -53,8 +52,10 @@ from desloppify.app.commands.scan.scan_workflow import (
     resolve_noise_snapshot,
     run_scan_generation,
 )
-from desloppify.core.output import colorize
-from desloppify.core.search.search_query import write_query
+from desloppify.core.output.terminal import colorize
+from desloppify.core.search.query import write_query
+
+from . import preflight as scan_preflight_mod
 
 
 def _print_scan_header(lang_label: str) -> None:

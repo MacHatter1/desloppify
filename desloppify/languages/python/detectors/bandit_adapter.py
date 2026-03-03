@@ -26,7 +26,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from desloppify.core.discovery_api import rel
+from desloppify.core.discovery.api import rel
 from desloppify.core.text.text_api import get_project_root
 from desloppify.engine.policy.zones import FileZoneMap, Zone
 from desloppify.languages._framework.base.types import DetectorCoverageStatus

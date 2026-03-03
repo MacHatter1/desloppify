@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import desloppify.app.commands.next_parts.render as render_mod
+import desloppify.app.commands.next.render as render_mod
 
 
 def test_render_terminal_items_group_mode_uses_group_renderer(monkeypatch) -> None:

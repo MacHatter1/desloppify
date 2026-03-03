@@ -9,7 +9,7 @@ from dataclasses import dataclass
 
 from desloppify import state as state_mod
 from desloppify.core.exception_sets import CommandError
-from desloppify.core.output import colorize
+from desloppify.core.output.terminal import colorize
 from desloppify.engine._work_queue.core import ATTEST_EXAMPLE
 
 _REQUIRED_ATTESTATION_PHRASES = ("i have actually", "not gaming")

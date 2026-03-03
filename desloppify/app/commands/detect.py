@@ -14,7 +14,7 @@ from desloppify.app.commands.helpers.runtime_options import (
     resolve_lang_runtime_options,
 )
 from desloppify.core.exception_sets import CommandError
-from desloppify.core.output import colorize
+from desloppify.core.output.terminal import colorize
 from desloppify.languages import runtime as lang_runtime
 
 

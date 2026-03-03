@@ -1,4 +1,11 @@
-"""Planning public API with lazy imports to avoid import cycles."""
+"""Plan rendering, output, and query interface.
+
+This package produces human-readable plan output (markdown, terminal tables,
+scorecards). It reads from the plan state but does not mutate it.
+
+For plan data operations (queue moves, skips, clusters), use ``engine._plan``.
+For the public plan facade, use ``engine.plan``.
+"""
 
 from __future__ import annotations
 

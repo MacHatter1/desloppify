@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import desloppify.core.runtime_state as runtime_state
-from desloppify.core.discovery_api import (
+from desloppify.core.discovery.api import (
     disable_file_cache,
     enable_file_cache,
     get_exclusions,

@@ -5,11 +5,11 @@ from __future__ import annotations
 import inspect
 from types import SimpleNamespace
 
+import desloppify.app.commands.next.cmd as next_mod
 import desloppify.engine.plan as plan_mod
 import desloppify.intelligence.narrative as narrative_mod
-from desloppify.app.commands import next as next_mod
 from desloppify.app.commands.helpers.runtime import CommandRuntime
-from desloppify.app.commands.next import _low_subjective_dimensions, cmd_next
+from desloppify.app.commands.next.cmd import _low_subjective_dimensions, cmd_next
 
 
 def _args(**overrides):

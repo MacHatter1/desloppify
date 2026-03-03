@@ -12,8 +12,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from desloppify.core.discovery_api import rel
-from desloppify.core.output import colorize, display_entries, print_table
+from desloppify.core.discovery.api import rel
+from desloppify.core.output.terminal import colorize, display_entries, print_table
 from desloppify.engine.detectors import complexity as complexity_detector
 from desloppify.engine.detectors import large as large_detector
 from desloppify.engine.detectors import naming as naming_detector

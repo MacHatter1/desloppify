@@ -8,12 +8,12 @@ import desloppify.app.commands.plan.triage.progress_render as plan_progress_rend
 import desloppify.app.commands.plan.triage.reflect as plan_reflect_mod
 import desloppify.app.commands.plan.triage.stages as plan_stages_mod
 import desloppify.app.commands.plan.triage_handlers as triage_handlers_mod
-import desloppify.app.commands.review.batch_merge as batch_merge_mod
+import desloppify.app.commands.review.batch.merge as batch_merge_mod
+import desloppify.app.commands.review.batch.scope as batches_scope_mod
 import desloppify.app.commands.review.batches_runtime as batches_runtime_mod
-import desloppify.app.commands.review.batches_scope as batches_scope_mod
 import desloppify.app.commands.review.coordinator as coordinator_mod
 import desloppify.app.commands.review.importing.modes as import_modes_mod
-import desloppify.app.commands.review.packet_build as packet_build_mod
+import desloppify.app.commands.review.packet.build as packet_build_mod
 import desloppify.app.commands.review.runner_failures as runner_failures_mod
 import desloppify.app.commands.review.runner_packets as runner_packets_mod
 import desloppify.app.commands.review.runner_parallel as runner_parallel_mod

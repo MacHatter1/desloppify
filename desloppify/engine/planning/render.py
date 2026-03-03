@@ -6,7 +6,7 @@ from collections import defaultdict
 from datetime import date
 
 from desloppify.core.exception_sets import PLAN_LOAD_EXCEPTIONS
-from desloppify.core.output import LOC_COMPACT_THRESHOLD
+from desloppify.core.output.terminal import LOC_COMPACT_THRESHOLD
 from desloppify.core.registry import dimension_action_type
 from desloppify.engine._scoring.policy.core import DIMENSIONS
 from desloppify.engine._scoring.subjective.core import DISPLAY_NAMES

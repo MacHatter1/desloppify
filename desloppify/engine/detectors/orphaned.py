@@ -6,8 +6,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from desloppify.core.discovery_api import rel
-from desloppify.core.file_paths import count_lines
+from desloppify.core.discovery.api import rel
+from desloppify.core.discovery.file_paths import count_lines
 
 
 @dataclass

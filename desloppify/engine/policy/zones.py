@@ -11,7 +11,7 @@ import os
 from dataclasses import dataclass, field
 from enum import Enum
 
-from desloppify.core.fallbacks import log_best_effort_failure
+from desloppify.core.output.fallbacks import log_best_effort_failure
 from desloppify.engine.policy.zones_data import (
     CONFIG_SKIP_DETECTORS,
     SCRIPT_SKIP_DETECTORS,

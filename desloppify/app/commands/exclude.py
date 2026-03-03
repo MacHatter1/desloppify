@@ -10,8 +10,8 @@ from desloppify import state as state_mod
 from desloppify.app.commands.helpers.runtime import command_runtime
 from desloppify.core import config as config_mod
 from desloppify.core.exception_sets import PLAN_LOAD_EXCEPTIONS, CommandError
-from desloppify.core.file_paths import matches_exclusion
-from desloppify.core.output import colorize
+from desloppify.core.discovery.file_paths import matches_exclusion
+from desloppify.core.output.terminal import colorize
 from desloppify.core.tooling import check_config_staleness
 from desloppify.engine.plan import (
     load_plan,

@@ -3,8 +3,8 @@
 Covers:
 - desloppify.engine._state.merge (MergeScanOptions, merge_scan)
 - desloppify.intelligence.review.context_holistic.readers (_abs, _read_file_contents)
-- desloppify.app.cli_support.parser_groups_admin (parser builders, helpers)
-- desloppify.app.commands.move.move_apply (rollback, apply helpers)
+- desloppify.app.cli_support.parser_groups_admin/parser_groups (parser builders, helpers)
+- desloppify.app.commands.move.apply (rollback, apply helpers)
 - desloppify.languages._framework.base.shared_phases (entries_to_issues, log, find_external)
 """
 
@@ -18,12 +18,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-# ── Module 3: parser_groups_admin ─────────────────────────────────────
-import desloppify.app.cli_support.parser_groups_admin as parser_admin_mod
 import desloppify.app.cli_support.parser_groups as parser_groups_mod
 
+# ── Module 3: parser_groups_admin ─────────────────────────────────────
+import desloppify.app.cli_support.parser_groups_admin as parser_admin_mod
+
 # ── Module 4: move_apply ──────────────────────────────────────────────
-import desloppify.app.commands.move.move_apply as move_apply_mod
+import desloppify.app.commands.move.apply as move_apply_mod
 
 # ── Module 1: engine._state.merge ─────────────────────────────────────
 import desloppify.engine._state.merge as merge_mod
@@ -654,16 +655,16 @@ class TestLangsAndUpdateSkillParsers:
 
 
 class TestRollbackWrittenFiles:
-    @patch("desloppify.app.commands.move.move_apply.restore_files_best_effort")
-    @patch("desloppify.app.commands.move.move_apply.warn_best_effort")
+    @patch("desloppify.app.commands.move.apply.restore_files_best_effort")
+    @patch("desloppify.app.commands.move.apply.warn_best_effort")
     def test_rollback_no_failures(self, mock_warn, mock_restore):
         mock_restore.return_value = []
         move_apply_mod._rollback_written_files({"a.py": "old a"})
         mock_restore.assert_called_once()
         mock_warn.assert_not_called()
 
-    @patch("desloppify.app.commands.move.move_apply.restore_files_best_effort")
-    @patch("desloppify.app.commands.move.move_apply.warn_best_effort")
+    @patch("desloppify.app.commands.move.apply.restore_files_best_effort")
+    @patch("desloppify.app.commands.move.apply.warn_best_effort")
     def test_rollback_with_failures(self, mock_warn, mock_restore):
         mock_restore.return_value = ["/bad/file.py"]
         move_apply_mod._rollback_written_files({"a.py": "old a"})
@@ -695,8 +696,8 @@ class TestRollbackMoveTarget:
         assert source.exists()
         assert source.read_text() == "moved content"
 
-    @patch("desloppify.app.commands.move.move_apply.shutil.move", side_effect=OSError("fail"))
-    @patch("desloppify.app.commands.move.move_apply.warn_best_effort")
+    @patch("desloppify.app.commands.move.apply.shutil.move", side_effect=OSError("fail"))
+    @patch("desloppify.app.commands.move.apply.warn_best_effort")
     def test_rollback_os_error_warns(self, mock_warn, mock_move, tmp_path):
         dest = tmp_path / "dest.py"
         dest.write_text("content")

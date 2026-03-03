@@ -9,9 +9,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from desloppify.core.discovery_api import safe_write_text
-from desloppify.core.fallbacks import log_best_effort_failure
-from desloppify.core.paths_api import get_project_root
+from desloppify.core.discovery.api import safe_write_text
+from desloppify.core.output.fallbacks import log_best_effort_failure
+from desloppify.core.discovery.paths import get_project_root
 
 
 def _rename_key(d: dict, old: str, new: str) -> bool:

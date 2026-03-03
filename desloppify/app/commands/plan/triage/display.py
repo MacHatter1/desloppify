@@ -20,7 +20,7 @@ from desloppify.app.commands.plan.triage_playbook import (
     TRIAGE_STAGE_DEPENDENCIES,
     TRIAGE_STAGE_LABELS,
 )
-from desloppify.core.output import colorize
+from desloppify.core.output.terminal import colorize
 from desloppify.engine.plan import (
     collect_triage_input,
     detect_recurring_patterns,

@@ -1,14 +1,14 @@
 """Tests for desloppify.app.commands.status — display helpers."""
 
-from desloppify.app.commands.status import (
-    cmd_status,
+from desloppify.app.commands.status import cmd_status
+from desloppify.app.commands.status.render import (
     show_dimension_table,
     show_focus_suggestion,
-    show_ignore_summary,
     show_structural_areas,
     show_subjective_followup,
 )
-from desloppify.app.commands.status_parts.summary import (
+from desloppify.app.commands.status.render_io import show_ignore_summary
+from desloppify.app.commands.status.summary import (
     print_open_scope_breakdown,
     score_summary_lines,
 )

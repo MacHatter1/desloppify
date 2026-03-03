@@ -8,7 +8,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from desloppify.core.fallbacks import log_best_effort_failure
+from desloppify.core.output.fallbacks import log_best_effort_failure
 
 _RESOLVE_EXTENSIONS = ("", ".ts", ".tsx", "/index.ts", "/index.tsx")
 _JS_SPECIFIER_EXTENSIONS = {".js", ".mjs", ".cjs"}

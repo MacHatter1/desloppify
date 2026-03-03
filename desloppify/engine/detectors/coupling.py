@@ -9,9 +9,9 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
-from desloppify.core.discovery_api import rel
-from desloppify.core.fallbacks import log_best_effort_failure
-from desloppify.core.file_paths import count_lines, resolve_scan_file
+from desloppify.core.discovery.api import rel
+from desloppify.core.output.fallbacks import log_best_effort_failure
+from desloppify.core.discovery.file_paths import count_lines, resolve_scan_file
 
 logger = logging.getLogger(__name__)
 

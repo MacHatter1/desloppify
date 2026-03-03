@@ -11,7 +11,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from desloppify.app.commands.helpers import subjective as subjective_mod
-from desloppify.app.commands.status_parts import render as status_render
+from desloppify.app.commands.status import render as status_render
 
 # ---------------------------------------------------------------------------
 # Helpers

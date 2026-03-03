@@ -2,7 +2,10 @@
 
 __all__ = [
     "agent_context",
-    "dimension_table",
+    "dimensions",
     "integrity_report",
-    "terminal_output",
+    "presentation",
+    "subjective",
+    "summary",
+    "text",
 ]

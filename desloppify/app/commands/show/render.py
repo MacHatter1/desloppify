@@ -12,14 +12,14 @@ from desloppify.app.commands.helpers.rendering import (
     print_ranked_actions,
 )
 from desloppify.app.commands.helpers.subjective import print_subjective_followup
-from desloppify.app.commands.scan import (
-    scan_reporting_dimensions as reporting_dimensions_mod,
+from desloppify.app.commands.scan.reporting import (
+    dimensions as reporting_dimensions_mod,
 )
-from desloppify.core.discovery_api import safe_write_text
+from desloppify.core.discovery.api import safe_write_text
 from desloppify.core.enums import canonical_issue_status
-from desloppify.core.fallbacks import print_write_error
-from desloppify.core.output import colorize
-from desloppify.core.paths_api import read_code_snippet
+from desloppify.core.output.fallbacks import print_write_error
+from desloppify.core.output.terminal import colorize
+from desloppify.core.discovery.paths import read_code_snippet
 from desloppify.engine.planning import CONFIDENCE_ORDER
 
 from .formatting import format_detail

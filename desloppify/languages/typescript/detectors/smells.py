@@ -8,8 +8,8 @@ import logging
 import re
 from pathlib import Path
 
-from desloppify.core.discovery_api import find_source_files, find_ts_files
-from desloppify.core.fallbacks import log_best_effort_failure
+from desloppify.core.discovery.api import find_source_files, find_ts_files
+from desloppify.core.output.fallbacks import log_best_effort_failure
 from desloppify.core.text.text_api import get_project_root
 from desloppify.languages.typescript.detectors._smell_detectors import (
     _detect_async_no_await,

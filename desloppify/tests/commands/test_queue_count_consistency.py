@@ -447,7 +447,7 @@ class TestWorkflowRunScanItem:
 
 class TestRenderQueueHeaderWorkflow:
     def test_header_shows_cleared_for_run_scan(self, capsys):
-        from desloppify.app.commands.next_parts.render_support import (
+        from desloppify.app.commands.next.render_support import (
             render_queue_header,
         )
         queue = {
@@ -460,7 +460,7 @@ class TestRenderQueueHeaderWorkflow:
         assert "workflow step" in output
 
     def test_header_shows_count_for_real_items(self, capsys):
-        from desloppify.app.commands.next_parts.render_support import (
+        from desloppify.app.commands.next.render_support import (
             render_queue_header,
         )
         queue = {

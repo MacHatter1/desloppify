@@ -6,7 +6,7 @@ import argparse
 import re
 
 from desloppify.app.commands.helpers.runtime import command_runtime
-from desloppify.core.output import colorize
+from desloppify.core.output.terminal import colorize
 from desloppify.core.subjective_dimensions import DISPLAY_NAMES
 from desloppify.engine.plan import load_plan
 from desloppify.engine.planning.triage import (

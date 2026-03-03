@@ -111,7 +111,7 @@ class TestReviewIssuesExcludedFromScoring:
 
     def test_stale_assessment_surfaces_in_scorecard_entries(self):
         """Stale subjective assessments are flagged in scorecard entries."""
-        from desloppify.app.commands.scan.scan_reporting_dimensions import (
+        from desloppify.app.commands.scan.reporting.dimensions import (
             scorecard_dimension_entries,
         )
 
@@ -148,7 +148,7 @@ class TestReviewIssuesExcludedFromScoring:
 
     def test_fresh_assessment_not_marked_stale(self):
         """Non-stale subjective assessments have stale=False."""
-        from desloppify.app.commands.scan.scan_reporting_dimensions import (
+        from desloppify.app.commands.scan.reporting.dimensions import (
             scorecard_dimension_entries,
         )
 

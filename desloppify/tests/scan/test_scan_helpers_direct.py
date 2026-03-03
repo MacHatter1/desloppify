@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
-import desloppify.app.commands.scan.scan_helpers as scan_helpers_mod
+import desloppify.app.commands.scan.helpers as scan_helpers_mod
 
 
 def test_profile_and_slow_resolution():

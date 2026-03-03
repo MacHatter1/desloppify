@@ -9,9 +9,9 @@ from desloppify.app.commands.helpers.lang import resolve_lang
 from desloppify.app.commands.helpers.runtime import command_runtime
 from desloppify.core.exception_sets import CommandError
 
-from .batch import _do_run_batches, do_import_run
+from .batch.orchestrator import _do_run_batches, do_import_run
 from .external import do_external_start, do_external_submit
-from .import_cmd import do_import, do_validate_import
+from .importing.cmd import do_import, do_validate_import
 from .merge import do_merge
 from .preflight import review_rerun_preflight
 from .prepare import do_prepare

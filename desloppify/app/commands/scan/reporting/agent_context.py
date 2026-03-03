@@ -15,7 +15,7 @@ from desloppify.app.commands.update_skill import (
 from desloppify.core import registry as registry_mod
 from desloppify.core import skill_docs as skill_docs_mod
 from desloppify.core.exception_sets import PLAN_LOAD_EXCEPTIONS
-from desloppify.core.fallbacks import log_best_effort_failure
+from desloppify.core.output.fallbacks import log_best_effort_failure
 from desloppify.core.text.text_api import get_project_root
 from desloppify.engine._scoring.results.core import compute_health_breakdown
 from desloppify.engine._scoring.subjective.core import DISPLAY_NAMES
@@ -24,7 +24,7 @@ from desloppify.engine._work_queue.core import ATTEST_EXAMPLE
 from desloppify.engine.plan import load_plan
 from desloppify.engine.planning import scorecard_projection as scorecard_projection_mod
 
-from ..scan_reporting_text import build_workflow_guide
+from .text import build_workflow_guide
 
 logger = logging.getLogger(__name__)
 
