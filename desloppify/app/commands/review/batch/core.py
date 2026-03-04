@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import NotRequired, TypedDict
+from typing import NotRequired, TypedDict, cast
 
 from desloppify.intelligence.review.feedback_contract import (
     DIMENSION_NOTE_ISSUES_KEY,
@@ -32,7 +32,7 @@ from .scoring import DimensionMergeScorer
 _DIMENSION_SCORER = DimensionMergeScorer()
 
 
-class BatchIssuePayload(ReviewIssuePayload, total=False):
+class BatchIssuePayload(ReviewIssuePayload, total=False):  # type: ignore[call-arg]
     """Normalized issue payload passed across batch merge/import seams."""
 
     impact_scope: str
@@ -85,7 +85,7 @@ class NormalizedBatchIssue:
     evidence_lines: list[int] | None = None
 
     def to_payload(self) -> BatchIssuePayload:
-        payload: BatchIssuePayload = {
+        payload: BatchIssuePayload = {  # type: ignore[assignment]
             "dimension": self.dimension,
             "identifier": self.identifier,
             "summary": self.summary,
@@ -375,7 +375,7 @@ def _compute_batch_quality(
             / max(len(issues), 1),
             3,
         ),
-        REVIEW_QUALITY_HIGH_SCORE_MISSING_ISSUES_KEY: high_score_missing_issue_note,
+        "high_score_missing_issue_note": high_score_missing_issue_note,
     }
 
 
@@ -445,7 +445,7 @@ def normalize_batch_result(
             "impact_scope": impact_scope.strip(),
             "fix_scope": fix_scope.strip(),
             "confidence": confidence,
-            DIMENSION_NOTE_ISSUES_KEY: issues_note,
+            "issues_preventing_higher_score": issues_note,
         }
         if normalized_sub_axes:
             dimension_notes[key]["sub_axes"] = normalized_sub_axes
@@ -539,7 +539,7 @@ def _accumulate_batch_scores(
         current_evidence = (
             len(note.get("evidence", [])) if isinstance(note, dict) else -1
         )
-        if current_evidence > existing_evidence:
+        if current_evidence > existing_evidence and note is not None:
             merged_dimension_notes[key] = note
 
         if key == "abstraction_fitness" and isinstance(note, dict):
@@ -592,8 +592,8 @@ def _should_merge_issues(
         if union and overlap / union >= 0.3:
             return True
     # Fall back to related-file overlap
-    existing_files = set(existing.get("related_files", []))
-    incoming_files = set(incoming.get("related_files", []))
+    existing_files = set(cast(list[str], existing.get("related_files", [])))
+    incoming_files = set(cast(list[str], incoming.get("related_files", [])))
     if existing_files and incoming_files:
         return bool(existing_files & incoming_files)
     # When no corroborating signal is available, allow merge
@@ -607,7 +607,7 @@ def _accumulate_batch_quality(
     evidence_density_values: list[float],
 ) -> float:
     """Accumulate quality metrics from one batch. Returns high-score-missing-issues delta."""
-    quality = result.get("quality", {})
+    quality: object = result.get("quality", {})
     if not isinstance(quality, dict):
         return 0.0
     coverage = quality.get("dimension_coverage")

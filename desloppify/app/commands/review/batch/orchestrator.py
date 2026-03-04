@@ -6,6 +6,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from typing import cast
 
 from desloppify.app.commands.helpers.query import write_query_best_effort
 from desloppify.base.coercions import coerce_positive_int
@@ -75,15 +76,15 @@ ABSTRACTION_COMPONENT_NAMES = {
 
 def _merge_batch_results(batch_results: list[object]) -> dict[str, object]:
     """Deterministically merge assessments/issues across batch outputs."""
-    normalized_results: list[dict] = []
+    normalized_results: list[batch_core_mod.BatchResultPayload] = []
     for result in batch_results:
         if hasattr(result, "to_dict") and callable(result.to_dict):
             payload = result.to_dict()
             if isinstance(payload, dict):
-                normalized_results.append(payload)
+                normalized_results.append(cast(batch_core_mod.BatchResultPayload, payload))
                 continue
         if isinstance(result, dict):
-            normalized_results.append(result)
+            normalized_results.append(cast(batch_core_mod.BatchResultPayload, result))
     return batch_core_mod.merge_batch_results(
         normalized_results,
         abstraction_sub_axes=ABSTRACTION_SUB_AXES,
