@@ -147,7 +147,10 @@ def _render_mechanical_concern_signals(batch: dict[str, object]) -> str:
     lines: list[str] = []
     lines.append("Mechanical concern signals (detector synthesis hypotheses):")
     lines.append(
-        "Treat each as a hypothesis: confirm or refute with direct code evidence."
+        "Treat each as a hypothesis: confirm or refute with direct code evidence. "
+        "These are investigative leads, NOT confirmed issues — do not let their "
+        "presence or quantity influence your scores. Score purely from your own "
+        "code reading."
     )
 
     shown = 0
@@ -272,7 +275,9 @@ def _render_scan_evidence_note() -> str:
         "with aggregated signals from all mechanical detectors — including complexity hotspots, "
         "error hotspots, signal density index (files flagged by multiple detectors), boundary "
         "violations, and systemic patterns. Consult this section for investigative leads beyond "
-        "the seed files.\n\n"
+        "the seed files. Important: these are potential areas to investigate, not confirmed "
+        "issues. Do not let their presence or volume bias your scoring — score based solely "
+        "on what you observe in the actual code.\n\n"
     )
 
 
@@ -288,9 +293,11 @@ def _render_task_requirements(context: _PromptBatchContext) -> str:
         "    Verify whether each still applies to the current code. Do not re-report fixed or\n"
         "    wontfix issues. Use them as starting points to look deeper — inspect adjacent code\n"
         "    and related modules for defects the prior review may have missed.\n"
-        "1b. If mechanical concern signals are listed above, explicitly confirm or refute them.\n"
-        "    Report confirmed defects under the most impacted batch dimension.\n"
-        "    If refuting, include clear counter-evidence in `dimension_notes`.\n"
+        "1b. If mechanical concern signals are listed above, use them as investigative starting\n"
+        "    points — not as evidence of problems. Confirm or refute each with your own code\n"
+        "    reading. Report only confirmed defects. The mere presence of a signal must NOT\n"
+        "    lower any score; only issues you independently verify in the code should affect\n"
+        "    scoring. If refuting, include clear counter-evidence in `dimension_notes`.\n"
         "1c. Think structurally: when you spot multiple individual issues that share a common\n"
         "    root cause (missing abstraction, duplicated pattern, inconsistent convention),\n"
         "    explain the deeper structural issue in the issue, not just the surface symptom.\n"
