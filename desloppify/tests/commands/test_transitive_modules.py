@@ -333,7 +333,7 @@ class TestFormatStrictTargetProgress:
         assert isinstance(target, float)
 
 
-# ── 3. _autofix_preview.py ─────────────────────────────────────────────────
+# ── 3. autofix/preview.py ──────────────────────────────────────────────────
 
 from desloppify.app.commands.autofix.preview import (  # noqa: E402
     _print_fix_file_sample,

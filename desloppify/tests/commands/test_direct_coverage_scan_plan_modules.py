@@ -10,6 +10,7 @@ import desloppify.app.commands.plan.queue_render as plan_queue_render_mod
 import desloppify.app.commands.plan.reorder_handlers as plan_reorder_handlers_mod
 import desloppify.app.commands.resolve.apply as resolve_apply_mod
 import desloppify.app.commands.resolve.cmd as resolve_cmd_mod
+import desloppify.app.commands.helpers.attestation as attestation_mod
 import desloppify.app.commands.resolve.selection as resolve_selection_mod
 import desloppify.app.commands.review.assessment_integrity as assessment_integrity_mod
 import desloppify.app.commands.review.batch.prompt_template as batch_prompt_template_mod
@@ -58,4 +59,5 @@ def test_direct_coverage_scan_plan_go_modules_smoke():
     assert callable(go_review_mod.api_surface)
     assert callable(resolve_apply_mod._resolve_all_patterns)
     assert callable(resolve_cmd_mod.cmd_resolve)
-    assert callable(resolve_selection_mod.validate_attestation)
+    assert callable(resolve_selection_mod._validate_resolve_inputs)
+    assert callable(attestation_mod.validate_attestation)

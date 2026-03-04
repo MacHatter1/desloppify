@@ -11,7 +11,6 @@ from desloppify import state as state_mod
 from desloppify.app.commands.helpers.attestation import (
     show_attestation_requirement,
     validate_attestation,
-    validate_note_length,
 )
 from desloppify.base.exception_sets import CommandError
 from desloppify.base.output.terminal import colorize

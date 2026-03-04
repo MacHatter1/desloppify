@@ -21,16 +21,7 @@ from desloppify.base.discovery.source import (
     read_file_text,
 
 )
-from desloppify.intelligence.review._context.models import HolisticContext
-from desloppify.intelligence.review._prepare.helpers import (
-    HOLISTIC_WORKFLOW,
-    append_full_sweep_batch,
-)
-from desloppify.intelligence.review._prepare.issue_history import (
-    ReviewHistoryOptions,
-    build_batch_issue_focus,
-    build_issue_history_context,
-)
+from desloppify.intelligence.review._prepare.helpers import append_full_sweep_batch
 from desloppify.intelligence.review.context import (
     abs_path,
     build_review_context,
@@ -53,6 +44,9 @@ from desloppify.intelligence.review.prepare_batches import (
 from desloppify.intelligence.review.prepare_batches import (
     filter_batches_to_dimensions as _filter_batches_to_dimensions,
 )
+from desloppify.intelligence.review.prepare_holistic_flow import (
+    prepare_holistic_review_payload,
+)
 from desloppify.intelligence.review.selection import (
     ReviewSelectionOptions,
     count_fresh,
@@ -62,8 +56,6 @@ from desloppify.intelligence.review.selection import (
 )
 
 logger = logging.getLogger(__name__)
-
-_NON_PRODUCTION_ZONES = frozenset({"test", "config", "generated", "vendor"})
 
 
 @dataclass
@@ -103,131 +95,6 @@ def _normalize_max_files(value: Any) -> int | None:
         return None
     parsed = int(value)
     return parsed if parsed > 0 else None
-
-
-def _collect_allowed_review_files(
-    files: list[str],
-    lang: object,
-    *,
-    base_path: Path | None = None,
-) -> set[str]:
-    """Return relative production-file paths allowed for holistic review batches."""
-    allowed: set[str] = set()
-    zone_map = getattr(lang, "zone_map", None)
-    resolved_base = base_path.resolve() if isinstance(base_path, Path) else None
-    for filepath in files:
-        if not isinstance(filepath, str):
-            continue
-        normalized = filepath.strip().replace("\\", "/")
-        if not normalized:
-            continue
-        if zone_map is not None:
-            try:
-                zone = zone_map.get(filepath)
-                zone_value = getattr(zone, "value", str(zone))
-            except (AttributeError, KeyError, TypeError, ValueError):
-                zone_value = "production"
-            if zone_value in _NON_PRODUCTION_ZONES:
-                continue
-        allowed.add(normalized)
-        allowed.add(rel(filepath))
-        if resolved_base is not None:
-            try:
-                allowed.add(Path(filepath).resolve().relative_to(resolved_base).as_posix())
-            except ValueError as exc:
-                _ = exc
-    return allowed
-
-
-def _file_in_allowed_scope(filepath: object, allowed_files: set[str]) -> bool:
-    """True when *filepath* resolves to a currently in-scope review file."""
-    if not isinstance(filepath, str):
-        return False
-    normalized = filepath.strip().replace("\\", "/")
-    if not normalized:
-        return False
-    if normalized in allowed_files:
-        return True
-    return rel(filepath) in allowed_files
-
-
-def _filter_issue_focus_to_scope(
-    issue_focus: object,
-    allowed_files: set[str],
-) -> dict[str, object] | None:
-    """Drop out-of-scope related_files from historical issue focus payload."""
-    if not isinstance(issue_focus, dict):
-        return None
-    issues_raw = issue_focus.get("issues", [])
-    issues: list[dict[str, object]] = []
-    if isinstance(issues_raw, list):
-        for raw_issue in issues_raw:
-            if not isinstance(raw_issue, dict):
-                continue
-            issue = dict(raw_issue)
-            related_raw = issue.get("related_files", [])
-            if isinstance(related_raw, list):
-                issue["related_files"] = [
-                    path
-                    for path in related_raw
-                    if _file_in_allowed_scope(path, allowed_files)
-                ]
-            issues.append(issue)
-    scoped = dict(issue_focus)
-    scoped["issues"] = issues
-    scoped["selected_count"] = len(issues)
-    return scoped
-
-
-def _filter_batches_to_file_scope(
-    batches: list[dict[str, Any]],
-    *,
-    allowed_files: set[str],
-) -> list[dict[str, Any]]:
-    """Strip out-of-scope files/signals from review batches."""
-    if not allowed_files:
-        return []
-
-    scoped_batches: list[dict[str, Any]] = []
-    for raw_batch in batches:
-        if not isinstance(raw_batch, dict):
-            continue
-        batch = dict(raw_batch)
-        files_to_read = batch.get("files_to_read", [])
-        scoped_files: list[str]
-        if isinstance(files_to_read, list):
-            scoped_files = [
-                filepath
-                for filepath in files_to_read
-                if _file_in_allowed_scope(filepath, allowed_files)
-            ]
-        else:
-            scoped_files = []
-        batch["files_to_read"] = scoped_files
-
-        concern_signals = batch.get("concern_signals", [])
-        if isinstance(concern_signals, list):
-            batch["concern_signals"] = [
-                signal
-                for signal in concern_signals
-                if isinstance(signal, dict)
-                and _file_in_allowed_scope(signal.get("file", ""), allowed_files)
-            ]
-            if "concern_signal_count" in batch:
-                batch["concern_signal_count"] = len(batch["concern_signals"])
-
-        issue_focus = _filter_issue_focus_to_scope(
-            batch.get("historical_issue_focus"),
-            allowed_files,
-        )
-        if issue_focus is not None:
-            batch["historical_issue_focus"] = issue_focus
-
-        has_seed_files = bool(batch["files_to_read"])
-        has_signals = bool(batch.get("concern_signals"))
-        if has_seed_files or has_signals:
-            scoped_batches.append(batch)
-    return scoped_batches
 
 
 def prepare_review(
@@ -361,139 +228,24 @@ def prepare_holistic_review(
 ) -> dict[str, object]:
     """Prepare holistic review data for agent consumption. Returns structured dict."""
     resolved_options = options or HolisticReviewPrepareOptions()
-    all_files = (
-        resolved_options.files
-        if resolved_options.files is not None
-        else (lang.file_finder(path) if lang.file_finder else [])
-    )
-    allowed_review_files = _collect_allowed_review_files(
-        all_files,
+    return prepare_holistic_review_payload(
+        path,
         lang,
-        base_path=path,
+        state,
+        resolved_options,
+        is_file_cache_enabled_fn=is_file_cache_enabled,
+        enable_file_cache_fn=enable_file_cache,
+        disable_file_cache_fn=disable_file_cache,
+        build_holistic_context_fn=build_holistic_context,
+        build_review_context_fn=build_review_context,
+        load_dimensions_for_lang_fn=load_dimensions_for_lang,
+        resolve_dimensions_fn=resolve_dimensions,
+        get_lang_guidance_fn=get_lang_guidance,
+        build_investigation_batches_fn=_build_investigation_batches,
+        batch_concerns_fn=_batch_concerns,
+        filter_batches_to_dimensions_fn=_filter_batches_to_dimensions,
+        append_full_sweep_batch_fn=append_full_sweep_batch,
+        serialize_context_fn=serialize_context,
+        log_best_effort_failure_fn=log_best_effort_failure,
+        logger=logger,
     )
-
-    already_cached = is_file_cache_enabled()
-    if not already_cached:
-        enable_file_cache()
-    try:
-        context = HolisticContext.from_raw(
-            build_holistic_context(path, lang, state, files=all_files)
-        )
-        # Also include per-file review context for reference
-        review_ctx = build_review_context(path, lang, state, files=all_files)
-    finally:
-        if not already_cached:
-            disable_file_cache()
-
-    default_dims, holistic_prompts, system_prompt = load_dimensions_for_lang(lang.name)
-    _, per_file_prompts, _ = load_dimensions_for_lang(lang.name)
-    dims = resolve_dimensions(
-        cli_dimensions=resolved_options.dimensions,
-        default_dimensions=default_dims,
-    )
-    lang_guide = get_lang_guidance(lang.name)
-    valid_dims = set(holistic_prompts) | set(per_file_prompts)
-    invalid_requested = [
-        dim for dim in (resolved_options.dimensions or []) if dim not in valid_dims
-    ]
-    invalid_default = [dim for dim in default_dims if dim not in valid_dims]
-    batches = _build_investigation_batches(
-        context,
-        lang,
-        repo_root=path,
-        max_files_per_batch=resolved_options.max_files_per_batch,
-    )
-
-    # Append design-coherence batch from mechanical concern signals.
-    try:
-        from desloppify.engine.concerns import generate_concerns
-
-        concerns = generate_concerns(state)
-        concerns = [
-            concern
-            for concern in concerns
-            if _file_in_allowed_scope(getattr(concern, "file", ""), allowed_review_files)
-        ]
-        concerns_batch = _batch_concerns(
-            concerns,
-            max_files=resolved_options.max_files_per_batch,
-            active_dimensions=dims,
-        )
-        if concerns_batch:
-            batches.append(concerns_batch)
-    except (ImportError, AttributeError, TypeError, ValueError) as exc:
-        log_best_effort_failure(logger, "generate review concern batch", exc)
-
-    batches = _filter_batches_to_dimensions(
-        batches,
-        dims,
-        fallback_max_files=resolved_options.max_files_per_batch,
-    )
-    include_full_sweep = bool(resolved_options.include_full_sweep)
-    # Explicitly scoped dimension runs should stay scoped by default.
-    if resolved_options.dimensions:
-        include_full_sweep = False
-    if include_full_sweep:
-        append_full_sweep_batch(
-            batches=batches,
-            dims=dims,
-            all_files=all_files,
-            lang=lang,
-            max_files=resolved_options.max_files_per_batch,
-        )
-    batches = _filter_batches_to_file_scope(
-        batches,
-        allowed_files=allowed_review_files,
-    )
-
-    # Holistic mode can receive per-file-oriented dimensions via CLI suggestions.
-    # Attach whichever prompt definition exists so reviewers always get guidance.
-    selected_prompts: dict[str, dict[str, object]] = {}
-    for dim in dims:
-        prompt = holistic_prompts.get(dim)
-        if prompt is None:
-            prompt = per_file_prompts.get(dim)
-        if prompt is None:
-            continue
-        selected_prompts[dim] = prompt
-
-    payload = {
-        "command": "review",
-        "mode": "holistic",
-        "language": lang.name,
-        "dimensions": dims,
-        "dimension_prompts": selected_prompts,
-        "lang_guidance": lang_guide,
-        "holistic_context": context.to_dict(),
-        "review_context": serialize_context(review_ctx),
-        "system_prompt": system_prompt,
-        "total_files": context.codebase_stats.get("total_files", 0),
-        "workflow": HOLISTIC_WORKFLOW,
-        "invalid_dimensions": {
-            "requested": invalid_requested,
-            "default": invalid_default,
-        },
-    }
-    if resolved_options.include_issue_history:
-        history_payload = build_issue_history_context(
-            state,
-            options=ReviewHistoryOptions(
-                max_issues=resolved_options.issue_history_max_issues,
-            ),
-        )
-        payload["historical_review_issues"] = history_payload
-        for batch in batches:
-            if not isinstance(batch, dict):
-                continue
-            batch_dims = batch.get("dimensions", [])
-            batch["historical_issue_focus"] = build_batch_issue_focus(
-                history_payload,
-                dimensions=batch_dims,
-                max_items=resolved_options.issue_history_max_batch_items,
-            )
-        batches = _filter_batches_to_file_scope(
-            batches,
-            allowed_files=allowed_review_files,
-        )
-    payload["investigation_batches"] = batches
-    return payload
