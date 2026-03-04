@@ -9,6 +9,7 @@ from desloppify.engine._scoring.results.core import (
     compute_score_impact,
     get_dimension_for_detector,
 )
+from desloppify.engine._work_queue.helpers import workflow_stage_name
 
 from .render_support import is_auto_fix_command
 from .render_support import render_cluster_item as _render_cluster_item
@@ -23,13 +24,13 @@ def _normalized_dimension_key(value: str | None) -> str:
 def _render_workflow_stage(item: dict) -> None:
     """Render a triage workflow stage item."""
     blocked = item.get("is_blocked", False)
-    stage = item.get("stage_name", "")
+    detail = item.get("detail", {})
+    stage = workflow_stage_name(item)
     tag = " [blocked]" if blocked else ""
     style = "dim" if blocked else "bold"
     print(colorize(f"  (Planning stage: {stage}{tag})", style))
     print(colorize("  " + "─" * 60, "dim"))
     print(f"  {colorize(item.get('summary', ''), 'yellow')}")
-    detail = item.get("detail", {})
     total = detail.get("total_review_issues", 0)
     if total:
         print(colorize(f"  {total} review issues to analyze", "dim"))

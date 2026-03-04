@@ -13,6 +13,7 @@ from desloppify.engine._work_queue.helpers import (
     detail_dict,
     is_review_issue,
     is_subjective_issue,
+    workflow_stage_name,
     primary_command_for_issue,
     review_issue_weight,
     scope_matches,
@@ -41,6 +42,23 @@ _RANK_TRIAGE_STAGE = -2    # Epic triage workflow stages
 _RANK_WORKFLOW = -1         # Score checkpoints, create-plan
 _RANK_CLUSTER = 0           # Auto-clustered issues
 _RANK_ISSUE = 1           # Individual issues + assessed subjective
+
+_TRIAGE_STAGE_ORDER = {
+    "observe": 0,
+    "reflect": 1,
+    "organize": 2,
+    "commit": 3,
+}
+
+
+def _workflow_stage_index(item: WorkQueueItem) -> int:
+    raw_index = item.get("stage_index")
+    if raw_index is not None:
+        try:
+            return int(raw_index)
+        except (TypeError, ValueError):
+            pass
+    return _TRIAGE_STAGE_ORDER.get(workflow_stage_name(item).lower(), 0)
 
 
 def enrich_with_impact(
@@ -176,7 +194,7 @@ def _natural_sort_key(item: WorkQueueItem) -> tuple:
     # Triage stage items: stage order, blocked after unblocked
     if kind == "workflow_stage":
         blocked_penalty = 1 if item.get("is_blocked") else 0
-        stage_index = int(item.get("stage_index", 0))
+        stage_index = _workflow_stage_index(item)
         return (_RANK_TRIAGE_STAGE, blocked_penalty, stage_index, item.get("id", ""))
 
     # Workflow action items (e.g. create-plan)
@@ -234,7 +252,7 @@ def item_sort_key(item: WorkQueueItem) -> tuple:
         # blocked-before-unblocked invariant for correctness.
         if kind == "workflow_stage":
             blocked = 1 if item.get("is_blocked") else 0
-            stage_idx = int(item.get("stage_index", 0))
+            stage_idx = _workflow_stage_index(item)
             return (_TIER_PLANNED, blocked, stage_idx, item.get("id", ""))
         return (_TIER_PLANNED, 0, plan_pos, item.get("id", ""))
 

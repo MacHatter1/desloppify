@@ -108,6 +108,22 @@ def scope_matches(item: WorkQueueItem | dict[str, Any], scope: str | None) -> bo
     )
 
 
+def workflow_stage_name(item: WorkQueueItem | dict[str, Any]) -> str:
+    """Resolve the triage stage name from an item, with fallbacks."""
+    stage_name = str(item.get("stage_name", "")).strip()
+    if stage_name:
+        return stage_name
+
+    stage_name = str(detail_dict(item).get("stage", "")).strip()
+    if stage_name:
+        return stage_name
+
+    item_id = str(item.get("id", "")).strip()
+    if item_id.startswith("triage::"):
+        return item_id.split("::", 1)[1]
+    return ""
+
+
 def slugify(text: str) -> str:
     return re.sub(r"[^a-z0-9_]+", "_", text.lower()).strip("_")
 
@@ -170,4 +186,5 @@ __all__ = [
     "slugify",
     "status_matches",
     "supported_fixers_for_item",
+    "workflow_stage_name",
 ]

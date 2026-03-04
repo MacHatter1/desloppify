@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from desloppify.engine._work_queue.helpers import detail_dict
+from desloppify.engine._work_queue.helpers import detail_dict, workflow_stage_name
 from desloppify.engine._work_queue.types import WorkQueueItem
 from desloppify.engine.planning.helpers import CONFIDENCE_ORDER
 
@@ -29,7 +29,7 @@ def item_explain(item: WorkQueueItem) -> dict[str, Any]:
     if kind == "workflow_stage":
         return {
             "kind": "workflow_stage",
-            "stage": item.get("stage_name"),
+            "stage": workflow_stage_name(item),
             "is_blocked": item.get("is_blocked", False),
             "blocked_by": item.get("blocked_by", []),
             "policy": "Triage stages sort by dependency order; blocked stages follow unblocked.",
