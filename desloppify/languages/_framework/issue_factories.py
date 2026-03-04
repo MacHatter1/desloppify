@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections import defaultdict
 from pathlib import Path
 
-from desloppify.core.discovery.api import rel
-from desloppify.core.enums import Tier
+from desloppify.base.discovery.api import rel
+from desloppify.base.enums import Tier
 from desloppify.state import Issue, make_issue
 
 

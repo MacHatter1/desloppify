@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from desloppify.core.optional_deps import has_module
+from desloppify.base.optional_deps import has_module
 
 
 def test_has_module_handles_blank_name() -> None:

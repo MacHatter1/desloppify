@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from collections import defaultdict
 
-from desloppify.core.registry import DETECTORS, DetectorMeta
+from desloppify.base.registry import DETECTORS, DetectorMeta
 from desloppify.engine._plan.schema import Cluster, PlanModel, ensure_plan_defaults
 from desloppify.engine._plan.stale_dimensions import (
     SUBJECTIVE_PREFIX,

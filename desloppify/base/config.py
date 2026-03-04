@@ -9,9 +9,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from desloppify.core.discovery.api import safe_write_text
-from desloppify.core.output.fallbacks import log_best_effort_failure
-from desloppify.core.discovery.paths import get_project_root
+from desloppify.base.discovery.api import safe_write_text
+from desloppify.base.discovery.paths import get_project_root
+from desloppify.base.output.fallbacks import log_best_effort_failure
+from desloppify.base.text.text_api import is_numeric
 
 
 def _rename_key(d: dict, old: str, new: str) -> bool:
@@ -409,3 +410,40 @@ def _migrate_from_state_files(config_path: Path) -> dict:
             )
 
     return config
+
+
+# ── Target score helpers ─────────────────────────────────────
+
+
+def coerce_target_score(value: object, *, fallback: float = 95.0) -> float:
+    """Normalize target score-like values to a safe [0, 100] float."""
+    if is_numeric(fallback):
+        fallback_value = float(fallback)
+    else:
+        fallback_value = 95.0
+
+    if is_numeric(value):
+        parsed = float(value)
+    elif isinstance(value, str):
+        text = value.strip()
+        if not text:
+            parsed = fallback_value
+        else:
+            try:
+                parsed = float(text)
+            except ValueError:
+                parsed = fallback_value
+    else:
+        parsed = fallback_value
+    return max(0.0, min(100.0, parsed))
+
+
+def target_strict_score_from_config(
+    config: dict | None, *, fallback: float = 95.0
+) -> float:
+    """Read and normalize target strict score from config."""
+    if isinstance(config, dict):
+        raw = config.get("target_strict_score", fallback)
+    else:
+        raw = fallback
+    return coerce_target_score(raw, fallback=fallback)

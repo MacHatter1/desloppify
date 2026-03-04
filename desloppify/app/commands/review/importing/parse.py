@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from desloppify.core.coercions_api import coerce_optional_str
+from desloppify.base.coercions import coerce_optional_str
 from desloppify.intelligence.review.dimensions.data import load_dimensions_for_lang
 from desloppify.intelligence.review.feedback_contract import (
     ASSESSMENT_FEEDBACK_THRESHOLD,

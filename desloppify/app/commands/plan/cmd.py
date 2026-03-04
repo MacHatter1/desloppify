@@ -21,11 +21,11 @@ from desloppify.app.commands.plan.override_handlers import (
 from desloppify.app.commands.plan.queue_render import cmd_plan_queue
 from desloppify.app.commands.plan.reorder_handlers import cmd_plan_reorder
 from desloppify.app.commands.plan.triage_handlers import cmd_plan_triage
-from desloppify.core.config import load_config
-from desloppify.core.discovery.api import safe_write_text
-from desloppify.core.output.fallbacks import warn_best_effort
-from desloppify.core.output.terminal import colorize
-from desloppify.core.tooling import check_config_staleness
+from desloppify.base.config import load_config
+from desloppify.base.discovery.api import safe_write_text
+from desloppify.base.output.fallbacks import warn_best_effort
+from desloppify.base.output.terminal import colorize
+from desloppify.base.tooling import check_config_staleness
 from desloppify.engine import planning as planning_mod
 from desloppify.engine._plan.annotations import annotation_counts
 from desloppify.engine._plan.skip_policy import USER_SKIP_KINDS

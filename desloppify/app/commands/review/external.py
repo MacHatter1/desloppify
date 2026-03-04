@@ -12,10 +12,10 @@ from pathlib import Path
 from typing import Any
 
 from desloppify.app.commands.helpers.query import write_query
-from desloppify.core.coercions_api import coerce_positive_int
-from desloppify.core.discovery.api import safe_write_text
-from desloppify.core.exception_sets import CommandError
-from desloppify.core.output.terminal import colorize
+from desloppify.base.coercions import coerce_positive_int
+from desloppify.base.discovery.api import safe_write_text
+from desloppify.base.exception_sets import CommandError
+from desloppify.base.output.terminal import colorize
 from desloppify.intelligence import narrative as narrative_mod
 from desloppify.intelligence import review as review_mod
 

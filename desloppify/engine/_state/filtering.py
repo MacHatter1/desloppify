@@ -16,7 +16,7 @@ __all__ = [
     "make_issue",
 ]
 
-from desloppify.core.discovery.api import rel
+from desloppify.base.discovery.api import rel
 from desloppify.engine._state.schema import (
     Issue,
     StateModel,

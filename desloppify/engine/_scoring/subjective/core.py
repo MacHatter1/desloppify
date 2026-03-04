@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from desloppify.core.text.text_api import is_numeric
+from desloppify.base.text.text_api import is_numeric
 from desloppify.engine._scoring.policy.core import SUBJECTIVE_CHECKS
 from desloppify.intelligence.review.dimensions.holistic import DIMENSIONS
 

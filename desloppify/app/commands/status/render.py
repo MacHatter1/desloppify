@@ -12,7 +12,7 @@ from desloppify.app.commands.helpers.subjective import print_subjective_followup
 from desloppify.app.commands.scan.reporting import (
     dimensions as reporting_dimensions_mod,
 )
-from desloppify.core.output.terminal import colorize, print_table
+from desloppify.base.output.terminal import colorize, print_table
 from desloppify.engine._scoring.detection import merge_potentials
 from desloppify.engine._scoring.policy.core import DIMENSIONS
 from desloppify.engine._scoring.results.core import compute_score_impact

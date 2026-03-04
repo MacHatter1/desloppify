@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import logging
 
-from desloppify.core.exception_sets import PLAN_LOAD_EXCEPTIONS
-from desloppify.core.output.terminal import colorize
+from desloppify.base.exception_sets import PLAN_LOAD_EXCEPTIONS
+from desloppify.base.output.terminal import colorize
 from desloppify.engine._work_queue.context import queue_context
 from desloppify.engine._work_queue.core import (
     QueueBuildOptions,

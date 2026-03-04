@@ -18,9 +18,9 @@ import desloppify.app.commands.scan.coverage as scan_coverage_mod
 import desloppify.app.commands.scan.orchestrator as scan_orchestrator_mod
 import desloppify.app.commands.scan.reporting.text as scan_reporting_text_mod
 import desloppify.app.commands.scan.wontfix as scan_wontfix_mod
-import desloppify.core.coercions_api as coercions_api_mod
-import desloppify.core.enums as enums_mod
-import desloppify.core.search.query_paths as query_paths_mod
+import desloppify.base.coercions as coercions_api_mod
+import desloppify.base.enums as enums_mod
+import desloppify.base.search.query_paths as query_paths_mod
 import desloppify.engine.planning.scorecard_policy as scorecard_policy_mod
 import desloppify.engine.planning.triage as planning_triage_mod
 import desloppify.languages._framework.scaffold_move as scaffold_move_mod

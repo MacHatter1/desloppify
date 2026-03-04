@@ -7,8 +7,8 @@ import logging
 import re
 from pathlib import Path
 
-from desloppify.core.discovery.api import find_py_files
-from desloppify.core.text.text_api import get_project_root
+from desloppify.base.discovery.api import find_py_files
+from desloppify.base.text.text_api import get_project_root
 
 logger = logging.getLogger(__name__)
 

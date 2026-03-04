@@ -10,8 +10,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from desloppify.app.commands.helpers.score import target_strict_score_from_config
-from desloppify.core.exception_sets import PLAN_LOAD_EXCEPTIONS
+from desloppify.base.config import target_strict_score_from_config
+from desloppify.base.exception_sets import PLAN_LOAD_EXCEPTIONS
 from desloppify.engine import plan as plan_mod
 from desloppify.engine._plan.subjective_policy import (
     SubjectiveVisibility,

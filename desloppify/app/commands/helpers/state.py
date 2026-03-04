@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from desloppify.app.commands.helpers.lang import auto_detect_lang_name
-from desloppify.core.output.terminal import colorize
-from desloppify.core.text.text_api import get_project_root
+from desloppify.base.output.terminal import colorize
+from desloppify.base.text.text_api import get_project_root
 
 
 def _sole_existing_lang_state_file() -> Path | None:

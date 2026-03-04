@@ -10,8 +10,8 @@ from __future__ import annotations
 import re
 import sys
 
-from desloppify.core.exception_sets import CommandError
-from desloppify.core.output.terminal import colorize
+from desloppify.base.exception_sets import CommandError
+from desloppify.base.output.terminal import colorize
 from desloppify.engine._work_queue.context import queue_context
 from desloppify.state import StateModel, save_state
 

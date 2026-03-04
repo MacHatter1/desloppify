@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 import desloppify.app.commands.dev as dev_mod
-from desloppify.core.exception_sets import CommandError
+from desloppify.base.exception_sets import CommandError
 
 REQUIRED_SCAFFOLD_PATHS = [
     "__init__.py",

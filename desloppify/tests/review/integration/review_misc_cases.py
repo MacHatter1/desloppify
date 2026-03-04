@@ -6,8 +6,8 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock
 
 from desloppify.cli import create_parser
-from desloppify.core.registry import DETECTORS, display_order
-from desloppify.core.discovery.scan import (
+from desloppify.base.registry import DETECTORS, display_order
+from desloppify.base.discovery.scan import (
     disable_file_cache,
     enable_file_cache,
     is_file_cache_enabled,

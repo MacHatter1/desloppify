@@ -13,7 +13,7 @@ from desloppify.app.commands.review.preflight import (
     clear_stale_subjective_entries,
     review_rerun_preflight,
 )
-from desloppify.core.exception_sets import CommandError
+from desloppify.base.exception_sets import CommandError
 
 
 def _make_args(**overrides) -> SimpleNamespace:

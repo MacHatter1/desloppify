@@ -6,7 +6,7 @@ import dataclasses
 from collections.abc import Callable
 
 from desloppify.app.commands.helpers.lang import resolve_lang
-from desloppify.core.exception_sets import CommandError
+from desloppify.base.exception_sets import CommandError
 from desloppify.languages._framework.base.types import FixerConfig, LangConfig
 
 _COMMAND_POST_FIX: dict[str, Callable[..., None]] = {}

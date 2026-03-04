@@ -12,7 +12,7 @@ import desloppify.engine.plan as plan_mod
 import desloppify.intelligence.narrative as narrative_mod
 import desloppify.state as state_mod
 from desloppify.app.commands.resolve.cmd import cmd_resolve, cmd_suppress_pattern
-from desloppify.core.exception_sets import CommandError
+from desloppify.base.exception_sets import CommandError
 from desloppify.engine._work_queue.core import ATTEST_EXAMPLE
 
 

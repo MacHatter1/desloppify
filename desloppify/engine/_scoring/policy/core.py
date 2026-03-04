@@ -5,7 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from desloppify.core.enums import Confidence, Tier
+from desloppify.base.enums import Confidence, Tier
+from desloppify.base.scoring_constants import (
+    CONFIDENCE_WEIGHTS,
+    HOLISTIC_MULTIPLIER,
+)
 from desloppify.engine.policy.zones import EXCLUDED_ZONE_VALUES
 
 ScoreMode = Literal["lenient", "strict", "verified_strict"]
@@ -133,17 +137,9 @@ TIER_WEIGHTS = {
     Tier.JUDGMENT: 3,
     Tier.MAJOR_REFACTOR: 4,
 }
-CONFIDENCE_WEIGHTS = {Confidence.HIGH: 1.0, Confidence.MEDIUM: 0.7, Confidence.LOW: 0.3}
-
 # Minimum checks for full dimension weight — below this, weight is dampened
 # proportionally. Prevents small-sample dimensions from swinging the overall score.
 MIN_SAMPLE = 200
-
-# Holistic review weight: issues with file="." and detail.holistic=True
-# get a 10x weight multiplier for display/priority purposes (issues list,
-# remediation engine).  NOT used in score computation — review issues are
-# excluded from the detection scoring pipeline (scored via assessments only).
-HOLISTIC_MULTIPLIER = 10.0
 HOLISTIC_POTENTIAL = 10
 
 # Budget: subjective dimensions get this fraction of the overall score.

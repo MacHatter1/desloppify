@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import Counter
 
 from desloppify.app.commands.helpers.queue_progress import format_plan_delta
-from desloppify.core.output.terminal import colorize
+from desloppify.base.output.terminal import colorize
 from desloppify.engine._work_queue.core import group_queue_items
 from desloppify.engine.planning.scorecard_projection import (
     scorecard_subjective_entries,

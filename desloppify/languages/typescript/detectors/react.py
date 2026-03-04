@@ -6,9 +6,9 @@ import logging
 import re
 from pathlib import Path
 
-from desloppify.core.discovery.api import find_tsx_files, rel
-from desloppify.core.output.terminal import colorize, print_table
-from desloppify.core.text.text_api import get_project_root
+from desloppify.base.discovery.api import find_tsx_files, rel
+from desloppify.base.output.terminal import colorize, print_table
+from desloppify.base.text.text_api import get_project_root
 from desloppify.languages.typescript.detectors._smell_helpers import (
     _strip_ts_comments,
     scan_code,

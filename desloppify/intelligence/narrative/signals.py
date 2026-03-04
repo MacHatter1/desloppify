@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from desloppify.core.config import (
+from desloppify.base.config import (
     MAX_TARGET_STRICT_SCORE,
     MIN_TARGET_STRICT_SCORE,
 )
-from desloppify.core.config import (
+from desloppify.base.config import (
     load_config as _load_config,
 )
-from desloppify.core.text.text_api import get_project_root
+from desloppify.base.text.text_api import get_project_root
 from desloppify.intelligence.narrative._constants import STRUCTURAL_MERGE
 from desloppify.intelligence.narrative.types import (
     BadgeStatus,

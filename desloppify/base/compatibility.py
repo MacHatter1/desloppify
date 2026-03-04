@@ -13,7 +13,7 @@ from collections.abc import Iterable
 # Public package roots intended for runtime imports across the codebase.
 PUBLIC_RUNTIME_ROOTS: tuple[str, ...] = (
     "desloppify.app",
-    "desloppify.core",
+    "desloppify.base",
     "desloppify.engine",
     "desloppify.intelligence",
     "desloppify.languages",
@@ -24,11 +24,8 @@ SOFT_DEPRECATED_MODULES: frozenset[str] = frozenset(
     {
         "desloppify.utils",
         "desloppify.file_discovery",
-        "desloppify.hook_registry",
-        "desloppify.search",
-        "desloppify.versioning",
-        "desloppify.core.output_api",
-        "desloppify.core.output_contract",
+        "desloppify.base.output_api",
+        "desloppify.base.output_contract",
     }
 )
 
@@ -36,15 +33,12 @@ SOFT_DEPRECATED_SHORT_IMPORTS: frozenset[str] = frozenset(
     {
         "utils",
         "file_discovery",
-        "hook_registry",
-        "search",
-        "versioning",
     }
 )
 
 # Private internals: only code under these roots may import them directly.
-PRIVATE_MODULE_PREFIXES: tuple[str, ...] = ("desloppify.core._internal",)
-PRIVATE_ALLOWED_IMPORTER_PREFIXES: tuple[str, ...] = ("desloppify.core",)
+PRIVATE_MODULE_PREFIXES: tuple[str, ...] = ()
+PRIVATE_ALLOWED_IMPORTER_PREFIXES: tuple[str, ...] = ("desloppify.base",)
 
 
 def is_soft_deprecated_module(module: str) -> bool:

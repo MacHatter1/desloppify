@@ -7,7 +7,7 @@ import sys
 from collections.abc import Callable, Mapping
 from pathlib import Path
 
-from desloppify.core.output.terminal import colorize
+from desloppify.base.output.terminal import colorize
 
 
 def log_best_effort_failure(

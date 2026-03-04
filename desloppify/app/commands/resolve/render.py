@@ -11,10 +11,10 @@ from desloppify.app.commands.resolve.render_support import (
     print_strict_gap_note,
     score_snapshot_or_warn,
 )
-from desloppify.core.config import load_config
-from desloppify.core.exception_sets import PLAN_LOAD_EXCEPTIONS
-from desloppify.core.git_context import detect_git_context
-from desloppify.core.output.terminal import colorize
+from desloppify.base.config import load_config
+from desloppify.base.exception_sets import PLAN_LOAD_EXCEPTIONS
+from desloppify.base.git_context import detect_git_context
+from desloppify.base.output.terminal import colorize
 from desloppify.engine.plan import get_uncommitted_issues, suggest_commit_message
 
 

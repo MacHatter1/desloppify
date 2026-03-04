@@ -16,8 +16,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from desloppify.core.discovery.api import collect_exclude_dirs, get_exclusions
-from desloppify.core.output.fallbacks import warn_best_effort
+from desloppify.base.discovery.api import collect_exclude_dirs, get_exclusions
+from desloppify.base.output.fallbacks import warn_best_effort
 
 logger = logging.getLogger(__name__)
 

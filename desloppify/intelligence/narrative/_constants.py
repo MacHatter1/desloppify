@@ -6,10 +6,10 @@ instead of from __init__.py.
 
 from __future__ import annotations
 
-from desloppify.core.registry import (
+from desloppify.base.registry import (
     detector_tools as _detector_tools,
 )
-from desloppify.core.registry import (
+from desloppify.base.registry import (
     on_detector_registered,
 )
 

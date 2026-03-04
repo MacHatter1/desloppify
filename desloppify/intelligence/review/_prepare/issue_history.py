@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from desloppify.core.enums import issue_status_tokens, resolved_statuses
+from desloppify.base.enums import issue_status_tokens, resolved_statuses
 from desloppify.engine._state.schema import StateModel
 
 _RESOLVED_STATUSES = resolved_statuses()

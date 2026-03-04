@@ -24,10 +24,10 @@ from desloppify.app.commands.next.render_nudges import (
 from desloppify.app.commands.scan.reporting import (
     dimensions as reporting_dimensions_mod,
 )
-from desloppify.core.exception_sets import PLAN_LOAD_EXCEPTIONS
-from desloppify.core.output.terminal import colorize
-from desloppify.core.skill_docs import check_skill_version
-from desloppify.core.tooling import check_config_staleness
+from desloppify.base.exception_sets import PLAN_LOAD_EXCEPTIONS
+from desloppify.base.output.terminal import colorize
+from desloppify.base.skill_docs import check_skill_version
+from desloppify.base.tooling import check_config_staleness
 from desloppify.engine._scoring.results.core import compute_health_breakdown
 from desloppify.engine._work_queue.context import queue_context
 from desloppify.engine.plan import load_plan

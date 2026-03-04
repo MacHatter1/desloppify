@@ -6,8 +6,8 @@ import logging
 from typing import TYPE_CHECKING
 
 from desloppify import state as state_mod
-from desloppify.core.exception_sets import PLAN_LOAD_EXCEPTIONS
-from desloppify.core.output.terminal import colorize
+from desloppify.base.exception_sets import PLAN_LOAD_EXCEPTIONS
+from desloppify.base.output.terminal import colorize
 from desloppify.engine.plan import (
     append_log_entry,
     auto_cluster_issues,

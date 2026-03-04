@@ -11,8 +11,8 @@ import re
 from datetime import UTC, datetime
 from pathlib import Path
 
-from desloppify.core.discovery.api import read_file_text, rel, resolve_path
-from desloppify.hook_registry import get_lang_hook
+from desloppify.base.discovery.api import read_file_text, rel, resolve_path
+from desloppify.engine.hook_registry import get_lang_hook
 
 _LOW_VALUE_NAMES = re.compile(
     r"(?:^|/)(?:types|constants|enums|index)\.[a-z]+$|(?:^|/).+\.d\.[a-z]+$"

@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from desloppify.core.discovery.file_paths import count_lines
+from desloppify.base.discovery.file_paths import count_lines
 from desloppify.languages._framework.facade_common import (
     _facade_tier_confidence,
     detect_reexport_facades_common,

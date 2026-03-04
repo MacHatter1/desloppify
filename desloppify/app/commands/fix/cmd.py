@@ -5,8 +5,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from desloppify.app.commands._show_terminal import show_fix_dry_run_samples
-from desloppify.core.output.terminal import colorize
+from desloppify.app.commands._fix_preview import show_fix_dry_run_samples
+from desloppify.base.output.terminal import colorize
 from desloppify.languages._framework.base.types import FixResult
 
 from .apply_flow import (

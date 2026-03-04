@@ -7,7 +7,7 @@ import sys
 
 from desloppify.app.commands.helpers.lang import resolve_lang
 from desloppify.app.commands.helpers.runtime import command_runtime
-from desloppify.core.exception_sets import CommandError
+from desloppify.base.exception_sets import CommandError
 
 from .batch.orchestrator import _do_run_batches, do_import_run
 from .external import do_external_start, do_external_submit

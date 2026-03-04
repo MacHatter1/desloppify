@@ -5,8 +5,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from desloppify.core.discovery.api import rel
-from desloppify.core.output.terminal import log
+from desloppify.base.discovery.api import rel
+from desloppify.base.output.terminal import log
 from desloppify.engine.detectors.base import ComplexitySignal, GodRule
 from desloppify.languages._framework.base.shared_phases import (
     run_coupling_phase,

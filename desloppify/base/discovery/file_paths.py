@@ -7,7 +7,7 @@ import os
 import tempfile
 from pathlib import Path
 
-from desloppify.core.text.text_api import get_project_root
+from desloppify.base.text.text_api import get_project_root
 
 
 def matches_exclusion(rel_path: str, exclusion: str) -> bool:

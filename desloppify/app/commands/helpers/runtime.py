@@ -8,7 +8,7 @@ from typing import Any
 
 from desloppify import state as state_mod
 from desloppify.app.commands.helpers.state import state_path
-from desloppify.core.config import load_config
+from desloppify.base.config import load_config
 from desloppify.engine._state.schema import StateModel
 
 

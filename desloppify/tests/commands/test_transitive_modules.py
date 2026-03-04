@@ -3,7 +3,7 @@
 Tests cover:
   1. desloppify.app.commands.resolve.render
   2. desloppify.app.commands.status.strict_target
-  3. desloppify.app.commands._show_terminal
+  3. desloppify.app.commands._fix_preview
   4. desloppify.app.commands.viz
   5. desloppify.app.commands.review.cmd
   6. desloppify.app.commands.update_skill
@@ -25,7 +25,7 @@ from desloppify.app.commands.resolve.render import (
     _print_subjective_reset_hint,
     _print_wontfix_batch_warning,
 )
-from desloppify.core.exception_sets import CommandError
+from desloppify.base.exception_sets import CommandError
 
 
 class TestDeltaSuffix:
@@ -333,17 +333,17 @@ class TestFormatStrictTargetProgress:
         assert isinstance(target, float)
 
 
-# ── 3. _show_terminal.py ────────────────────────────────────────────────────
+# ── 3. _fix_preview.py ────────────────────────────────────────────────────
 
-from desloppify.app.commands._show_terminal import (  # noqa: E402
+from desloppify.app.commands._fix_preview import (  # noqa: E402
     _print_fix_file_sample,
     show_fix_dry_run_samples,
 )
 
 
 class TestShowFixDryRunSamples:
-    @patch("desloppify.app.commands._show_terminal.colorize", side_effect=lambda t, _c: t)
-    @patch("desloppify.app.commands._show_terminal._print_fix_file_sample")
+    @patch("desloppify.app.commands._fix_preview.colorize", side_effect=lambda t, _c: t)
+    @patch("desloppify.app.commands._fix_preview._print_fix_file_sample")
     def test_calls_print_for_each_sampled_result(self, mock_print_sample, _mock_colorize, capsys):
         results = [
             {"file": f"f{i}.py", "removed": [f"name{i}"]}
@@ -353,8 +353,8 @@ class TestShowFixDryRunSamples:
         show_fix_dry_run_samples(entries, results)
         assert mock_print_sample.call_count == 3
 
-    @patch("desloppify.app.commands._show_terminal.colorize", side_effect=lambda t, _c: t)
-    @patch("desloppify.app.commands._show_terminal._print_fix_file_sample")
+    @patch("desloppify.app.commands._fix_preview.colorize", side_effect=lambda t, _c: t)
+    @patch("desloppify.app.commands._fix_preview._print_fix_file_sample")
     def test_caps_at_5_samples(self, mock_print_sample, _mock_colorize, capsys):
         results = [
             {"file": f"f{i}.py", "removed": [f"name{i}"]}
@@ -363,8 +363,8 @@ class TestShowFixDryRunSamples:
         show_fix_dry_run_samples([], results)
         assert mock_print_sample.call_count == 5
 
-    @patch("desloppify.app.commands._show_terminal.colorize", side_effect=lambda t, _c: t)
-    @patch("desloppify.app.commands._show_terminal._print_fix_file_sample")
+    @patch("desloppify.app.commands._fix_preview.colorize", side_effect=lambda t, _c: t)
+    @patch("desloppify.app.commands._fix_preview._print_fix_file_sample")
     def test_skip_note_when_entries_exceed_removed(self, mock_print_sample, _mock_colorize, capsys):
         entries = [{"file": "a.py", "name": "x"}, {"file": "b.py", "name": "y"}]
         results = [{"file": "a.py", "removed": ["x"]}]  # 1 removed, 2 entries
@@ -374,8 +374,8 @@ class TestShowFixDryRunSamples:
 
 
 class TestPrintFixFileSample:
-    @patch("desloppify.app.commands._show_terminal.colorize", side_effect=lambda t, _c: t)
-    @patch("desloppify.app.commands._show_terminal.rel", side_effect=lambda p: p)
+    @patch("desloppify.app.commands._fix_preview.colorize", side_effect=lambda t, _c: t)
+    @patch("desloppify.app.commands._fix_preview.rel", side_effect=lambda p: p)
     def test_shows_context_lines(self, _mock_rel, _mock_colorize, capsys, tmp_path):
         test_file = tmp_path / "test.py"
         test_file.write_text("line1\nline2\nline3\nline4\nline5\n")
@@ -387,8 +387,8 @@ class TestPrintFixFileSample:
         assert "var_a" in out
         assert "line 3" in out
 
-    @patch("desloppify.app.commands._show_terminal.colorize", side_effect=lambda t, _c: t)
-    @patch("desloppify.app.commands._show_terminal.rel", side_effect=lambda p: p)
+    @patch("desloppify.app.commands._fix_preview.colorize", side_effect=lambda t, _c: t)
+    @patch("desloppify.app.commands._fix_preview.rel", side_effect=lambda p: p)
     def test_handles_missing_file(self, _mock_rel, _mock_colorize, capsys):
         result = {"file": "/nonexistent/path.py", "removed": ["x"]}
         entries = [{"file": "/nonexistent/path.py", "name": "x", "line": 1}]
@@ -396,8 +396,8 @@ class TestPrintFixFileSample:
         # Should not crash, just return silently
         assert capsys.readouterr().out == ""
 
-    @patch("desloppify.app.commands._show_terminal.colorize", side_effect=lambda t, _c: t)
-    @patch("desloppify.app.commands._show_terminal.rel", side_effect=lambda p: p)
+    @patch("desloppify.app.commands._fix_preview.colorize", side_effect=lambda t, _c: t)
+    @patch("desloppify.app.commands._fix_preview.rel", side_effect=lambda p: p)
     def test_caps_at_2_entries_per_file(self, _mock_rel, _mock_colorize, capsys, tmp_path):
         test_file = tmp_path / "test.py"
         test_file.write_text("a\nb\nc\nd\ne\nf\ng\nh\ni\nj\n")
@@ -713,7 +713,7 @@ class TestReplaceSection:
         assert "new section" in result
 
     def test_replaces_between_markers(self):
-        from desloppify.core.skill_docs import SKILL_BEGIN, SKILL_END
+        from desloppify.base.skill_docs import SKILL_BEGIN, SKILL_END
         content = f"before\n{SKILL_BEGIN}\nold content\n{SKILL_END}\nafter"
         result = _replace_section(content, "new section")
         assert "old content" not in result
@@ -722,14 +722,14 @@ class TestReplaceSection:
         assert "after" in result
 
     def test_handles_empty_before(self):
-        from desloppify.core.skill_docs import SKILL_BEGIN, SKILL_END
+        from desloppify.base.skill_docs import SKILL_BEGIN, SKILL_END
         content = f"{SKILL_BEGIN}\nold\n{SKILL_END}\nafter"
         result = _replace_section(content, "new")
         assert "new" in result
         assert "after" in result
 
     def test_handles_empty_after(self):
-        from desloppify.core.skill_docs import SKILL_BEGIN, SKILL_END
+        from desloppify.base.skill_docs import SKILL_BEGIN, SKILL_END
         content = f"before\n{SKILL_BEGIN}\nold\n{SKILL_END}"
         result = _replace_section(content, "new")
         assert "new" in result
@@ -749,7 +749,7 @@ class TestResolveInterface:
             assert resolve_interface(None) is None
 
     def test_from_install_overlay(self):
-        from desloppify.core.skill_docs import SkillInstall
+        from desloppify.base.skill_docs import SkillInstall
         install = SkillInstall(
             rel_path=".claude/skills/desloppify/SKILL.md",
             version=1,
@@ -760,7 +760,7 @@ class TestResolveInterface:
         assert result == "claude"
 
     def test_from_install_path_match(self):
-        from desloppify.core.skill_docs import SkillInstall
+        from desloppify.base.skill_docs import SkillInstall
         install = SkillInstall(
             rel_path=".claude/skills/desloppify/SKILL.md",
             version=1,
@@ -771,7 +771,7 @@ class TestResolveInterface:
         assert result == "claude"
 
     def test_from_install_path_match_opencode(self):
-        from desloppify.core.skill_docs import SkillInstall
+        from desloppify.base.skill_docs import SkillInstall
 
         install = SkillInstall(
             rel_path=".opencode/skills/desloppify/SKILL.md",
@@ -783,7 +783,7 @@ class TestResolveInterface:
         assert result == "opencode"
 
     def test_from_install_no_match(self):
-        from desloppify.core.skill_docs import SkillInstall
+        from desloppify.base.skill_docs import SkillInstall
         install = SkillInstall(
             rel_path="unknown/path.md",
             version=1,

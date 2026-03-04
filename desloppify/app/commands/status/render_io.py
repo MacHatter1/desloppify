@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from desloppify import state as state_mod
 from desloppify.app.commands.helpers.query import write_query
-from desloppify.core.output.terminal import colorize, print_table
+from desloppify.base.output.terminal import colorize, print_table
 from desloppify.engine._scoring.results.core import compute_health_breakdown
 
 

@@ -6,9 +6,9 @@ import argparse
 import sys
 
 from desloppify import state as state_mod
-from desloppify.core.config import load_config
-from desloppify.core.git_context import detect_git_context, update_pr_body
-from desloppify.core.output.terminal import colorize
+from desloppify.base.config import load_config
+from desloppify.base.git_context import detect_git_context, update_pr_body
+from desloppify.base.output.terminal import colorize
 from desloppify.engine.plan import (
     append_log_entry,
     commit_tracking_summary,

@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from desloppify.core.config import (
+from desloppify.base.config import (
     CONFIG_SCHEMA,
     _migrate_from_state_files,
     add_ignore_pattern,

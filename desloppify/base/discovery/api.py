@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from desloppify.core.discovery.file_paths import (
+from desloppify.base.discovery.file_paths import (
     matches_exclusion,
     rel,
     resolve_path,
     resolve_scan_file,
     safe_write_text,
 )
-from desloppify.core.discovery.source import (
+from desloppify.base.discovery.source import (
     DEFAULT_EXCLUSIONS,
     clear_source_file_cache_for_tests,
     collect_exclude_dirs,

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-import desloppify.core.git_context as git_mod
+import desloppify.base.git_context as git_mod
 
 
 def test_detect_git_context_success(monkeypatch) -> None:

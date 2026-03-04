@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from desloppify.core.output.terminal import colorize, log
-from desloppify.core.discovery.paths import read_code_snippet
+from desloppify.base.output.terminal import colorize, log
+from desloppify.base.discovery.paths import read_code_snippet
 from desloppify.engine._scoring.results.core import (
     compute_health_breakdown,
     compute_score_impact,

@@ -6,8 +6,8 @@ import re
 from fnmatch import fnmatch
 from typing import Any
 
-from desloppify.core.enums import issue_status_tokens
-from desloppify.core.registry import DETECTORS
+from desloppify.base.enums import issue_status_tokens
+from desloppify.base.registry import DETECTORS
 from desloppify.engine._state.schema import StateModel
 
 ALL_STATUSES = set(issue_status_tokens(include_all=True))

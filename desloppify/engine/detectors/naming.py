@@ -3,7 +3,7 @@
 from collections import defaultdict
 from pathlib import Path
 
-from desloppify.core.discovery.api import rel
+from desloppify.base.discovery.api import rel
 
 
 def _classify_convention(filename: str) -> str | None:

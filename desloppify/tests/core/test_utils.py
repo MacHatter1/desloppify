@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 
-import desloppify.core._internal.text_utils as utils_text_mod
-import desloppify.core.discovery.paths as paths_api_mod
-import desloppify.core.tooling as tooling_mod
-from desloppify.core.discovery.api import (
+import desloppify.base.text_utils as utils_text_mod
+import desloppify.base.discovery.paths as paths_api_mod
+import desloppify.base.tooling as tooling_mod
+from desloppify.base.discovery.api import (
     clear_source_file_cache_for_tests,
     find_source_files,
     get_exclusions,
@@ -17,15 +17,15 @@ from desloppify.core.discovery.api import (
     resolve_path,
     set_exclusions,
 )
-from desloppify.core.search.grep import grep_count_files, grep_files, grep_files_containing
-from desloppify.core.discovery.paths import read_code_snippet
-from desloppify.core.tooling import check_tool_staleness, compute_tool_hash
+from desloppify.base.search.grep import grep_count_files, grep_files, grep_files_containing
+from desloppify.base.discovery.paths import read_code_snippet
+from desloppify.base.tooling import check_tool_staleness, compute_tool_hash
 
 
 @pytest.fixture
 def patch_project_root(monkeypatch):
     """Patch project root via RuntimeContext so all consumers see the override."""
-    from desloppify.core.runtime_state import current_runtime_context
+    from desloppify.base.runtime_state import current_runtime_context
 
     ctx = current_runtime_context()
 

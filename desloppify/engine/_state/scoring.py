@@ -8,8 +8,8 @@ __all__ = [
     "suppression_metrics",
 ]
 
-from desloppify.core.coercions_api import coerce_confidence
-from desloppify.core.enums import issue_status_tokens
+from desloppify.base.coercions import coerce_confidence
+from desloppify.base.enums import issue_status_tokens
 from desloppify.engine._scoring.policy.core import matches_target_score
 from desloppify.engine._state.filtering import path_scoped_issues
 from desloppify.engine._state.schema import StateModel, ensure_state_defaults

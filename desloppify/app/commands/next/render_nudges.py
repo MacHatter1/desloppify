@@ -10,8 +10,8 @@ from desloppify.app.commands.helpers.queue_progress import (
 from desloppify.app.commands.scan.reporting.subjective import (
     build_subjective_followup,
 )
-from desloppify.core.config import load_config
-from desloppify.core.output.terminal import colorize, log
+from desloppify.base.config import load_config
+from desloppify.base.output.terminal import colorize, log
 from desloppify.engine._scoring.results.core import compute_health_breakdown
 from desloppify.engine._work_queue.core import ATTEST_EXAMPLE
 from desloppify.intelligence.integrity import (

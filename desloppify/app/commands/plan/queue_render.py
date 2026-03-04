@@ -11,7 +11,7 @@ from desloppify.app.commands.helpers.queue_progress import (
 )
 from desloppify.app.commands.helpers.runtime import command_runtime
 from desloppify.app.commands.helpers.state import require_completed_scan
-from desloppify.core.output.terminal import colorize, print_table
+from desloppify.base.output.terminal import colorize, print_table
 from desloppify.engine._work_queue.core import (
     QueueBuildOptions,
     build_work_queue,

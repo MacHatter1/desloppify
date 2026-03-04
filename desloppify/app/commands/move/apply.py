@@ -6,9 +6,9 @@ import shutil
 import sys
 from pathlib import Path
 
-from desloppify.core.discovery.api import rel, safe_write_text
-from desloppify.core.output.fallbacks import restore_files_best_effort, warn_best_effort
-from desloppify.core.output.terminal import colorize
+from desloppify.base.discovery.api import rel, safe_write_text
+from desloppify.base.output.fallbacks import restore_files_best_effort, warn_best_effort
+from desloppify.base.output.terminal import colorize
 
 
 def _rollback_written_files(written_files: dict[str, str]) -> None:

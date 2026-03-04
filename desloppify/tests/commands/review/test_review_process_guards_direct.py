@@ -20,7 +20,7 @@ from desloppify.app.commands.review.importing.helpers import (
 )
 from desloppify.app.commands.review.prepare import do_prepare
 from desloppify.app.commands.review.runner_packets import write_packet_snapshot
-from desloppify.core.exception_sets import CommandError
+from desloppify.base.exception_sets import CommandError
 
 
 def _colorize(text: str, _style: str) -> str:

@@ -3,8 +3,8 @@
 import re
 import sys
 
-from desloppify.core.discovery.api import rel
-from desloppify.core.output.terminal import colorize
+from desloppify.base.discovery.api import rel
+from desloppify.base.output.terminal import colorize
 from desloppify.languages.typescript.fixers.fixer_io import apply_fixer
 from desloppify.languages.typescript.fixers.syntax_scan import (
     collapse_blank_lines,

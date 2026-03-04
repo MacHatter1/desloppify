@@ -14,8 +14,8 @@ from desloppify.app.commands.scan.reporting.subjective import (
     subjective_integrity_notice_lines,
     subjective_rerun_command,
 )
-from desloppify.core import registry as registry_mod
-from desloppify.core.output.terminal import colorize
+from desloppify.base import registry as registry_mod
+from desloppify.base.output.terminal import colorize
 from desloppify.engine.planning.scorecard_projection import (
     dimension_cli_key,
     scorecard_dimension_cli_keys,

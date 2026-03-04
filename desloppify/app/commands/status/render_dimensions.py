@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from desloppify.app.commands.scan.reporting.presentation import dimension_bar
-from desloppify.core.output.terminal import colorize
-from desloppify.core.registry import dimension_action_type
+from desloppify.base.output.terminal import colorize
+from desloppify.base.registry import dimension_action_type
 from desloppify.engine._scoring.policy.core import DIMENSIONS
 from desloppify.engine.planning.scorecard_projection import (
     scorecard_subjective_entries,

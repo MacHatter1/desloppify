@@ -6,7 +6,7 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
-from desloppify.core.output.fallbacks import log_best_effort_failure, warn_best_effort
+from desloppify.base.output.fallbacks import log_best_effort_failure, warn_best_effort
 
 logger = logging.getLogger(__name__)
 _WARNED_READ_FAILURES: set[tuple[str, str]] = set()

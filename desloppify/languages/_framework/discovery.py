@@ -7,7 +7,7 @@ import importlib.util
 import logging
 from pathlib import Path
 
-from desloppify.core.discovery.paths import get_project_root
+from desloppify.base.discovery.paths import get_project_root
 
 from . import registry_state
 
@@ -117,7 +117,7 @@ def load_all(*, force_reload: bool = False) -> None:
 
 def reload_all() -> None:
     """Force a full in-process language plugin reload."""
-    from desloppify.core.registry import reset_registered_detectors
+    from desloppify.base.registry import reset_registered_detectors
     from desloppify.engine._scoring.policy.core import reset_registered_scoring_policies
 
     reset_registered_detectors()

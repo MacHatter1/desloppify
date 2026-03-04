@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from desloppify import state as state_mod
 from desloppify.app.commands.helpers.score import target_strict_score_from_config
-from desloppify.core import config as config_mod
-from desloppify.core.output.terminal import colorize
+from desloppify.base import config as config_mod
+from desloppify.base.output.terminal import colorize
 
 
 def _format_delta(value: float, prev: float | None) -> tuple[str, str]:

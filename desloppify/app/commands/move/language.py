@@ -9,7 +9,7 @@ from types import ModuleType
 
 from desloppify import languages as lang_mod
 from desloppify.app.commands.helpers.lang import resolve_lang
-from desloppify.core.exception_sets import CommandError
+from desloppify.base.exception_sets import CommandError
 
 logger = logging.getLogger(__name__)
 

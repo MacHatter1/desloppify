@@ -11,7 +11,7 @@ from desloppify.app.commands.plan.triage import display as _display_mod
 from desloppify.app.commands.plan.triage import helpers as _helpers_mod
 from desloppify.app.commands.plan.triage import stages as _stages_mod
 from desloppify.app.commands.plan.triage_playbook import TRIAGE_CMD_OBSERVE
-from desloppify.core.output.terminal import colorize
+from desloppify.base.output.terminal import colorize
 from desloppify.engine.plan import (
     append_log_entry,
     build_triage_prompt,

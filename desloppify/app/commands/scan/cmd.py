@@ -52,8 +52,8 @@ from desloppify.app.commands.scan.workflow import (
     resolve_noise_snapshot,
     run_scan_generation,
 )
-from desloppify.core.output.terminal import colorize
-from desloppify.core.search.query import write_query
+from desloppify.base.output.terminal import colorize
+from desloppify.base.search.query import write_query
 
 from . import preflight as scan_preflight_mod
 

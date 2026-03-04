@@ -15,7 +15,7 @@ _DEFAULT_MAX_LOG_ENTRIES = 10000
 def _get_log_cap() -> int:
     """Read execution_log_max_entries from config. Returns 0 for unlimited."""
     try:
-        from desloppify.core.config import load_config
+        from desloppify.base.config import load_config
 
         config = load_config()
         value = config.get("execution_log_max_entries", _DEFAULT_MAX_LOG_ENTRIES)

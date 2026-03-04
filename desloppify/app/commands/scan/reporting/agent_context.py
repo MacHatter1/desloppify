@@ -12,11 +12,11 @@ from desloppify.app.commands.update_skill import (
     resolve_interface,
     update_installed_skill,
 )
-from desloppify.core import registry as registry_mod
-from desloppify.core import skill_docs as skill_docs_mod
-from desloppify.core.exception_sets import PLAN_LOAD_EXCEPTIONS
-from desloppify.core.output.fallbacks import log_best_effort_failure
-from desloppify.core.text.text_api import get_project_root
+from desloppify.base import registry as registry_mod
+from desloppify.base import skill_docs as skill_docs_mod
+from desloppify.base.exception_sets import PLAN_LOAD_EXCEPTIONS
+from desloppify.base.output.fallbacks import log_best_effort_failure
+from desloppify.base.text.text_api import get_project_root
 from desloppify.engine._scoring.results.core import compute_health_breakdown
 from desloppify.engine._scoring.subjective.core import DISPLAY_NAMES
 from desloppify.engine._state.schema import StateModel

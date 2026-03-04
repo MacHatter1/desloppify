@@ -8,7 +8,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-from desloppify.core.discovery.api import rel, resolve_path
+from desloppify.base.discovery.api import rel, resolve_path
 from desloppify.engine._state.schema import StateModel
 from desloppify.intelligence.review._context.patterns import (
     ERROR_PATTERNS as _ERROR_PATTERNS,

@@ -9,7 +9,7 @@ from desloppify import state as state_mod
 from desloppify.app.commands.helpers.query import (
     write_query_best_effort as _write_query_best_effort,
 )
-from desloppify.core.exception_sets import PLAN_LOAD_EXCEPTIONS
+from desloppify.base.exception_sets import PLAN_LOAD_EXCEPTIONS
 from desloppify.engine.plan import has_living_plan, load_plan
 
 from .selection import ResolveQueryContext

@@ -8,7 +8,7 @@ from unittest.mock import patch
 import pytest
 
 from desloppify.app.commands.scan.preflight import scan_queue_preflight
-from desloppify.core.exception_sets import CommandError
+from desloppify.base.exception_sets import CommandError
 
 # ── CI profile bypass ───────────────────────────────────────
 

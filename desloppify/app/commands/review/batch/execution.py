@@ -9,7 +9,7 @@ from functools import partial
 from pathlib import Path
 from typing import Any
 
-from desloppify.core.exception_sets import CommandError
+from desloppify.base.exception_sets import CommandError
 
 from ..batches_runtime import (
     BatchRunSummaryConfig,

@@ -64,10 +64,19 @@ def coerce_confidence(value: object, *, default: float = 1.0) -> float:
     return max(0.0, min(1.0, parsed))
 
 
+def coerce_optional_str(value: object) -> str | None:
+    """Coerce a value to *str* or *None* if empty/None."""
+    if value is None:
+        return None
+    s = str(value).strip()
+    return s if s else None
+
+
 __all__ = [
     "coerce_confidence",
     "coerce_non_negative_float",
     "coerce_non_negative_int",
+    "coerce_optional_str",
     "coerce_positive_float",
     "coerce_positive_int",
 ]

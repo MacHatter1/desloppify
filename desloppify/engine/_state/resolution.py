@@ -10,7 +10,7 @@ __all__ = [
     "resolve_issues",
 ]
 
-from desloppify.core.text.text_api import is_numeric
+from desloppify.base.text.text_api import is_numeric
 from desloppify.engine._state.filtering import _matches_pattern
 from desloppify.engine._state.schema import (
     StateModel,

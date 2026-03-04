@@ -13,8 +13,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from desloppify.core.registry import DetectorMeta, register_detector
-from desloppify.core.discovery.source import find_source_files
+from desloppify.base.registry import DetectorMeta, register_detector
+from desloppify.base.discovery.source import find_source_files
 from desloppify.engine._scoring.policy.core import (
     DetectorScoringPolicy,
     register_scoring_policy,
@@ -331,7 +331,7 @@ def generic_lang(
 
     # Register language-specific test coverage hooks if provided.
     if opts.test_coverage_module is not None:
-        from desloppify.hook_registry import register_lang_hooks
+        from desloppify.engine.hook_registry import register_lang_hooks
 
         register_lang_hooks(name, test_coverage=opts.test_coverage_module)
 
@@ -344,7 +344,7 @@ def generic_lang(
 
 def _make_structural_phase(treesitter_spec=None) -> DetectorPhase:
     """Create a structural analysis phase for generic plugins."""
-    from desloppify.core.output.terminal import log
+    from desloppify.base.output.terminal import log
     from desloppify.engine.detectors.base import ComplexitySignal
 
     signals = [
@@ -465,7 +465,7 @@ def _extract_ts_classes(path, treesitter_spec, file_finder):
 
 def _make_coupling_phase(dep_graph_fn) -> DetectorPhase:
     """Create a coupling phase for generic plugins with a dep graph."""
-    from desloppify.core.output.terminal import log
+    from desloppify.base.output.terminal import log
 
     def run(path, lang):
         from desloppify.languages._framework.base.shared_phases import (

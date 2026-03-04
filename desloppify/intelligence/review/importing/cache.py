@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from desloppify.core.text.text_api import get_project_root
+from desloppify.base.text.text_api import get_project_root
 from desloppify.engine._state.schema import StateModel
 from desloppify.intelligence.review.importing.state_helpers import _review_file_cache
 from desloppify.state import utc_now

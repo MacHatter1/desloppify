@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-import desloppify.core.discovery.paths as paths_api_mod
+import desloppify.base.discovery.paths as paths_api_mod
 import desloppify.languages.typescript.detectors.deprecated as deprecated_detector_mod
 
 

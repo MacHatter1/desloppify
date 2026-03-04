@@ -5,8 +5,8 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 
-from desloppify.core.registry import DETECTORS
-from desloppify.engine._scoring.policy.core import (
+from desloppify.base.registry import DETECTORS
+from desloppify.base.scoring_constants import (
     CONFIDENCE_WEIGHTS,
     HOLISTIC_MULTIPLIER,
 )

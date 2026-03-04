@@ -5,7 +5,7 @@ from __future__ import annotations
 import shlex
 import sys
 
-from desloppify.core.exception_sets import CommandError, PacketValidationError
+from desloppify.base.exception_sets import CommandError, PacketValidationError
 from desloppify.intelligence.review.dimensions.data import load_dimensions_for_lang
 from desloppify.intelligence.review.feedback_contract import (
     LEGACY_REVIEW_QUALITY_HIGH_SCORE_MISSING_ISSUES_KEY,

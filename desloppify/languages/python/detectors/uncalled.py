@@ -14,7 +14,7 @@ import ast
 import os
 from pathlib import Path
 
-from desloppify.core.discovery.api import read_file_text, rel
+from desloppify.base.discovery.api import read_file_text, rel
 
 # Entry-point files where unused private functions are expected.
 # Subset of PY_ENTRY_PATTERNS from phases.py (can't import — circular).

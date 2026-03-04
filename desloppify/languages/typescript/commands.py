@@ -8,13 +8,13 @@ import json
 from collections.abc import Callable
 from pathlib import Path
 
-from desloppify.core.discovery.api import find_ts_files, rel
-from desloppify.core.output.terminal import (
+from desloppify.base.discovery.api import find_ts_files, rel
+from desloppify.base.output.terminal import (
     colorize,
     display_entries,
     print_table,
 )
-from desloppify.core.discovery.paths import get_src_path
+from desloppify.base.discovery.paths import get_src_path
 from desloppify.engine.detectors import coupling as coupling_detector_mod
 from desloppify.engine.detectors import dupes as dupes_detector_mod
 from desloppify.engine.detectors import gods as gods_detector_mod

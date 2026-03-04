@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from desloppify.core.registry import JUDGMENT_DETECTORS
+from desloppify.base.registry import JUDGMENT_DETECTORS
 from desloppify.engine.concerns import (
     _build_evidence,
     _build_question,

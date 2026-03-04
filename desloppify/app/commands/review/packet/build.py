@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from desloppify.core.coercions_api import coerce_positive_int
+from desloppify.base.coercions import coerce_positive_int
 from desloppify.engine._state.schema import StateModel
 from desloppify.intelligence import narrative as narrative_mod
 from desloppify.intelligence import review as review_mod

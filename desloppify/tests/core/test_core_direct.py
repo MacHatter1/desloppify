@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 import logging
 
-import desloppify.core.output.fallbacks as fallbacks_mod
-import desloppify.core.search.query as query_mod
+import desloppify.base.output.fallbacks as fallbacks_mod
+import desloppify.base.search.query as query_mod
 
 
 def test_write_query_injects_config_payload(tmp_path, monkeypatch):

@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from desloppify.core.discovery.api import safe_write_text
-from desloppify.engine._scoring.policy.core import (
+from desloppify.base.discovery.api import safe_write_text
+from desloppify.base.scoring_constants import (
     CONFIDENCE_WEIGHTS,
     HOLISTIC_MULTIPLIER,
 )

@@ -13,8 +13,8 @@ from desloppify.app.commands.helpers.runtime_options import (
     print_lang_runtime_options_error,
     resolve_lang_runtime_options,
 )
-from desloppify.core.exception_sets import CommandError
-from desloppify.core.output.terminal import colorize
+from desloppify.base.exception_sets import CommandError
+from desloppify.base.output.terminal import colorize
 from desloppify.languages import runtime as lang_runtime
 
 

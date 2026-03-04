@@ -19,12 +19,12 @@ import desloppify.app.commands.show.dimension_views as show_dimension_views_mod
 import desloppify.app.commands.status.render_dimensions as status_render_dimensions_mod
 import desloppify.app.commands.status.render_io as status_render_io_mod
 import desloppify.app.commands.status.render_structural as status_render_structural_mod
-import desloppify.core.compatibility as compatibility_mod
-import desloppify.core.search.grep as grep_mod
-import desloppify.core.output.terminal as output_mod
-import desloppify.core.skill_docs as skill_docs_mod
-import desloppify.core.subjective_dimensions as subjective_dimensions_mod
-import desloppify.core.text.text_api as text_api_mod
+import desloppify.base.compatibility as compatibility_mod
+import desloppify.base.search.grep as grep_mod
+import desloppify.base.output.terminal as output_mod
+import desloppify.base.skill_docs as skill_docs_mod
+import desloppify.base.subjective_dimensions as subjective_dimensions_mod
+import desloppify.base.text.text_api as text_api_mod
 import desloppify.engine._plan.schema_migrations as schema_migrations_mod
 import desloppify.engine._scoring.results.health as scoring_health_mod
 import desloppify.engine._scoring.results.impact as scoring_impact_mod
@@ -34,7 +34,7 @@ import desloppify.engine.planning as planning_pkg
 import desloppify.engine.planning.dimension_rows as planning_dimension_rows_mod
 import desloppify.engine.planning.render_sections as planning_render_sections_mod
 import desloppify.engine.planning.scorecard_policy as dimension_policy_mod
-import desloppify.hook_registry as hook_registry_mod
+import desloppify.engine.hook_registry as hook_registry_mod
 import desloppify.intelligence.narrative.signals as narrative_signals_mod
 import desloppify.intelligence.review.context_holistic.selection_contexts as selection_contexts_mod
 import desloppify.intelligence.review.selection_cache as review_selection_cache_mod

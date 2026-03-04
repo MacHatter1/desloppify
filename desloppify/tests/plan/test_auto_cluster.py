@@ -53,7 +53,7 @@ def _state_with(*issues: dict) -> dict:
 # ---------------------------------------------------------------------------
 
 def test_grouping_key_auto_fix():
-    from desloppify.core.registry import DETECTORS
+    from desloppify.base.registry import DETECTORS
     f = _issue("a", "unused")
     meta = DETECTORS.get("unused")
     key = _grouping_key(f, meta)
@@ -61,7 +61,7 @@ def test_grouping_key_auto_fix():
 
 
 def test_grouping_key_review():
-    from desloppify.core.registry import DETECTORS
+    from desloppify.base.registry import DETECTORS
     f = _issue("a", "review", detail={"dimension": "abstraction_fitness"})
     meta = DETECTORS.get("review")
     key = _grouping_key(f, meta)
@@ -69,7 +69,7 @@ def test_grouping_key_review():
 
 
 def test_grouping_key_needs_judgment_with_kind():
-    from desloppify.core.registry import DETECTORS
+    from desloppify.base.registry import DETECTORS
     f = _issue("a", "dict_keys", detail={"kind": "phantom_read"})
     meta = DETECTORS.get("dict_keys")
     key = _grouping_key(f, meta)
@@ -77,7 +77,7 @@ def test_grouping_key_needs_judgment_with_kind():
 
 
 def test_grouping_key_structural():
-    from desloppify.core.registry import DETECTORS
+    from desloppify.base.registry import DETECTORS
     f = _issue("a", "structural", file="src/big_file.py")
     meta = DETECTORS.get("structural")
     key = _grouping_key(f, meta)
@@ -421,7 +421,7 @@ def test_build_work_queue_no_collapse_when_drilling():
 
 def test_generate_action_always_returns_something():
     """Every detector/subtype combination must produce a non-None action."""
-    from desloppify.core.registry import DETECTORS
+    from desloppify.base.registry import DETECTORS
     from desloppify.engine._plan.auto_cluster import _generate_action
 
     # No metadata → fallback

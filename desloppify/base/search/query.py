@@ -7,9 +7,9 @@ import logging
 import sys
 from pathlib import Path
 
-from desloppify.core.config import config_for_query, load_config
-from desloppify.core.discovery.file_paths import safe_write_text
-from desloppify.core.output.contract import OutputResult
+from desloppify.base.config import config_for_query, load_config
+from desloppify.base.discovery.file_paths import safe_write_text
+from desloppify.base.output.contract import OutputResult
 from desloppify.state import json_default
 
 logger = logging.getLogger(__name__)

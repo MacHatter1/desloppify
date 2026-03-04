@@ -5,7 +5,7 @@ import logging
 import re
 from pathlib import Path
 
-from desloppify.core.text.text_api import get_project_root
+from desloppify.base.text.text_api import get_project_root
 from desloppify.engine.detectors.base import FunctionInfo
 from desloppify.languages.typescript.extractors_components import (
     detect_passthrough_components,

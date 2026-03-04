@@ -6,7 +6,7 @@ import hashlib
 import logging
 from pathlib import Path
 
-from desloppify.core.output.fallbacks import log_best_effort_failure
+from desloppify.base.output.fallbacks import log_best_effort_failure
 
 TOOL_DIR = Path(__file__).resolve().parent.parent
 logger = logging.getLogger(__name__)

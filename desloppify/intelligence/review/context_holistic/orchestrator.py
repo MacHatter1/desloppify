@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from desloppify.core.discovery.api import (
+from desloppify.base.discovery.api import (
     disable_file_cache,
     enable_file_cache,
     is_file_cache_enabled,

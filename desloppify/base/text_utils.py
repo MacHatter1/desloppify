@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from desloppify.core.runtime_state import current_runtime_context
+from desloppify.base.runtime_state import current_runtime_context
 
 _DEFAULT_PROJECT_ROOT = Path(os.environ.get("DESLOPPIFY_ROOT", Path.cwd())).resolve()
 

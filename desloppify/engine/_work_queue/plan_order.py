@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from desloppify.core.registry import DETECTORS
+from desloppify.base.registry import DETECTORS
 from desloppify.engine._plan.annotations import (
     get_issue_description,
     get_issue_note,

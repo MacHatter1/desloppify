@@ -18,12 +18,12 @@ from desloppify.app.commands.helpers.score import target_strict_score_from_confi
 from desloppify.app.commands.scan.reporting import (
     dimensions as reporting_dimensions_mod,
 )
-from desloppify.core.exception_sets import (
+from desloppify.base.exception_sets import (
     PLAN_LOAD_EXCEPTIONS,
     CommandError,
     PacketValidationError,
 )
-from desloppify.core.output.terminal import colorize
+from desloppify.base.output.terminal import colorize
 from desloppify.intelligence import integrity as subjective_integrity_mod
 from desloppify.intelligence import narrative as narrative_mod
 from desloppify.intelligence import review as review_mod

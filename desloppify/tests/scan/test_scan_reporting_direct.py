@@ -421,7 +421,7 @@ def test_print_llm_summary_respects_env_and_includes_dimension_table(
     capsys,
     tmp_path,
 ):
-    import desloppify.core.registry as registry_mod
+    import desloppify.base.registry as registry_mod
     import desloppify.engine._scoring.policy.core as scoring_policy_mod
     monkeypatch.setenv("DESLOPPIFY_AGENT", "1")
     monkeypatch.delenv("CLAUDE_CODE", raising=False)

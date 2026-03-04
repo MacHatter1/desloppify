@@ -18,7 +18,7 @@ from desloppify.app.output.visualize import (
     cmd_viz,
     generate_visualization,
 )
-from desloppify.core.output.contract import OutputResult
+from desloppify.base.output.contract import OutputResult
 
 # ===========================================================================
 # esc() — XSS sanitizer (lives in the JS template, test the Python-side

@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from desloppify.engine._scoring.policy.core import (
+from desloppify.base.scoring_constants import (
     CONFIDENCE_WEIGHTS,
-    FAILURE_STATUSES_BY_MODE,
     HOLISTIC_MULTIPLIER,
+)
+from desloppify.engine._scoring.policy.core import (
+    FAILURE_STATUSES_BY_MODE,
     SCORING_MODES,
     ScoreMode,
     detector_policy,

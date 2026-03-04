@@ -6,7 +6,7 @@ import importlib
 
 import pytest
 
-import desloppify.core.registry as core_registry_mod
+import desloppify.base.registry as core_registry_mod
 import desloppify.engine._scoring.policy.core as scoring_policy_mod
 from desloppify.languages import discovery as discovery_mod
 from desloppify.languages import registry_state

@@ -8,8 +8,8 @@ import tempfile
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
-from desloppify.core.discovery.path_io import rel
-from desloppify.core.registry import _DISPLAY_ORDER, DETECTORS
+from desloppify.base.discovery.path_io import rel
+from desloppify.base.registry import _DISPLAY_ORDER, DETECTORS
 from desloppify.engine._scoring.policy.core import (
     DIMENSIONS,
     FILE_BASED_DETECTORS,

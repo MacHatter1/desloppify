@@ -509,7 +509,7 @@ class TestDetectorNames:
             assert name in names
 
     def test_runtime_detector_registration_invalidates_cached_detector_names(self):
-        from desloppify.core.registry import (
+        from desloppify.base.registry import (
             _DISPLAY_ORDER,
             DETECTORS,
             DetectorMeta,

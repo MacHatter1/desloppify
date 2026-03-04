@@ -37,15 +37,15 @@ from desloppify.app.commands.scan.plan_reconcile import (
 from desloppify.app.commands.scan.wontfix import (
     augment_with_stale_wontfix_issues as _augment_stale_wontfix_impl,
 )
-from desloppify.core.config import save_config as _save_config
-from desloppify.core.discovery.file_paths import rel
-from desloppify.core.output.terminal import colorize
-from desloppify.core.discovery.source import (
+from desloppify.base.config import save_config as _save_config
+from desloppify.base.discovery.file_paths import rel
+from desloppify.base.output.terminal import colorize
+from desloppify.base.discovery.source import (
     disable_file_cache,
     enable_file_cache,
     get_exclusions,
 )
-from desloppify.core.text.text_api import get_project_root
+from desloppify.base.text.text_api import get_project_root
 from desloppify.engine import planning as plan_mod
 from desloppify.engine._work_queue.issues import expire_stale_holistic
 from desloppify.engine.planning.scan import PlanScanOptions

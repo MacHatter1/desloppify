@@ -8,7 +8,7 @@ from pathlib import Path
 from desloppify import state as state_module
 from desloppify.app.commands.helpers.lang import resolve_lang
 from desloppify.app.commands.helpers.runtime import command_runtime
-from desloppify.core.output.fallbacks import warn_best_effort
+from desloppify.base.output.fallbacks import warn_best_effort
 
 
 def load_cmd_context(args: object) -> tuple[Path, object | None, dict | None]:

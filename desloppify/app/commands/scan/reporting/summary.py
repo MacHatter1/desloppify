@@ -12,7 +12,7 @@ from desloppify.app.commands.scan.reporting.agent_context import is_agent_enviro
 from desloppify.app.commands.status.strict_target import (
     format_strict_target_progress,
 )
-from desloppify.core.output.terminal import colorize
+from desloppify.base.output.terminal import colorize
 from desloppify.engine._state.schema import StateModel
 from desloppify.engine.concerns import generate_concerns
 

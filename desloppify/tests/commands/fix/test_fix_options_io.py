@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from desloppify.app.commands.fix.options import _COMMAND_POST_FIX, _load_fixer
-from desloppify.core.exception_sets import CommandError
+from desloppify.base.exception_sets import CommandError
 from desloppify.languages._framework.base.types import FixerConfig, LangConfig
 
 # ── Helpers ───────────────────────────────────────────────────

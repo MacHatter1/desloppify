@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from desloppify.core._internal import text_utils as text_utils_mod
+from desloppify.base import text_utils as text_utils_mod
 
 
 def get_project_root() -> Path:

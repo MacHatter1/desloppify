@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from desloppify.core.text.text_api import get_area
+from desloppify.base.text.text_api import get_area
 from desloppify.engine.detectors.base import FunctionInfo
 from desloppify.engine.policy.zones import COMMON_ZONE_RULES, Zone, ZoneRule
-from desloppify.hook_registry import register_lang_hooks
+from desloppify.engine.hook_registry import register_lang_hooks
 from desloppify.languages import register_lang
 from desloppify.languages._framework.base.phase_builders import (
     detector_phase_security,

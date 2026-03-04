@@ -9,7 +9,7 @@ from desloppify.app.commands.helpers.runtime import command_runtime
 from desloppify.app.commands.plan.triage_playbook import (
     TRIAGE_CMD_ORGANIZE,
 )
-from desloppify.core.output.terminal import colorize
+from desloppify.base.output.terminal import colorize
 from desloppify.engine.plan import (
     append_log_entry,
     collect_triage_input,

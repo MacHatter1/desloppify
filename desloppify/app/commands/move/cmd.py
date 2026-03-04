@@ -19,9 +19,9 @@ from desloppify.app.commands.move.planning import (
     resolve_dest,
 )
 from desloppify.app.commands.move.reporting import print_file_move_plan
-from desloppify.core.discovery.api import rel, resolve_path
-from desloppify.core.exception_sets import CommandError
-from desloppify.core.output.terminal import colorize
+from desloppify.base.discovery.api import rel, resolve_path
+from desloppify.base.exception_sets import CommandError
+from desloppify.base.output.terminal import colorize
 
 
 def cmd_move(args: argparse.Namespace) -> None:

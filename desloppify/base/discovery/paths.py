@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from desloppify.core._internal import text_utils as _text_utils
+from desloppify.base import text_utils as _text_utils
 
 PROJECT_ROOT = _text_utils.get_project_root().resolve()
 DEFAULT_PATH = PROJECT_ROOT / "src"

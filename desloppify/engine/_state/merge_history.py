@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from desloppify.core.tooling import compute_tool_hash
+from desloppify.base.tooling import compute_tool_hash
 from desloppify.engine._state.schema import ScanDiff, StateModel
 
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from desloppify.hook_registry import get_lang_hook
+from desloppify.engine.hook_registry import get_lang_hook
 
 from .io import read_coverage_file
 

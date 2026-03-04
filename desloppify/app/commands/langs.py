@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import logging
 
-from desloppify.core.output.terminal import colorize
+from desloppify.base.output.terminal import colorize
 from desloppify.languages._framework import registry_state
 from desloppify.languages._framework.base.types import LangConfig
 from desloppify.languages._framework.discovery import load_all

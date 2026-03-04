@@ -6,7 +6,7 @@ import pytest
 
 import desloppify.app.commands.detect as detect_mod
 from desloppify.app.commands.detect import cmd_detect
-from desloppify.core.exception_sets import CommandError
+from desloppify.base.exception_sets import CommandError
 
 
 class _FakeLangBase:

@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-import desloppify.core.discovery.api as _discovery_api_mod
+import desloppify.base.discovery.api as _discovery_api_mod
 from desloppify.engine._scoring.detection import detector_pass_rate
 from desloppify.engine._scoring.policy.core import HOLISTIC_POTENTIAL
 from desloppify.engine.detectors.review_coverage import detect_holistic_review_staleness
@@ -49,7 +49,7 @@ from desloppify.state import empty_state, path_scoped_issues
 @pytest.fixture
 def patch_project_root(monkeypatch):
     """Patch project root via RuntimeContext so all consumers see the override."""
-    from desloppify.core.runtime_state import current_runtime_context
+    from desloppify.base.runtime_state import current_runtime_context
 
     ctx = current_runtime_context()
 
@@ -678,7 +678,7 @@ class TestImportHolisticIssues:
             "reviewed_files": ["pkg/module.py"],
         }
 
-        from desloppify.core.runtime_state import RuntimeContext, runtime_scope
+        from desloppify.base.runtime_state import RuntimeContext, runtime_scope
         ctx = RuntimeContext(project_root=tmp_path)
         with runtime_scope(ctx):
             _ = import_holistic_issues(issues_data, state, "python", project_root=tmp_path)
@@ -718,7 +718,7 @@ class TestImportHolisticIssues:
             "reviewed_files": ["pkg/module.py"],
         }
 
-        from desloppify.core.runtime_state import RuntimeContext, runtime_scope
+        from desloppify.base.runtime_state import RuntimeContext, runtime_scope
 
         ctx = RuntimeContext(project_root=tmp_path)
         with runtime_scope(ctx):

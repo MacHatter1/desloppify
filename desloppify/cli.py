@@ -10,13 +10,13 @@ from desloppify.app.commands.helpers.lang import LangResolutionError, resolve_la
 from desloppify.app.commands.helpers.runtime import CommandRuntime
 from desloppify.app.commands.helpers.state import state_path
 from desloppify.app.commands.registry import get_command_handlers
-from desloppify.core.config import load_config
-from desloppify.core.discovery.api import set_exclusions
-from desloppify.core.exception_sets import CommandError
-from desloppify.core.output.terminal import colorize
-from desloppify.core.discovery.paths import get_default_path, get_project_root
-from desloppify.core.registry import detector_names, on_detector_registered
-from desloppify.core.runtime_state import runtime_scope
+from desloppify.base.config import load_config
+from desloppify.base.discovery.api import set_exclusions
+from desloppify.base.exception_sets import CommandError
+from desloppify.base.output.terminal import colorize
+from desloppify.base.discovery.paths import get_default_path, get_project_root
+from desloppify.base.registry import detector_names, on_detector_registered
+from desloppify.base.runtime_state import runtime_scope
 from desloppify.languages import available_langs
 from desloppify.state import load_state
 

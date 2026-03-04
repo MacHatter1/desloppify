@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from desloppify import state as state_mod
-from desloppify.core import config as config_mod
-from desloppify.core.exception_sets import CommandError
+from desloppify.base import config as config_mod
+from desloppify.base.exception_sets import CommandError
 
 
 def _save_state_or_exit(state: dict, state_file: Path | None) -> None:

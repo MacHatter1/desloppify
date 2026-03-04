@@ -5,14 +5,14 @@ from __future__ import annotations
 import argparse
 
 from desloppify.app.commands.helpers.runtime import command_runtime
-from desloppify.core.config import (
+from desloppify.base.config import (
     CONFIG_SCHEMA,
     save_config,
     set_config_value,
     unset_config_value,
 )
-from desloppify.core.exception_sets import CommandError
-from desloppify.core.output.terminal import colorize
+from desloppify.base.exception_sets import CommandError
+from desloppify.base.output.terminal import colorize
 
 
 def cmd_config(args: argparse.Namespace) -> None:

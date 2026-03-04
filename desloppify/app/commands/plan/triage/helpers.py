@@ -6,7 +6,7 @@ import argparse
 from collections import defaultdict
 
 from desloppify.app.commands.helpers.runtime import command_runtime
-from desloppify.core.output.terminal import colorize
+from desloppify.base.output.terminal import colorize
 from desloppify.engine.plan import (
     TRIAGE_IDS,
     TRIAGE_STAGE_IDS,

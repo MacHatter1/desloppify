@@ -15,10 +15,10 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-from desloppify.core.discovery.api import find_ts_files, rel, resolve_path
-from desloppify.core.output.fallbacks import log_best_effort_failure
-from desloppify.core.search.grep import grep_files
-from desloppify.core.output.terminal import colorize, print_table
+from desloppify.base.discovery.api import find_ts_files, rel, resolve_path
+from desloppify.base.output.fallbacks import log_best_effort_failure
+from desloppify.base.search.grep import grep_files
+from desloppify.base.output.terminal import colorize, print_table
 from desloppify.languages.typescript.detectors.contracts import DetectorResult
 
 logger = logging.getLogger(__name__)

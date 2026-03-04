@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from desloppify.core.output.terminal import colorize
+from desloppify.base.output.terminal import colorize
 
 
 class SubjectiveFollowup(Protocol):

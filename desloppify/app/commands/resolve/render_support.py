@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from desloppify import state as state_mod
-from desloppify.core.output.terminal import colorize
+from desloppify.base.output.terminal import colorize
 from desloppify.engine._state.schema import StateModel
 
 

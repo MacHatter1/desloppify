@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from desloppify import state as state_mod
-from desloppify.core import registry as registry_mod
-from desloppify.core.output.terminal import colorize
+from desloppify.base import registry as registry_mod
+from desloppify.base.output.terminal import colorize
 from desloppify.engine._scoring.policy.core import DIMENSIONS
 from desloppify.engine._scoring.subjective.core import DISPLAY_NAMES
 from desloppify.engine._state.schema import StateModel

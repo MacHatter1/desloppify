@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from desloppify.core.discovery.api import read_file_text, rel
+from desloppify.base.discovery.api import read_file_text, rel
 from desloppify.intelligence.review.context import (
     abs_path,
     dep_graph_lookup,

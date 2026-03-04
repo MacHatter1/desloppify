@@ -6,7 +6,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from desloppify.core.signal_patterns import SERVICE_ROLE_TOKEN_RE, is_server_only_path
+from desloppify.base.signal_patterns import SERVICE_ROLE_TOKEN_RE, is_server_only_path
 
 _ROUTE_AUTH_RE = re.compile(
     r"@(?:app|router|api)\.(?:get|post|put|patch|delete|route)\b"

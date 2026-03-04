@@ -14,9 +14,9 @@ try:
 except ImportError:
     setuptools = None  # type: ignore[assignment]
 
-from desloppify.core.discovery.api import rel
-from desloppify.core.text.text_api import get_project_root
-from desloppify.core.tooling import compute_tool_hash
+from desloppify.base.discovery.api import rel
+from desloppify.base.text.text_api import get_project_root
+from desloppify.base.tooling import compute_tool_hash
 from desloppify.engine.policy.zones import FileZoneMap, Zone
 from desloppify.languages import available_langs, get_lang
 from desloppify.languages._framework.structure_validation import validate_lang_structure
@@ -146,7 +146,7 @@ def test_compute_tool_hash_ignores_colocated_tests(tmp_path):
     test_file = test_dir / "test_core.py"
     test_file.write_text("def test_x():\n    assert True\n")
 
-    with patch("desloppify.core.tooling.TOOL_DIR", tmp_path):
+    with patch("desloppify.base.tooling.TOOL_DIR", tmp_path):
         base = compute_tool_hash()
 
         # Test-only changes should not affect runtime tool hash.

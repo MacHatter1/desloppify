@@ -11,7 +11,7 @@ from desloppify.app.commands.scan.workflow import (
     merge_scan_results,
     prepare_scan_runtime,
 )
-from desloppify.core.discovery.file_paths import rel
+from desloppify.base.discovery.file_paths import rel
 from desloppify.engine.plan import empty_plan, load_plan, save_plan
 
 

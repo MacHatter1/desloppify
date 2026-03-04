@@ -7,7 +7,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Protocol
 
-from desloppify.core.signal_patterns import DEPRECATION_MARKER_RE, MIGRATION_TODO_RE
+from desloppify.base.signal_patterns import DEPRECATION_MARKER_RE, MIGRATION_TODO_RE
 from desloppify.languages import get_lang
 
 

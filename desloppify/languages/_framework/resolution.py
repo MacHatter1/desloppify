@@ -14,7 +14,7 @@ _MARKER_GLOB_CHARS = ("*", "?", "[")
 
 def _reset_dynamic_registries_for_refresh() -> None:
     """Reset registries that plugins populate at import time."""
-    from desloppify.core.registry import reset_registered_detectors
+    from desloppify.base.registry import reset_registered_detectors
     from desloppify.engine._scoring.policy.core import reset_registered_scoring_policies
 
     reset_registered_detectors()

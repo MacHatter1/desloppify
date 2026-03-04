@@ -19,9 +19,9 @@ from desloppify.app.commands.move.planning import (
     collect_source_files,
 )
 from desloppify.app.commands.move.reporting import print_directory_move_plan
-from desloppify.core.discovery.api import rel
-from desloppify.core.exception_sets import CommandError
-from desloppify.core.output.terminal import colorize
+from desloppify.base.discovery.api import rel
+from desloppify.base.exception_sets import CommandError
+from desloppify.base.output.terminal import colorize
 
 
 def run_directory_move(args, source_abs: str, resolve_path_fn) -> None:

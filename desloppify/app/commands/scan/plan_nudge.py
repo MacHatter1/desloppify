@@ -9,8 +9,8 @@ from __future__ import annotations
 import logging
 
 from desloppify.app.commands.helpers.queue_progress import plan_aware_queue_breakdown
-from desloppify.core.exception_sets import PLAN_LOAD_EXCEPTIONS
-from desloppify.core.output.terminal import colorize
+from desloppify.base.exception_sets import PLAN_LOAD_EXCEPTIONS
+from desloppify.base.output.terminal import colorize
 from desloppify.engine.plan import load_plan
 
 _logger = logging.getLogger(__name__)

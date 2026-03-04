@@ -1,6 +1,6 @@
 """Tests for desloppify.app.commands.zone — zone command helpers."""
 
-import desloppify.core.config as config_mod
+import desloppify.base.config as config_mod
 from desloppify.app.commands.helpers.runtime import CommandRuntime
 from desloppify.app.commands.zone import (
     _zone_clear,
@@ -8,7 +8,7 @@ from desloppify.app.commands.zone import (
     _zone_show,
     cmd_zone,
 )
-from desloppify.core.exception_sets import CommandError
+from desloppify.base.exception_sets import CommandError
 
 # ---------------------------------------------------------------------------
 # Module-level sanity

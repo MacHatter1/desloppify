@@ -16,7 +16,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any, Literal, TypedDict
 
-from desloppify.core.registry import JUDGMENT_DETECTORS
+from desloppify.base.registry import JUDGMENT_DETECTORS
 from desloppify.engine._state.schema import StateModel
 from desloppify.engine.detectors.base import (
     ELEVATED_LOC_THRESHOLD,

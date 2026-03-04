@@ -544,7 +544,7 @@ class TestLangsCommand:
 
 class TestDynamicRegistration:
     def test_register_detector_adds_to_detectors_dict(self):
-        from desloppify.core.registry import DETECTORS, DetectorMeta, register_detector
+        from desloppify.base.registry import DETECTORS, DetectorMeta, register_detector
 
         name = "_test_reg_det_1"
         register_detector(DetectorMeta(
@@ -556,7 +556,7 @@ class TestDynamicRegistration:
         del DETECTORS[name]
 
     def test_register_detector_appends_to_display_order(self):
-        from desloppify.core.registry import (
+        from desloppify.base.registry import (
             _DISPLAY_ORDER,
             DETECTORS,
             DetectorMeta,
@@ -591,7 +591,7 @@ class TestDynamicRegistration:
 
     def test_register_detector_auto_refreshes_narrative(self):
         """register_detector should auto-refresh DETECTOR_TOOLS via callback."""
-        from desloppify.core.registry import DETECTORS, DetectorMeta, register_detector
+        from desloppify.base.registry import DETECTORS, DetectorMeta, register_detector
         from desloppify.intelligence.narrative._constants import DETECTOR_TOOLS
 
         name = "_test_auto_refresh_1"

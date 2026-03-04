@@ -31,7 +31,7 @@ import desloppify.app.output.scorecard_parts.draw as scorecard_draw
 import desloppify.app.output.scorecard_parts.left_panel as scorecard_left_panel
 import desloppify.app.output.scorecard_parts.ornaments as scorecard_ornaments
 import desloppify.app.output.tree_text as tree_text_mod
-import desloppify.core.runtime_state as runtime_state
+import desloppify.base.runtime_state as runtime_state
 import desloppify.engine._state.noise as noise
 import desloppify.engine._state.persistence as persistence
 import desloppify.engine._state.resolution as state_resolution

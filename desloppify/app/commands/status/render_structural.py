@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections import defaultdict
 
 from desloppify import state as state_mod
-from desloppify.core.output.terminal import colorize
-from desloppify.core.discovery.paths import get_area
+from desloppify.base.output.terminal import colorize
+from desloppify.base.discovery.paths import get_area
 
 
 def collect_structural_areas(

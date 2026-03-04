@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from desloppify.core.discovery.api import matches_exclusion
+from desloppify.base.discovery.api import matches_exclusion
 from desloppify.engine._state.filtering import matched_ignore_pattern
 
 

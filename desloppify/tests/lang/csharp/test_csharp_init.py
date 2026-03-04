@@ -2,14 +2,14 @@
 
 import pytest
 
-import desloppify.core.discovery.api as discovery_api_mod
+import desloppify.base.discovery.api as discovery_api_mod
 from desloppify.languages.csharp import CSharpConfig
 
 
 @pytest.fixture
 def patch_project_root(monkeypatch):
     """Patch project root via RuntimeContext so all consumers see the override."""
-    from desloppify.core.runtime_state import current_runtime_context
+    from desloppify.base.runtime_state import current_runtime_context
 
     ctx = current_runtime_context()
 

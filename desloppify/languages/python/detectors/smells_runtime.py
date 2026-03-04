@@ -5,9 +5,9 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from desloppify.core.discovery.api import find_py_files
-from desloppify.core.output.fallbacks import log_best_effort_failure
-from desloppify.core.text.text_api import get_project_root
+from desloppify.base.discovery.api import find_py_files
+from desloppify.base.output.fallbacks import log_best_effort_failure
+from desloppify.base.text.text_api import get_project_root
 from desloppify.languages.python.detectors.smells_ast import (
     collect_module_constants,
     detect_ast_smells,

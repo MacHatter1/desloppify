@@ -6,7 +6,7 @@ import json
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from desloppify.core.output.fallbacks import print_write_error
+from desloppify.base.output.fallbacks import print_write_error
 
 _CLUSTER_MEMBER_SAMPLE_LIMIT = 25
 

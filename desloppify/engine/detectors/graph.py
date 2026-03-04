@@ -9,13 +9,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from desloppify.core.discovery.api import (
+from desloppify.base.discovery.api import (
     get_exclusions,
     matches_exclusion,
     rel,
     resolve_path,
 )
-from desloppify.core.text.text_api import get_project_root
+from desloppify.base.text.text_api import get_project_root
 
 
 def finalize_graph(graph: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:

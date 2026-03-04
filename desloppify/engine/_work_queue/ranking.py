@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from desloppify.core.registry import DETECTORS
+from desloppify.base.registry import DETECTORS
 from desloppify.engine._scoring.results.health import compute_health_breakdown
 from desloppify.engine._scoring.results.impact import get_dimension_for_detector
 from desloppify.engine._state.schema import StateModel

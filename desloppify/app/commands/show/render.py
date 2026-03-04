@@ -15,11 +15,11 @@ from desloppify.app.commands.helpers.subjective import print_subjective_followup
 from desloppify.app.commands.scan.reporting import (
     dimensions as reporting_dimensions_mod,
 )
-from desloppify.core.discovery.api import safe_write_text
-from desloppify.core.enums import canonical_issue_status
-from desloppify.core.output.fallbacks import print_write_error
-from desloppify.core.output.terminal import colorize
-from desloppify.core.discovery.paths import read_code_snippet
+from desloppify.base.discovery.api import safe_write_text
+from desloppify.base.enums import canonical_issue_status
+from desloppify.base.output.fallbacks import print_write_error
+from desloppify.base.output.terminal import colorize
+from desloppify.base.discovery.paths import read_code_snippet
 from desloppify.engine.planning import CONFIDENCE_ORDER
 
 from .formatting import format_detail

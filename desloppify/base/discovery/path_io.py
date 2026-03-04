@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from desloppify.core.discovery import file_paths as file_paths_mod
+from desloppify.base.discovery import file_paths as file_paths_mod
 
 
 def matches_exclusion(rel_path: str, exclusion: str) -> bool:

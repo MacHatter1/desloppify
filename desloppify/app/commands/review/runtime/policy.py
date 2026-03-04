@@ -5,16 +5,16 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from desloppify.core.coercions_api import (
+from desloppify.base.coercions import (
     coerce_non_negative_float as _coerce_non_negative_float,
 )
-from desloppify.core.coercions_api import (
+from desloppify.base.coercions import (
     coerce_non_negative_int as _coerce_non_negative_int,
 )
-from desloppify.core.coercions_api import (
+from desloppify.base.coercions import (
     coerce_positive_float as _coerce_positive_float,
 )
-from desloppify.core.coercions_api import (
+from desloppify.base.coercions import (
     coerce_positive_int as _coerce_positive_int,
 )
 

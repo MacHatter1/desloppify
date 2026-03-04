@@ -818,7 +818,7 @@ def test_impact_floor_preserves_items_without_scores():
 
 def test_registry_standalone_threshold_count():
     """Exactly 7 detectors have standalone_threshold='medium'."""
-    from desloppify.core.registry import DETECTORS
+    from desloppify.base.registry import DETECTORS
 
     threshold_detectors = [
         name for name, meta in DETECTORS.items()

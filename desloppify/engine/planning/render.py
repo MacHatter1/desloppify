@@ -5,9 +5,9 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import date
 
-from desloppify.core.exception_sets import PLAN_LOAD_EXCEPTIONS
-from desloppify.core.output.terminal import LOC_COMPACT_THRESHOLD
-from desloppify.core.registry import dimension_action_type
+from desloppify.base.exception_sets import PLAN_LOAD_EXCEPTIONS
+from desloppify.base.output.terminal import LOC_COMPACT_THRESHOLD
+from desloppify.base.registry import dimension_action_type
 from desloppify.engine._scoring.policy.core import DIMENSIONS
 from desloppify.engine._scoring.subjective.core import DISPLAY_NAMES
 from desloppify.engine._work_queue.core import (

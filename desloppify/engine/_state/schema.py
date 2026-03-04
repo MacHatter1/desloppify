@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any, NotRequired, Required, TypedDict
 
-from desloppify.core.enums import Status, canonical_issue_status, issue_status_tokens
-from desloppify.core.text.text_api import get_project_root
+from desloppify.base.enums import Status, canonical_issue_status, issue_status_tokens
+from desloppify.base.text.text_api import get_project_root
 from desloppify.engine._state.schema_scores import (
     json_default,
 )

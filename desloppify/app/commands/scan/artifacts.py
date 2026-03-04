@@ -12,11 +12,11 @@ from desloppify.app.commands.scan.workflow import (
     ScanMergeResult,
     ScanNoiseSnapshot,
 )
-from desloppify.core.config import config_for_query
-from desloppify.core.exception_sets import PLAN_LOAD_EXCEPTIONS
-from desloppify.core.output.terminal import colorize
-from desloppify.core.output.contract import OutputResult
-from desloppify.core.text.text_api import get_project_root
+from desloppify.base.config import config_for_query
+from desloppify.base.exception_sets import PLAN_LOAD_EXCEPTIONS
+from desloppify.base.output.terminal import colorize
+from desloppify.base.output.contract import OutputResult
+from desloppify.base.text.text_api import get_project_root
 from desloppify.engine._scoring.results.core import compute_health_breakdown
 from desloppify.engine.plan import load_plan
 from desloppify.state import open_scope_breakdown, score_snapshot

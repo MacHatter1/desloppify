@@ -34,7 +34,7 @@ from desloppify.app.output.scorecard_parts.theme import (
     scale,
     score_color,
 )
-from desloppify.core.text.text_api import get_project_root
+from desloppify.base.text.text_api import get_project_root
 from desloppify.state import score_snapshot
 
 logger = logging.getLogger(__name__)

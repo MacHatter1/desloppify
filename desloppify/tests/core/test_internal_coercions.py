@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from desloppify.core._internal.coercions import (
+from desloppify.base.coercions import (
     coerce_non_negative_float,
     coerce_non_negative_int,
     coerce_positive_float,

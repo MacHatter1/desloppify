@@ -8,8 +8,8 @@ from desloppify.app.commands.helpers.queue_progress import (
     QueueBreakdown,
     format_queue_headline,
 )
-from desloppify.core.discovery.api import rel
-from desloppify.core.output.terminal import colorize
+from desloppify.base.discovery.api import rel
+from desloppify.base.output.terminal import colorize
 
 
 def print_agent_plan(

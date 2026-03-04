@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from desloppify.app.commands.helpers.display import short_issue_id
-from desloppify.core.exception_sets import PLAN_LOAD_EXCEPTIONS, CommandError
-from desloppify.core.output.terminal import colorize
+from desloppify.base.exception_sets import PLAN_LOAD_EXCEPTIONS, CommandError
+from desloppify.base.output.terminal import colorize
 from desloppify.engine.plan import (
     compute_new_issue_ids,
     is_triage_stale,

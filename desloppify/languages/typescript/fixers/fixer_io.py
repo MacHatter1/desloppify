@@ -6,10 +6,10 @@ import logging
 import sys
 from pathlib import Path
 
-from desloppify.core.output.fallbacks import log_best_effort_failure
-from desloppify.core.discovery.file_paths import rel, safe_write_text
-from desloppify.core.output.terminal import colorize
-from desloppify.core.text.text_api import get_project_root
+from desloppify.base.output.fallbacks import log_best_effort_failure
+from desloppify.base.discovery.file_paths import rel, safe_write_text
+from desloppify.base.output.terminal import colorize
+from desloppify.base.text.text_api import get_project_root
 
 logger = logging.getLogger(__name__)
 
