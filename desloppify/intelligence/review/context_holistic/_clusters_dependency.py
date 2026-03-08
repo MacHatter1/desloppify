@@ -16,15 +16,13 @@ def _build_boundary_violations(by_detector: dict[str, list[dict]]) -> list[dict]
             detail = issue.get("detail", {})
             if not isinstance(detail, dict):
                 detail = {}
-            detail.setdefault("target", "")
-            detail.setdefault("imported_from", "")
-            detail.setdefault("direction", "")
-            detail.setdefault("violation", "")
+            target = detail.get("target") or detail.get("imported_from", "")
+            direction = detail.get("direction") or detail.get("violation", "")
             results.append(
                 {
                     "file": filepath,
-                    "target": detail.get("target", detail.get("imported_from", "")),
-                    "direction": detail.get("direction", detail.get("violation", "")),
+                    "target": target,
+                    "direction": direction,
                 }
             )
     return results[:30]
@@ -54,17 +52,15 @@ def _build_private_crossings(by_detector: dict[str, list[dict]]) -> list[dict]:
         detail = issue.get("detail", {})
         if not isinstance(detail, dict):
             detail = {}
-        detail.setdefault("symbol", "")
-        detail.setdefault("name", "")
-        detail.setdefault("source", "")
-        detail.setdefault("imported_from", "")
-        detail.setdefault("target", filepath)
+        symbol = detail.get("symbol") or detail.get("name", "")
+        source = detail.get("source") or detail.get("imported_from", "")
+        target = detail.get("target") or filepath
         results.append(
             {
                 "file": filepath,
-                "symbol": detail.get("symbol", detail.get("name", "")),
-                "source": detail.get("source", detail.get("imported_from", "")),
-                "target": detail.get("target", filepath),
+                "symbol": symbol,
+                "source": source,
+                "target": target,
             }
         )
     return results[:30]
