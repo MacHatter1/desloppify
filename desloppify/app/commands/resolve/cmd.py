@@ -143,18 +143,21 @@ def _update_living_plan_after_resolve(
     return plan, ctx
 
 
-def cmd_resolve(args: argparse.Namespace) -> None:
-    """Resolve issue(s) matching one or more patterns."""
-    attestation = getattr(args, "attest", None)
+def _load_state_with_guards(
+    args: argparse.Namespace,
+    *,
+    attestation: str | None,
+) -> tuple[str, dict] | None:
+    """Validate inputs, apply guardrails, and load state for resolve."""
     _validate_resolve_inputs(args, attestation)
     if not _validate_fixed_note(args):
-        return
+        return None
 
     state_file = state_path(args)
     state = state_mod.load_state(state_file)
 
     if _check_queue_order_guard(state, args.patterns, args.status):
-        return
+        return None
 
     if args.status == "fixed":
         require_triage_current_or_exit(
@@ -163,23 +166,87 @@ def cmd_resolve(args: argparse.Namespace) -> None:
             attest=getattr(args, "attest", "") or "",
         )
 
+    return state_file, state
+
+
+def _resolve_ids_with_snapshots(
+    state: dict,
+    args: argparse.Namespace,
+    *,
+    attestation: str | None,
+) -> tuple[object, dict[str, float], list[str]]:
+    """Apply resolve patterns and return pre/post context for rendering."""
     _enforce_batch_wontfix_confirmation(
         state,
         args,
         attestation=attestation,
         resolve_all_patterns_fn=_resolve_all_patterns,
     )
+
     prev = _previous_score_snapshot(state)
     prev_subjective_scores = {
         str(dim): (coerce_assessment_score(payload) or 0.0)
         for dim, payload in (state.get("subjective_assessments") or {}).items()
         if isinstance(dim, str)
     }
-
     all_resolved = _resolve_all_patterns(state, args, attestation=attestation)
+    return prev, prev_subjective_scores, all_resolved
+
+
+def _print_no_match_warning(args: argparse.Namespace) -> None:
+    status_label = "resolved" if args.status == "open" else "open"
+    print(colorize(f"No {status_label} issues matching: {' '.join(args.patterns)}", "yellow"))
+
+
+def _print_fixed_next_user_message(
+    *,
+    args: argparse.Namespace,
+    plan: dict | None,
+    next_command: str,
+    mid_cluster: bool,
+    cluster_ctx: ClusterContext,
+) -> None:
+    if args.status != "fixed" or plan is None or next_command != "desloppify next":
+        return
+
+    if mid_cluster:
+        print_user_message(
+            f"Hey — task done, {cluster_ctx.cluster_remaining} left in"
+            f" cluster '{cluster_ctx.cluster_name}'. Run `desloppify next`"
+            " to pick up the next one. Keep going — don't stop until the"
+            " cluster is finished."
+        )
+    elif cluster_ctx.cluster_completed and cluster_ctx.cluster_name:
+        print_user_message(
+            f"Hey — nice, you just finished cluster '{cluster_ctx.cluster_name}'."
+            " Check the commit tracking above — this is a good time to"
+            " commit and push your work. Then run `desloppify next` to"
+            " pick up your next task."
+        )
+    else:
+        print_user_message(
+            "Hey — nice, on to the next one. Run `desloppify next`"
+            " to pick up your next task. Before moving on, glance at the"
+            " commit tracking above — if there's a decent chunk of"
+            " uncommitted work, consider whether now's a good time"
+            " to commit and push. Otherwise just keep going."
+        )
+
+
+def cmd_resolve(args: argparse.Namespace) -> None:
+    """Resolve issue(s) matching one or more patterns."""
+    attestation = getattr(args, "attest", None)
+    loaded = _load_state_with_guards(args, attestation=attestation)
+    if loaded is None:
+        return
+    state_file, state = loaded
+    prev, prev_subjective_scores, all_resolved = _resolve_ids_with_snapshots(
+        state,
+        args,
+        attestation=attestation,
+    )
     if not all_resolved:
-        status_label = "resolved" if args.status == "open" else "open"
-        print(colorize(f"No {status_label} issues matching: {' '.join(args.patterns)}", "yellow"))
+        _print_no_match_warning(args)
         return
 
     save_state_or_exit(state, state_file)
@@ -234,30 +301,13 @@ def cmd_resolve(args: argparse.Namespace) -> None:
             state=state,
         )
     )
-
-    if args.status == "fixed" and plan is not None and next_command == "desloppify next":
-        if mid_cluster:
-            print_user_message(
-                f"Hey — task done, {cluster_ctx.cluster_remaining} left in"
-                f" cluster '{cluster_ctx.cluster_name}'. Run `desloppify next`"
-                " to pick up the next one. Keep going — don't stop until the"
-                " cluster is finished."
-            )
-        elif cluster_ctx.cluster_completed and cluster_ctx.cluster_name:
-            print_user_message(
-                f"Hey — nice, you just finished cluster '{cluster_ctx.cluster_name}'."
-                " Check the commit tracking above — this is a good time to"
-                " commit and push your work. Then run `desloppify next` to"
-                " pick up your next task."
-            )
-        else:
-            print_user_message(
-                "Hey — nice, on to the next one. Run `desloppify next`"
-                " to pick up your next task. Before moving on, glance at the"
-                " commit tracking above — if there's a decent chunk of"
-                " uncommitted work, consider whether now's a good time"
-                " to commit and push. Otherwise just keep going."
-            )
+    _print_fixed_next_user_message(
+        args=args,
+        plan=plan,
+        next_command=next_command,
+        mid_cluster=mid_cluster,
+        cluster_ctx=cluster_ctx,
+    )
 
 
 __all__ = ["_check_queue_order_guard", "cmd_resolve"]
