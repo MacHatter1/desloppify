@@ -50,6 +50,8 @@ def _print_complete_summary(plan: dict, stages: dict) -> None:
             print(colorize(f"    Enrich: {shallow} step(s) still without detail", "dim"))
         else:
             print(colorize("    Enrich: all steps detailed", "dim"))
+    if "sense-check" in stages:
+        print(colorize("    Sense-check: content & structure verified", "dim"))
 
 
 def _print_new_issues_since_last(si) -> None:

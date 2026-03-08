@@ -65,6 +65,7 @@ from desloppify.engine._plan.persistence import (
     PLAN_FILE,
     has_living_plan,
     load_plan,
+    plan_lock,
     plan_path_for_state,
     save_plan,
 )
@@ -137,10 +138,10 @@ def triage_phase_banner(plan: PlanModel) -> str:
         return ""
     meta = plan.get("epic_triage_meta", {})
     stages = meta.get("triage_stages", {})
-    completed = [s for s in ("observe", "reflect", "organize") if s in stages]
+    completed = [s for s in ("observe", "reflect", "organize", "enrich", "sense-check") if s in stages]
     if completed:
         return (
-            f"TRIAGE MODE ({len(completed)}/4 stages complete) — "
+            f"TRIAGE MODE ({len(completed)}/5 stages complete) — "
             "complete all stages to exit. Run: desloppify plan triage"
         )
     return (
@@ -170,6 +171,7 @@ __all__ = [
     "PLAN_FILE",
     "has_living_plan",
     "load_plan",
+    "plan_lock",
     "plan_path_for_state",
     "save_plan",
     # operations

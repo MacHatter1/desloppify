@@ -323,7 +323,7 @@ class TestCompleteArchivesStages:
     def test_complete_archives_stages(self, monkeypatch, capsys):
         """After --complete, last_triage contains the stage data."""
         plan = _plan_with_enriched_clusters(
-            ["observe", "reflect", "organize", "enrich"], confirmed=True,
+            ["observe", "reflect", "organize", "enrich", "sense-check"], confirmed=True,
         )
         # Add review issues to queue_order and cluster so coverage check works
         plan["queue_order"] = [*TRIAGE_STAGE_IDS, "review::test.py::r1", "review::test.py::r2"]

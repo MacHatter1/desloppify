@@ -93,7 +93,7 @@ def _cmd_triage_start(
 
     runtime = resolved_services.command_runtime(args)
     si = resolved_services.collect_triage_input(plan, runtime.state)
-    print(colorize("  Planning mode started (5 stages queued).", "green"))
+    print(colorize("  Planning mode started (6 stages queued).", "green"))
     print(f"  Open review issues: {len(si.open_issues)}")
     print(colorize("  Begin with observe:", "dim"))
     print(colorize(f"    {TRIAGE_CMD_OBSERVE}", "dim"))
@@ -141,6 +141,9 @@ def cmd_plan_triage(args: argparse.Namespace) -> None:
         return
     if stage == "enrich":
         _flow_mod.cmd_stage_enrich(args, services=resolved_services)
+        return
+    if stage == "sense-check":
+        _flow_mod.cmd_stage_sense_check(args, services=resolved_services)
         return
 
     if getattr(args, "dry_run", False):

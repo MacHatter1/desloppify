@@ -141,7 +141,7 @@ class TestReflectLogging:
 
 class TestCompleteLogging:
     def test_complete_logs_entry(self, monkeypatch, capsys):
-        plan = _plan_with_stages("observe", "reflect", "organize", "enrich", confirmed=True)
+        plan = _plan_with_stages("observe", "reflect", "organize", "enrich", "sense-check", confirmed=True)
         plan["clusters"]["fix-names"] = {
             "name": "fix-names",
             "description": "Fix naming",

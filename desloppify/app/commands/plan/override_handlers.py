@@ -500,7 +500,7 @@ def _blocked_triage_stages(plan: dict) -> dict[str, list[str]]:
         return {}
 
     confirmed = set(plan.get("epic_triage_meta", {}).get("triage_stages", {}).keys())
-    stage_names = ("observe", "reflect", "organize", "enrich", "commit")
+    stage_names = ("observe", "reflect", "organize", "enrich", "sense-check", "commit")
 
     blocked: dict[str, list[str]] = {}
     for sid, name in zip(TRIAGE_STAGE_IDS, stage_names, strict=False):

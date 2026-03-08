@@ -286,7 +286,7 @@ def _add_triage_subparser(plan_sub) -> None:
     p_triage.add_argument(
         "--stage",
         type=str,
-        choices=["observe", "reflect", "organize", "enrich"],
+        choices=["observe", "reflect", "organize", "enrich", "sense-check"],
         default=None,
         help="Stage to record",
     )
@@ -317,7 +317,7 @@ def _add_triage_subparser(plan_sub) -> None:
     p_triage.add_argument(
         "--confirm",
         type=str,
-        choices=["observe", "reflect", "organize", "enrich"],
+        choices=["observe", "reflect", "organize", "enrich", "sense-check"],
         default=None,
         help="Confirm a completed stage (shows summary, requires --attestation)",
     )
@@ -360,7 +360,7 @@ def _add_triage_subparser(plan_sub) -> None:
     p_triage.add_argument(
         "--stage-prompt",
         type=str,
-        choices=["observe", "reflect", "organize", "enrich"],
+        choices=["observe", "reflect", "organize", "enrich", "sense-check"],
         default=None,
         help="Print the current prompt for a stage (built from live plan data)",
     )

@@ -19,12 +19,18 @@ from ..helpers import (
     group_issues_into_observe_batches,
     has_triage_in_queue,
     inject_triage_stages,
+    manual_clusters_with_issues,
 )
 from ..services import TriageServices, default_triage_services
-from .stage_prompts import build_observe_batch_prompt, build_stage_prompt
+from .stage_prompts import (
+    build_observe_batch_prompt,
+    build_sense_check_content_prompt,
+    build_sense_check_structure_prompt,
+    build_stage_prompt,
+)
 from .stage_validation import build_auto_attestation, validate_stage
 
-_STAGES = ("observe", "reflect", "organize", "enrich")
+_STAGES = ("observe", "reflect", "organize", "enrich", "sense-check")
 
 
 def _run_stamp() -> str:
@@ -88,7 +94,7 @@ def _run_claude_orchestrator(
         "  You are the orchestrator. For each stage, launch a subagent.\n",
         "cyan",
     ))
-    print("  For each stage (observe → reflect → organize → enrich):\n")
+    print("  For each stage (observe → reflect → organize → enrich → sense-check):\n")
     print("    1. Get the prompt:")
     print("       desloppify plan triage --stage-prompt <stage>\n")
     print("    2. Launch a subagent (Agent tool) with that prompt.\n")
@@ -97,13 +103,14 @@ def _run_claude_orchestrator(
     print("    4. Confirm:")
     print('       desloppify plan triage --confirm <stage> --attestation "..."\n')
     print("    5. Proceed to the next stage.\n")
-    print("  After all 4 stages:")
+    print("  After all 5 stages:")
     print('    desloppify plan triage --complete --strategy "..." --attestation "..."\n')
     print(colorize("  Key rules:", "yellow"))
     print("    - ONE subagent per stage. Don't combine stages.")
     print("    - Check the dashboard between stages.")
     print("    - Observe subagent should use sub-subagents (one per dimension group).")
     print("    - Enrich subagent should use sub-subagents (one per cluster).")
+    print("    - Sense-check launches TWO parallel subagents (content + structure).")
     print("    - If a stage fails validation, fix and re-record.")
 
 
@@ -315,7 +322,7 @@ def _run_codex_pipeline(
         # Parallel observe path
         used_parallel = False
         if stage == "observe":
-            parallel_ok, merged_report = _run_observe_parallel(
+            parallel_ok, merged_report = _run_observe(
                 si=si,
                 repo_root=repo_root,
                 prompts_dir=prompts_dir,
@@ -348,7 +355,41 @@ def _run_codex_pipeline(
                 return
             # parallel_ok is None → not applicable, fall through to single path
 
-        # Single-subprocess path (non-observe stages, or observe with too few issues)
+        # Parallel sense-check path
+        if stage == "sense-check":
+            parallel_ok, merged_report = _run_sense_check(
+                plan=plan,
+                repo_root=repo_root,
+                prompts_dir=prompts_dir,
+                output_dir=output_dir,
+                logs_dir=logs_dir,
+                timeout_seconds=timeout_seconds,
+                dry_run=dry_run,
+                append_run_log=append_run_log,
+            )
+            if parallel_ok is True and dry_run:
+                stage_results[stage] = {"status": "dry_run"}
+                continue
+            if parallel_ok is True and merged_report:
+                # Subagents mutated plan via CLI; reload and record stage
+                plan = resolved_services.load_plan()
+                from ..stage_flow_commands import cmd_stage_sense_check
+                record_args = argparse.Namespace(
+                    stage="sense-check",
+                    report=merged_report,
+                    state=getattr(args, "state", None),
+                )
+                cmd_stage_sense_check(record_args, services=resolved_services)
+                used_parallel = True
+            elif parallel_ok is False:
+                elapsed = int(time.monotonic() - stage_start)
+                print(colorize("  Sense-check: parallel execution failed. Aborting.", "red"))
+                append_run_log(f"stage-failed stage=sense-check elapsed={elapsed}s reason=parallel_execution_failed")
+                stage_results[stage] = {"status": "failed", "elapsed_seconds": elapsed}
+                _write_triage_run_summary(run_dir, stamp, stages_to_run, stage_results, append_run_log)
+                return
+
+        # Single-subprocess path (non-observe/sense-check stages, or observe with too few issues)
         if not used_parallel:
             prompt = build_stage_prompt(
                 stage, si, prior_reports, repo_root=repo_root,
@@ -463,7 +504,7 @@ def _run_codex_pipeline(
     print(colorize("\n  Completing triage...", "bold"))
 
     # Build attestation for completion
-    attestation = build_auto_attestation("enrich", plan, si)
+    attestation = build_auto_attestation("sense-check", plan, si)
     complete_args = argparse.Namespace(
         complete=True,
         strategy=strategy[:2000],
@@ -478,6 +519,147 @@ def _run_codex_pipeline(
     print(colorize(f"\n  Triage pipeline complete ({total_elapsed}s).", "green"))
     append_run_log(f"run-finished elapsed={total_elapsed}s")
     _write_triage_run_summary(run_dir, stamp, stages_to_run, stage_results, append_run_log)
+
+
+def _run_sense_check(
+    *,
+    plan: dict,
+    repo_root: Path,
+    prompts_dir: Path,
+    output_dir: Path,
+    logs_dir: Path,
+    timeout_seconds: int,
+    dry_run: bool = False,
+    append_run_log=None,
+) -> tuple[bool, str]:
+    """Run sense-check via two parallel codex subprocess batches.
+
+    Returns (ok, merged_report) where ok is True on success.
+    Launches content batches (one per cluster) and one structure batch
+    in parallel.
+    """
+    from functools import partial
+
+    from desloppify.app.commands.review._runner_parallel_types import BatchProgressEvent
+
+    from .codex_runner import _output_file_has_text, run_triage_stage
+
+    _log = append_run_log or (lambda _msg: None)
+
+    clusters = manual_clusters_with_issues(plan)
+    total_content = len(clusters)
+    total = total_content + 1  # +1 for structure
+    print(colorize(f"\n  Sense-check: {total_content} content batches + 1 structure batch.", "bold"))
+    _log(f"sense-check-parallel content_batches={total_content}")
+
+    tasks: dict[int, object] = {}
+    batch_meta: list[tuple[str, Path]] = []  # (label, output_file)
+
+    # Content batches — one per cluster
+    for i, cluster_name in enumerate(clusters):
+        prompt = build_sense_check_content_prompt(
+            cluster_name=cluster_name,
+            plan=plan,
+            repo_root=repo_root,
+        )
+        prompt_file = prompts_dir / f"sense_check_content_{i}.md"
+        safe_write_text(prompt_file, prompt)
+
+        output_file = output_dir / f"sense_check_content_{i}.raw.txt"
+        log_file = logs_dir / f"sense_check_content_{i}.log"
+        batch_meta.append((f"content:{cluster_name}", output_file))
+
+        if not dry_run:
+            tasks[i] = partial(
+                run_triage_stage,
+                prompt=prompt,
+                repo_root=repo_root,
+                output_file=output_file,
+                log_file=log_file,
+                timeout_seconds=timeout_seconds,
+                validate_output_fn=_output_file_has_text,
+            )
+        print(colorize(f"    Content batch {i + 1}: {cluster_name}", "dim"))
+        _log(f"sense-check-content batch={i + 1} cluster={cluster_name}")
+
+    # Structure batch — single global
+    structure_idx = total_content
+    structure_prompt = build_sense_check_structure_prompt(
+        plan=plan,
+        repo_root=repo_root,
+    )
+    prompt_file = prompts_dir / "sense_check_structure.md"
+    safe_write_text(prompt_file, structure_prompt)
+
+    structure_output = output_dir / "sense_check_structure.raw.txt"
+    structure_log = logs_dir / "sense_check_structure.log"
+    batch_meta.append(("structure", structure_output))
+
+    if not dry_run:
+        tasks[structure_idx] = partial(
+            run_triage_stage,
+            prompt=structure_prompt,
+            repo_root=repo_root,
+            output_file=structure_output,
+            log_file=structure_log,
+            timeout_seconds=timeout_seconds,
+            validate_output_fn=_output_file_has_text,
+        )
+    print(colorize("    Structure batch: global dependency check", "dim"))
+    _log("sense-check-structure batch=global")
+
+    if dry_run:
+        print(colorize("  [dry-run] Would execute parallel sense-check batches.", "dim"))
+        return True, ""
+
+    def _progress(event: BatchProgressEvent) -> None:
+        idx = event.batch_index
+        label = batch_meta[idx][0] if idx < len(batch_meta) else f"batch-{idx}"
+        if event.event == "start":
+            print(colorize(f"    Sense-check {label} started", "dim"))
+            _log(f"sense-check-batch-start {label}")
+        elif event.event == "done":
+            elapsed = event.details.get("elapsed_seconds", 0) if event.details else 0
+            status = "done" if event.code == 0 else f"failed ({event.code})"
+            tone = "dim" if event.code == 0 else "yellow"
+            print(colorize(f"    Sense-check {label} {status} in {int(elapsed)}s", tone))
+            _log(f"sense-check-batch-done {label} code={event.code} elapsed={int(elapsed)}s")
+
+    def _error_log(batch_index: int, exc: Exception) -> None:
+        _log(f"sense-check-batch-error batch={batch_index} error={exc}")
+
+    failures = execute_batches(
+        tasks=tasks,
+        options=BatchExecutionOptions(run_parallel=True, heartbeat_seconds=15.0),
+        progress_fn=_progress,
+        error_log_fn=_error_log,
+    )
+
+    if failures:
+        print(colorize(
+            f"  Sense-check: {len(failures)} batch(es) failed: {failures}",
+            "red",
+        ))
+        _log(f"sense-check-parallel-failed failures={failures}")
+        return False, ""
+
+    # Merge outputs
+    parts: list[str] = []
+    for label, output_file in batch_meta:
+        content = ""
+        if output_file.exists():
+            try:
+                content = output_file.read_text(encoding="utf-8", errors="replace").strip()
+            except OSError:
+                content = "(output missing)"
+        if not content:
+            content = "(no output)"
+        parts.append(f"## {label}\n\n{content}")
+
+    merged = "\n\n---\n\n".join(parts)
+    print(colorize(f"  Sense-check: merged {total} batch outputs ({len(merged)} chars).", "green"))
+    _log(f"sense-check-parallel-done merged_chars={len(merged)}")
+    return True, merged
 
 
 def _write_triage_run_summary(

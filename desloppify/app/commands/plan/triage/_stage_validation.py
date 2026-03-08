@@ -529,6 +529,56 @@ def _auto_confirm_enrich_for_complete(
     return True
 
 
+def _require_sense_check_stage_for_complete(
+    *,
+    plan: dict,
+    meta: dict,
+    stages: dict,
+) -> bool:
+    if "sense-check" in stages:
+        return True
+    if "enrich" not in stages:
+        return _require_enrich_stage_for_complete(plan=plan, meta=meta, stages=stages)
+
+    print(colorize("  Cannot complete: sense-check stage not recorded.", "red"))
+    print(colorize('  Run: desloppify plan triage --stage sense-check --report "..."', "dim"))
+    return False
+
+
+def _auto_confirm_sense_check_for_complete(
+    *,
+    plan: dict,
+    stages: dict,
+    attestation: str | None,
+) -> bool:
+    if stages.get("sense-check", {}).get("confirmed_at"):
+        return True
+    if "sense-check" not in stages:
+        return False
+    if not attestation or len(attestation.strip()) < _MIN_ATTESTATION_LEN:
+        print(colorize("  Cannot complete: sense-check stage not confirmed.", "red"))
+        print(colorize("  Run: desloppify plan triage --confirm sense-check", "dim"))
+        print(colorize("  Or pass --attestation to auto-confirm sense-check inline.", "dim"))
+        return False
+
+    cluster_names = [
+        name for name in plan.get("clusters", {}) if not plan["clusters"][name].get("auto")
+    ]
+    validation_err = _validate_attestation(
+        attestation.strip(),
+        "sense-check",
+        cluster_names=cluster_names,
+    )
+    if validation_err:
+        print(colorize(f"  {validation_err}", "red"))
+        return False
+    stages["sense-check"]["confirmed_at"] = utc_now()
+    stages["sense-check"]["confirmed_text"] = attestation.strip()
+    save_plan(plan)
+    print(colorize("  ✓ Sense-check auto-confirmed via --attestation.", "green"))
+    return True
+
+
 def _require_organize_stage_for_complete(
     *,
     plan: dict,

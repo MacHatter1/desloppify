@@ -17,7 +17,7 @@ from desloppify.state import utc_now
 
 from .services import TriageServices, default_triage_services
 
-_STAGE_ORDER = ["observe", "reflect", "organize", "enrich"]
+_STAGE_ORDER = ["observe", "reflect", "organize", "enrich", "sense-check"]
 
 
 def has_triage_in_queue(plan: dict) -> bool:

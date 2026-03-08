@@ -65,6 +65,13 @@ def _validate_attestation(
                 names = ", ".join(cluster_names[:6])
                 return f"Attestation must reference at least one cluster you enriched. Mention one of: {names}"
 
+    elif stage == "sense-check":
+        if cluster_names:
+            found = [n for n in cluster_names if n.lower() in text]
+            if not found:
+                names = ", ".join(cluster_names[:6])
+                return f"Attestation must reference at least one cluster you sense-checked. Mention one of: {names}"
+
     return None
 
 def _confirm_observe(
@@ -563,6 +570,113 @@ def _confirm_enrich(
     print(colorize(f'  ✓ Enrich confirmed: "{attestation.strip()}"', "green"))
     print_user_message(
         "Hey — enrich is confirmed. Run `desloppify plan triage"
+        " --stage sense-check --report \"...\"` to verify step"
+        " accuracy and cross-cluster dependencies."
+    )
+
+
+def _confirm_sense_check(
+    args: argparse.Namespace,
+    plan: dict,
+    stages: dict,
+    attestation: str | None,
+    *,
+    services: TriageServices | None = None,
+) -> None:
+    """Show sense-check summary and record confirmation if attestation is valid."""
+    resolved_services = services or default_triage_services()
+    if "sense-check" not in stages:
+        print(colorize("  Cannot confirm: sense-check stage not recorded.", "red"))
+        print(colorize('  Run: desloppify plan triage --stage sense-check --report "..."', "dim"))
+        return
+    if stages["sense-check"].get("confirmed_at"):
+        print(colorize("  Sense-check stage already confirmed.", "green"))
+        return
+
+    # Re-run all enrich-level validations
+    from ._stage_validation import (
+        _shallow_steps,
+        _steps_missing_issue_refs,
+        _steps_with_bad_paths,
+        _steps_with_vague_detail,
+        _steps_without_effort,
+    )
+    from desloppify.base.discovery.paths import get_project_root
+
+    print(colorize("  Stage: SENSE-CHECK — Verify accuracy & cross-cluster deps", "bold"))
+    print(colorize("  " + "─" * 57, "dim"))
+
+    repo_root = get_project_root()
+
+    shallow = _shallow_steps(plan)
+    if shallow:
+        total_bare = sum(n for _, n, _ in shallow)
+        print(colorize(f"  Cannot confirm: {total_bare} step(s) still lack detail or issue_refs.", "red"))
+        for name, bare, total in shallow[:5]:
+            print(colorize(f"    {name}: {bare}/{total} steps", "yellow"))
+        return
+
+    bad_paths = _steps_with_bad_paths(plan, repo_root)
+    if bad_paths:
+        total_bad = sum(len(bp) for _, _, bp in bad_paths)
+        print(colorize(f"\n  Cannot confirm: {total_bad} file path(s) in step details don't exist on disk.", "red"))
+        for name, step_num, paths in bad_paths:
+            for p in paths:
+                print(colorize(f"    {name} step {step_num}: {p}", "yellow"))
+        return
+
+    untagged = _steps_without_effort(plan)
+    if untagged:
+        total_missing = sum(n for _, n, _ in untagged)
+        print(colorize(f"\n  Cannot confirm: {total_missing} step(s) have no effort tag.", "red"))
+        return
+
+    no_refs = _steps_missing_issue_refs(plan)
+    if no_refs:
+        total_missing = sum(n for _, n, _ in no_refs)
+        print(colorize(f"\n  Cannot confirm: {total_missing} step(s) have no issue_refs.", "red"))
+        return
+
+    vague = _steps_with_vague_detail(plan, repo_root)
+    if vague:
+        print(colorize(f"\n  Cannot confirm: {len(vague)} step(s) have vague detail.", "red"))
+        return
+
+    print(colorize("  All enrich-level checks pass.", "green"))
+
+    sense_check_clusters = [n for n in plan.get("clusters", {}) if not plan["clusters"][n].get("auto")]
+
+    if not attestation or len(attestation.strip()) < _MIN_ATTESTATION_LEN:
+        if attestation:
+            print(colorize(
+                f"\n  Attestation too short ({len(attestation.strip())} chars, min {_MIN_ATTESTATION_LEN}).",
+                "red",
+            ))
+        print(colorize("\n  If satisfied, confirm:", "dim"))
+        print(colorize('    desloppify plan triage --confirm sense-check --attestation "Content and structure verified..."', "dim"))
+        return
+
+    validation_err = _validate_attestation(
+        attestation.strip(), "sense-check", cluster_names=sense_check_clusters,
+    )
+    if validation_err:
+        print(colorize(f"\n  {validation_err}", "red"))
+        return
+
+    stages["sense-check"]["confirmed_at"] = utc_now()
+    stages["sense-check"]["confirmed_text"] = attestation.strip()
+    purge_triage_stage(plan, "sense-check")
+    resolved_services.save_plan(plan)
+    resolved_services.append_log_entry(
+        plan,
+        "triage_confirm_sense_check",
+        actor="user",
+        detail={"attestation": attestation.strip()},
+    )
+    resolved_services.save_plan(plan)
+    print(colorize(f'  ✓ Sense-check confirmed: "{attestation.strip()}"', "green"))
+    print_user_message(
+        "Hey — sense-check is confirmed. Run `desloppify plan triage"
         " --complete --strategy \"...\"` to finish triage."
     )
 
@@ -572,7 +686,7 @@ def _cmd_confirm_stage(
     *,
     services: TriageServices | None = None,
 ) -> None:
-    """Router for ``--confirm observe/reflect/organize/enrich``."""
+    """Router for ``--confirm observe/reflect/organize/enrich/sense-check``."""
     resolved_services = services or default_triage_services()
     confirm_stage = getattr(args, "confirm", None)
     attestation = getattr(args, "attestation", None)
@@ -588,6 +702,8 @@ def _cmd_confirm_stage(
         _confirm_organize(args, plan, stages, attestation, services=resolved_services)
     elif confirm_stage == "enrich":
         _confirm_enrich(args, plan, stages, attestation, services=resolved_services)
+    elif confirm_stage == "sense-check":
+        _confirm_sense_check(args, plan, stages, attestation, services=resolved_services)
 
 
 MIN_ATTESTATION_LEN = _MIN_ATTESTATION_LEN
@@ -612,5 +728,6 @@ __all__ = [
     "_confirm_observe",
     "_confirm_organize",
     "_confirm_reflect",
+    "_confirm_sense_check",
     "_validate_attestation",
 ]

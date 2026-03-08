@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import fcntl
 import json
 import logging
+import os
 import shutil
 import sys
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 from desloppify.base.discovery.file_paths import safe_write_text
@@ -22,6 +26,21 @@ from desloppify.engine._state.schema import STATE_DIR, json_default, utc_now
 logger = logging.getLogger(__name__)
 
 PLAN_FILE = STATE_DIR / "plan.json"
+
+
+@contextmanager
+def plan_lock(path: Path | None = None) -> Iterator[None]:
+    """Acquire exclusive lock on plan file for read-modify-write safety."""
+    plan_path = path or PLAN_FILE
+    lock_path = plan_path.with_suffix(".lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(str(lock_path), os.O_CREAT | os.O_WRONLY)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        yield
+    finally:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+        os.close(fd)
 
 
 def load_plan(path: Path | None = None) -> PlanModel:
@@ -122,6 +141,7 @@ __all__ = [
     "PLAN_FILE",
     "has_living_plan",
     "load_plan",
+    "plan_lock",
     "plan_path_for_state",
     "save_plan",
 ]

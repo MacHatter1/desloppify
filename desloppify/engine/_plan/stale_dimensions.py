@@ -30,6 +30,7 @@ TRIAGE_STAGE_IDS = (
     "triage::reflect",
     "triage::organize",
     "triage::enrich",
+    "triage::sense-check",
     "triage::commit",
 )
 TRIAGE_IDS = set(TRIAGE_STAGE_IDS)
@@ -215,7 +216,7 @@ def _inject_pending_triage_stages(
     Returns True if any stages were injected.
     """
     insert_at = promoted_insertion_index(order, plan)
-    stage_names = ("observe", "reflect", "organize", "enrich", "commit")
+    stage_names = ("observe", "reflect", "organize", "enrich", "sense-check", "commit")
     existing = set(order)
     injected_count = 0
     for sid, name in zip(TRIAGE_STAGE_IDS, stage_names, strict=False):

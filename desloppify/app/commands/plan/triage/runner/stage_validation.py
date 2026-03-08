@@ -128,6 +128,34 @@ def validate_stage(
             )
         return True, ""
 
+    if stage == "sense-check":
+        if "sense-check" not in stages:
+            return False, "Sense-check stage not recorded."
+        report = stages["sense-check"].get("report", "")
+        if len(report) < 100:
+            return False, f"Sense-check report too short ({len(report)} chars, need 100+)."
+        # Re-run all enrich-level checks (subagents may have introduced issues)
+        shallow = _shallow_steps(plan)
+        if shallow:
+            total = sum(n for _, n, _ in shallow)
+            return False, f"{total} step(s) still lack detail or issue_refs after sense-check."
+        bad_paths = _steps_with_bad_paths(plan, repo_root)
+        if bad_paths:
+            total = sum(len(bp) for _, _, bp in bad_paths)
+            return False, f"{total} file path(s) don't exist on disk after sense-check."
+        untagged = _steps_without_effort(plan)
+        if untagged:
+            total = sum(n for _, n, _ in untagged)
+            return False, f"{total} step(s) have no effort tag after sense-check."
+        no_refs = _steps_missing_issue_refs(plan)
+        if no_refs:
+            total = sum(n for _, n, _ in no_refs)
+            return False, f"{total} step(s) have no issue_refs after sense-check."
+        vague = _steps_with_vague_detail(plan, repo_root)
+        if vague:
+            return False, f"{len(vague)} step(s) have vague detail after sense-check."
+        return True, ""
+
     return False, f"Unknown stage: {stage}"
 
 
@@ -140,7 +168,7 @@ def validate_completion(
     meta = plan.get("epic_triage_meta", {})
     stages = meta.get("triage_stages", {})
 
-    for required in ("observe", "reflect", "organize", "enrich"):
+    for required in ("observe", "reflect", "organize", "enrich", "sense-check"):
         if required not in stages:
             return False, f"Stage {required} not recorded."
         if not stages[required].get("confirmed_at"):
@@ -224,6 +252,15 @@ def build_auto_attestation(
             f"Steps in clusters including {names_str} are executor-ready with "
             f"detail, file paths, issue refs, and effort tags, verified "
             f"against the actual codebase."
+        )
+
+    if stage == "sense-check":
+        cluster_names = manual_clusters_with_issues(plan)
+        names_str = ", ".join(cluster_names[:3])
+        return (
+            f"Content and structure verified for clusters including {names_str}. "
+            f"All step details are factually accurate, cross-cluster dependencies "
+            f"are safe, and enrich-level checks pass."
         )
 
     return f"Stage {stage} completed with thorough analysis of all available data and verified against codebase."

@@ -238,6 +238,7 @@ def test_validate_completion_self_dependency(tmp_path: Path) -> None:
         reflect={"report": "x" * 150, "confirmed_at": "t"},
         organize={"report": "x" * 150, "confirmed_at": "t"},
         enrich={"report": "x" * 150, "confirmed_at": "t"},
+        **{"sense-check": {"report": "x" * 150, "confirmed_at": "t"}},
     )
     plan["clusters"] = {
         "self-dep": {
@@ -250,3 +251,163 @@ def test_validate_completion_self_dependency(tmp_path: Path) -> None:
     ok, msg = validate_completion(plan, {"issues": {"review::a::b": {"status": "open", "detector": "review"}}}, tmp_path)
     assert not ok
     assert "depends on itself" in msg
+
+
+# ---------- Sense-check prompts ----------
+
+
+def test_sense_check_prompt_includes_cluster_data(tmp_path: Path) -> None:
+    """Content prompt should include cluster steps, issue refs, and repo root."""
+    from desloppify.app.commands.plan.triage.runner.stage_prompts import (
+        build_sense_check_content_prompt,
+    )
+
+    plan = {
+        "clusters": {
+            "fix-hooks": {
+                "issue_ids": ["review::src/foo.ts::hook_issue::abcd1234"],
+                "description": "Fix hook issues",
+                "action_steps": [
+                    {
+                        "title": "Extract hook",
+                        "detail": "In src/hooks/useX.ts lines 10-50, extract filter logic.",
+                        "effort": "medium",
+                        "issue_refs": ["review::src/foo.ts::hook_issue::abcd1234"],
+                    }
+                ],
+            }
+        }
+    }
+    prompt = build_sense_check_content_prompt(
+        cluster_name="fix-hooks", plan=plan, repo_root=tmp_path,
+    )
+    assert "fix-hooks" in prompt
+    assert "1 steps" in prompt
+    assert "Extract hook" in prompt
+    assert "medium" in prompt
+    assert "abcd1234" in prompt
+    assert str(tmp_path) in prompt
+    assert "LINE NUMBERS" in prompt
+    assert "STALENESS" in prompt
+
+
+def test_sense_check_structure_prompt_includes_clusters(tmp_path: Path) -> None:
+    """Structure prompt should list all manual clusters and their dependencies."""
+    from desloppify.app.commands.plan.triage.runner.stage_prompts import (
+        build_sense_check_structure_prompt,
+    )
+
+    plan = {
+        "clusters": {
+            "cluster-a": {
+                "issue_ids": ["review::a::b"],
+                "description": "First cluster",
+                "action_steps": [{"title": "Step A1", "detail": "Fix src/a.ts"}],
+            },
+            "cluster-b": {
+                "issue_ids": ["review::c::d"],
+                "description": "Second cluster",
+                "action_steps": [{"title": "Step B1", "detail": "Fix src/b.ts"}],
+                "depends_on_clusters": ["cluster-a"],
+            },
+        }
+    }
+    prompt = build_sense_check_structure_prompt(plan=plan, repo_root=tmp_path)
+    assert "cluster-a" in prompt
+    assert "cluster-b" in prompt
+    assert "depends_on: cluster-a" in prompt
+    assert "SHARED FILES" in prompt
+    assert "CIRCULAR DEPS" in prompt
+
+
+# ---------- Sense-check validation ----------
+
+
+def test_sense_check_validation_reruns_enrich_checks(tmp_path: Path) -> None:
+    """Sense-check validation should fail on bad paths just like enrich."""
+    plan = _plan_with_stages(**{"sense-check": {"report": "x" * 150}})
+    plan["clusters"] = {
+        "test-cluster": {
+            "issue_ids": ["review::a::b"],
+            "description": "test",
+            "action_steps": [
+                {
+                    "title": "fix",
+                    "detail": "Update src/nonexistent.ts and fix the imports. " + "x" * 40,
+                    "effort": "small",
+                    "issue_refs": ["review::a::b"],
+                }
+            ],
+        }
+    }
+    ok, msg = validate_stage("sense-check", plan, {}, tmp_path)
+    assert not ok
+    assert "file path" in msg or "don't exist" in msg
+
+
+def test_sense_check_validation_ok(tmp_path: Path) -> None:
+    """Sense-check passes when report is long enough and all enrich checks pass."""
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "foo.ts").write_text("export {}")
+    plan = _plan_with_stages(**{"sense-check": {"report": "x" * 150}})
+    plan["clusters"] = {
+        "test-cluster": {
+            "issue_ids": ["review::a::b"],
+            "description": "test",
+            "action_steps": [
+                {
+                    "title": "fix",
+                    "detail": "Update src/foo.ts to remove dead code and fix the pattern. " + "x" * 30,
+                    "effort": "small",
+                    "issue_refs": ["review::a::b"],
+                }
+            ],
+        }
+    }
+    ok, msg = validate_stage("sense-check", plan, {}, tmp_path)
+    assert ok
+
+
+def test_sense_check_stage_in_pipeline_order() -> None:
+    """sense-check must appear between enrich and commit in TRIAGE_STAGE_IDS."""
+    from desloppify.engine._plan.stale_dimensions import TRIAGE_STAGE_IDS
+
+    ids = list(TRIAGE_STAGE_IDS)
+    assert "triage::sense-check" in ids
+    enrich_idx = ids.index("triage::enrich")
+    sense_idx = ids.index("triage::sense-check")
+    commit_idx = ids.index("triage::commit")
+    assert enrich_idx < sense_idx < commit_idx
+
+
+# ---------- Plan lock ----------
+
+
+def test_plan_lock_prevents_concurrent_writes(tmp_path: Path) -> None:
+    """plan_lock should serialize access via file locking."""
+    import threading
+
+    from desloppify.engine._plan.persistence import plan_lock
+
+    plan_file = tmp_path / "plan.json"
+    plan_file.write_text("{}")
+
+    results: list[int] = []
+    barrier = threading.Barrier(2)
+
+    def worker(value: int) -> None:
+        barrier.wait()  # ensure both threads start ~simultaneously
+        with plan_lock(plan_file):
+            # If locking works, only one thread is in here at a time
+            current = len(results)
+            results.append(value)
+            assert len(results) == current + 1  # no interleaving
+
+    t1 = threading.Thread(target=worker, args=(1,))
+    t2 = threading.Thread(target=worker, args=(2,))
+    t1.start()
+    t2.start()
+    t1.join(timeout=5)
+    t2.join(timeout=5)
+
+    assert sorted(results) == [1, 2]

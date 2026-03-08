@@ -255,7 +255,7 @@ class TestCompleteJumpBackGuidance:
     def test_complete_shows_jump_back_guidance(self, monkeypatch, capsys):
         """The --complete summary includes guidance on revising earlier stages."""
         plan = _plan_with_enriched_clusters(
-            ["observe", "reflect", "organize", "enrich"], confirmed=True,
+            ["observe", "reflect", "organize", "enrich", "sense-check"], confirmed=True,
         )
         state = _state_with_issues("r1", "r2", "r3", "r4", "r5")
 

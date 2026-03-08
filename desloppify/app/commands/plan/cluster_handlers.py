@@ -25,6 +25,7 @@ from desloppify.engine.plan import (
     load_plan,
     merge_clusters,
     move_items,
+    plan_lock,
     remove_from_cluster,
     save_plan,
 )
@@ -631,6 +632,34 @@ def _cmd_cluster_update(args: argparse.Namespace) -> None:
         print(colorize("  Nothing to update. Use --description, --steps, --steps-file, --add-step, --priority, etc.", "yellow"))
         return
 
+    with plan_lock():
+        _cmd_cluster_update_locked(args, cluster_name=cluster_name,
+            description=description, steps=steps, steps_file=steps_file,
+            add_step=add_step, detail=detail, update_step=update_step,
+            remove_step=remove_step, done_step=done_step,
+            undone_step=undone_step, priority=priority, effort=effort,
+            depends_on=depends_on, issue_refs=issue_refs)
+
+
+def _cmd_cluster_update_locked(
+    args: argparse.Namespace,
+    *,
+    cluster_name: str,
+    description: str | None,
+    steps: list[str] | None,
+    steps_file: str | None,
+    add_step: str | None,
+    detail: str | None,
+    update_step: int | None,
+    remove_step: int | None,
+    done_step: int | None,
+    undone_step: int | None,
+    priority: int | None,
+    effort: str | None,
+    depends_on: list[str] | None,
+    issue_refs: list[str] | None,
+) -> None:
+    """Inner body of cluster update, called under plan_lock."""
     plan = load_plan()
     cluster = plan.get("clusters", {}).get(cluster_name)
     if cluster is None:
