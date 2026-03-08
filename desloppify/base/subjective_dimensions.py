@@ -7,13 +7,6 @@ from collections.abc import Callable
 from functools import lru_cache
 
 from desloppify.base.text_utils import is_numeric
-from desloppify.intelligence.review.dimensions.data import (
-    load_dimensions as _load_dimensions,
-)
-from desloppify.intelligence.review.dimensions.data import (
-    load_dimensions_for_lang as _load_dimensions_for_lang,
-)
-from desloppify.intelligence.review.dimensions.metadata import extract_prompt_meta
 from desloppify.languages import available_langs as _available_langs
 
 logger = logging.getLogger(__name__)
@@ -101,6 +94,34 @@ def _normalize_lang_name(lang_name: str | None) -> str | None:
     return cleaned or None
 
 
+def _extract_prompt_meta(entry: object) -> dict[str, object]:
+    """Extract optional metadata fields from a prompt payload entry."""
+    if not isinstance(entry, dict):
+        return {}
+    meta = entry.get("meta")
+    if not isinstance(meta, dict):
+        return {}
+
+    out: dict[str, object] = {}
+    display_name = meta.get("display_name")
+    if isinstance(display_name, str) and display_name.strip():
+        out["display_name"] = display_name.strip()
+
+    weight = meta.get("weight")
+    if is_numeric(weight):
+        out["weight"] = max(0.0, float(weight))
+
+    enabled = meta.get("enabled_by_default")
+    if isinstance(enabled, bool):
+        out["enabled_by_default"] = enabled
+
+    reset_on_scan = meta.get("reset_on_scan")
+    if isinstance(reset_on_scan, bool):
+        out["reset_on_scan"] = reset_on_scan
+
+    return out
+
+
 def _merge_prompt_display_and_weights(
     payload: dict[str, object],
     *,
@@ -162,7 +183,7 @@ def _merge_dimension_meta(
             continue
 
         payload = target.setdefault(dim, {})
-        prompt_meta = extract_prompt_meta(entry)
+        prompt_meta = _extract_prompt_meta(entry)
         _merge_prompt_display_and_weights(
             payload,
             prompt_meta=prompt_meta,
@@ -186,13 +207,19 @@ def _default_available_languages() -> list[str]:
 def _default_load_dimensions_payload() -> tuple[
     list[str], dict[str, dict[str, object]], str
 ]:
-    return _load_dimensions()
+    from desloppify.intelligence.review.dimensions.data import load_dimensions
+
+    return load_dimensions()
 
 
 def _default_load_dimensions_payload_for_lang(
     lang_name: str,
 ) -> tuple[list[str], dict[str, dict[str, object]], str]:
-    return _load_dimensions_for_lang(lang_name)
+    from desloppify.intelligence.review.dimensions.data import (
+        load_dimensions_for_lang,
+    )
+
+    return load_dimensions_for_lang(lang_name)
 
 
 class _SubjectiveProviderState:
