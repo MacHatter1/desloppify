@@ -2,35 +2,12 @@
 
 from __future__ import annotations
 
-from desloppify.base.subjective_dimensions import default_dimension_keys
+from desloppify.base.subjective_dimensions import (
+    DISPLAY_NAMES,
+    default_dimension_keys,
+)
 from desloppify.base.text_utils import is_numeric
 from desloppify.engine._scoring.policy.core import SUBJECTIVE_CHECKS
-
-DISPLAY_NAMES: dict[str, str] = {
-    # Holistic dimensions
-    "cross_module_architecture": "Cross-module arch",
-    "initialization_coupling": "Init coupling",
-    "convention_outlier": "Convention drift",
-    "error_consistency": "Error consistency",
-    "abstraction_fitness": "Abstraction fit",
-    "dependency_health": "Dep health",
-    "test_strategy": "Test strategy",
-    "api_surface_coherence": "API coherence",
-    "authorization_consistency": "Auth consistency",
-    "ai_generated_debt": "AI generated debt",
-    "incomplete_migration": "Stale migration",
-    "package_organization": "Structure nav",
-    "high_level_elegance": "High elegance",
-    "mid_level_elegance": "Mid elegance",
-    "low_level_elegance": "Low elegance",
-    # Design coherence (concerns bridge)
-    "design_coherence": "Design coherence",
-    # Per-file review dimensions
-    "naming_quality": "Naming quality",
-    "logic_clarity": "Logic clarity",
-    "type_safety": "Type safety",
-    "contract_coherence": "Contracts",
-}
 
 def _display_fallback(dim_name: str) -> str:
     words = dim_name.replace("_", " ")
