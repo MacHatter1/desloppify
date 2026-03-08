@@ -26,7 +26,7 @@ def has_triage_in_queue(plan: dict) -> bool:
     return bool(order & TRIAGE_IDS)
 
 def inject_triage_stages(plan: dict) -> None:
-    """Inject all 4 triage stage IDs into the queue (fresh start)."""
+    """Inject all triage stage IDs into the queue (fresh start)."""
     order: list[str] = plan.setdefault("queue_order", [])
     existing = set(order)
     for sid in TRIAGE_STAGE_IDS:

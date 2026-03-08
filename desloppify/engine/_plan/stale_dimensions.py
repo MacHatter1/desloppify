@@ -349,7 +349,7 @@ def sync_triage_needed(
     plan: PlanModel,
     state: StateModel,
 ) -> TriageSyncResult:
-    """Inject 4 triage stage IDs at front of queue when review issues change.
+    """Inject triage stage IDs at front of queue when review issues change.
 
     Only injects stages not already confirmed in ``epic_triage_meta``.
 
