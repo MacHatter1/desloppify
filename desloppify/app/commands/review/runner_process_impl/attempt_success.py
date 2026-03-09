@@ -6,7 +6,7 @@ import logging
 from collections.abc import Callable
 from pathlib import Path
 
-from ._runner_process_types import CodexBatchRunnerDeps, _ExecutionResult
+from .types import CodexBatchRunnerDeps, _ExecutionResult
 
 logger = logging.getLogger(__name__)
 

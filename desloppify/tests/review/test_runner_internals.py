@@ -1,9 +1,9 @@
 """Tests for review runner internals: process I/O, retry logic, parallel execution.
 
 Covers the pure-logic functions in:
-- _runner_process_io.py     (payload extraction, stall detection, output file helpers)
-- _runner_process_attempts.py (retry config resolution, attempt handler helpers)
-- _runner_parallel_execution.py (parallel runtime resolution, future completion, heartbeat)
+- runner_process_impl.io.py     (payload extraction, stall detection, output file helpers)
+- runner_process_impl.attempts.py (retry config resolution, attempt handler helpers)
+- runner_parallel.execution.py (parallel runtime resolution, future completion, heartbeat)
 """
 
 from __future__ import annotations
@@ -15,25 +15,25 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 
-from desloppify.app.commands.review._runner_parallel_execution import (
+from desloppify.app.commands.review.runner_parallel.execution import (
     _complete_parallel_future,
     _heartbeat,
     _resolve_parallel_runtime,
 )
-from desloppify.app.commands.review._runner_process_attempts import (
+from desloppify.app.commands.review.runner_process_impl.attempts import (
     _handle_early_attempt_return,
     _handle_failed_attempt,
     _handle_successful_attempt,
     _handle_timeout_or_stall,
     _resolve_retry_config,
 )
-from desloppify.app.commands.review._runner_process_io import (
+from desloppify.app.commands.review.runner_process_impl.io import (
     _check_stall,
     _extract_payload_from_log,
     _output_file_has_json_payload,
     _output_file_status_text,
 )
-from desloppify.app.commands.review._runner_process_types import (
+from desloppify.app.commands.review.runner_process_impl.types import (
     CodexBatchRunnerDeps,
     _ExecutionResult,
 )
@@ -64,7 +64,7 @@ def _make_deps(**overrides) -> CodexBatchRunnerDeps:
 
 
 # ═══════════════════════════════════════════════════════════════════
-# _runner_process_io.py
+# runner_process_impl.io.py
 # ═══════════════════════════════════════════════════════════════════
 
 
@@ -302,7 +302,7 @@ class TestCheckStall:
 
 
 # ═══════════════════════════════════════════════════════════════════
-# _runner_process_attempts.py
+# runner_process_impl.attempts.py
 # ═══════════════════════════════════════════════════════════════════
 
 
@@ -759,7 +759,7 @@ class TestHandleFailedAttempt:
 
 
 # ═══════════════════════════════════════════════════════════════════
-# _runner_parallel_execution.py
+# runner_parallel.execution.py
 # ═══════════════════════════════════════════════════════════════════
 
 

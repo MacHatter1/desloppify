@@ -9,7 +9,7 @@ from typing import Any
 
 from desloppify.base.output.fallbacks import log_best_effort_failure
 
-from ._runner_parallel_types import BatchExecutionOptions, BatchProgressEvent
+from .types import BatchExecutionOptions, BatchProgressEvent
 
 logger = logging.getLogger(__name__)
 

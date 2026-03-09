@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Callable
 
-from ._runner_parallel_types import BatchTask
+from .types import BatchTask
 
 
 def execute_serial_tasks(

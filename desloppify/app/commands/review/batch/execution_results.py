@@ -25,6 +25,7 @@ def collect_and_reconcile_results(
     packet: dict,
     batch_positions: dict[int, int],
     batch_status: dict[str, dict[str, object]],
+    colorize_fn=None,
 ) -> tuple[list[dict], list[int], list[int], set[int]]:
     """Collect batch results and reconcile per-batch status entries."""
     allowed_dims = {
@@ -47,7 +48,12 @@ def collect_and_reconcile_results(
             {"position": batch_positions.get(idx, 0), "status": "pending"},
         )
         if idx not in failure_set:
-            state["status"] = "succeeded"
+            # Batch succeeded — distinguish recovered (execution failed but payload valid)
+            # from clean success.
+            if idx in execution_failure_set:
+                state["status"] = "recovered"
+            else:
+                state["status"] = "succeeded"
             continue
         if idx in execution_failure_set:
             state["status"] = "failed"
@@ -56,6 +62,19 @@ def collect_and_reconcile_results(
             state["status"] = "missing_output"
             continue
         state["status"] = "parse_failed"
+
+    recovered = sorted(
+        idx + 1
+        for idx in selected_indexes
+        if idx in execution_failure_set and idx not in failure_set
+    )
+    if recovered and colorize_fn is not None:
+        print(
+            colorize_fn(
+                f"  Recovered batches (execution exited non-zero but payload valid): {recovered}",
+                "green",
+            )
+        )
 
     return batch_results, successful_indexes, failures, failure_set
 

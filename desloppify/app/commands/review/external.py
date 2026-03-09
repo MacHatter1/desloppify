@@ -288,9 +288,13 @@ def _build_claude_launch_prompt(
         "3. Do not include provenance metadata (CLI injects canonical provenance).\n"
     )
 
+    from desloppify.engine._plan.project_policy import load_policy, render_policy_block
+    policy_text = render_policy_block(load_policy())
+
     return join_non_empty_sections(
         header,
         *batch_sections,
+        policy_text,
         render_scoring_frame(),
         render_scan_evidence_note(),
         render_task_requirements(issues_cap=combined_cap, dim_set=all_dims),

@@ -10,22 +10,20 @@ from pathlib import Path
 
 from desloppify.base.discovery.file_paths import safe_write_text
 
-from ._runner_parallel_execution import (
+from .execution import (
     _drain_parallel_completions,
     _execute_serial,
     _queue_parallel_tasks,
     _resolve_parallel_runtime,
 )
-from ._runner_parallel_progress import (
-    _coerce_batch_execution_options,
-)
-from ._runner_parallel_types import (
+from .progress import _coerce_batch_execution_options
+from .types import (
     BatchExecutionOptions,
     BatchProgressEvent,
     BatchResult,
     BatchTask,
 )
-from .runner_process import _extract_payload_from_log
+from ..runner_process import _extract_payload_from_log
 
 logger = logging.getLogger(__name__)
 
@@ -126,28 +124,28 @@ def collect_batch_results(
             failure_set.add(idx)
             continue
         if parsed_from_log:
-            write_back_failed = False
             try:
                 safe_write_text(raw_path, json.dumps(payload, indent=2) + "\n")
             except OSError as exc:
-                write_back_failed = True
                 logger.warning("Failed writing normalized batch payload %s: %s", raw_path, exc)
-            if write_back_failed:
-                logger.debug(
-                    "Keeping in-memory payload for batch %s despite write-back failure.",
-                    idx + 1,
-                )
         try:
-            assessments, issues, dimension_notes, dimension_judgment, quality = normalize_result_fn(
-                payload,
-                allowed_dims,
-            )
+            (
+                assessments,
+                issues,
+                dimension_notes,
+                dimension_judgment,
+                quality,
+            ) = normalize_result_fn(payload, allowed_dims)
         except ValueError as exc:
             logger.debug("Invalid batch payload at index %s (%s): %s", idx, raw_path, exc)
             failure_set.add(idx)
             continue
         if had_execution_failure:
             failure_set.discard(idx)
+            logger.info(
+                "Batch #%d recovered: execution exited non-zero but raw payload parsed successfully",
+                idx + 1,
+            )
         batch_results.append(
             BatchResult(
                 batch_index=idx + 1,

@@ -13,8 +13,8 @@ from desloppify.app.commands.review.runner_failures import (
     TRANSIENT_RUNNER_PHRASES as _TRANSIENT_RUNNER_PHRASES,
 )
 
-from ._runner_process_attempt_success import handle_successful_attempt_core
-from ._runner_process_io import (
+from .attempt_success import handle_successful_attempt_core
+from .io import (
     _check_stall,
     _drain_stream,
     _output_file_has_json_payload,
@@ -22,7 +22,7 @@ from ._runner_process_io import (
     _terminate_process,
     _write_live_snapshot,
 )
-from ._runner_process_types import (
+from .types import (
     CodexBatchRunnerDeps,
     _AttemptContext,
     _ExecutionResult,

@@ -9,15 +9,15 @@ from concurrent.futures import TimeoutError as FuturesTimeoutError
 
 from desloppify.base.output.fallbacks import log_best_effort_failure
 
-from ._runner_parallel_progress import (
+from .progress import (
     _RUNNER_CALLBACK_EXCEPTIONS,
     _RUNNER_TASK_EXCEPTIONS,
     _emit_progress,
     _record_execution_error,
     _record_progress_error,
 )
-from ._runner_parallel_serial import execute_serial_tasks
-from ._runner_parallel_types import BatchTask
+from .serial import execute_serial_tasks
+from .types import BatchTask
 
 logger = logging.getLogger(__name__)
 

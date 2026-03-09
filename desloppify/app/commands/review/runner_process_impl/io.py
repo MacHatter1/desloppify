@@ -12,7 +12,7 @@ from pathlib import Path
 
 from desloppify.base.output.fallbacks import log_best_effort_failure
 
-from ._runner_process_types import _AttemptContext, _RunnerState
+from .types import _AttemptContext, _RunnerState
 
 logger = logging.getLogger(__name__)
 

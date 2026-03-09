@@ -190,7 +190,7 @@ def build_progress_reporter(
             append_run_log(f"batch-start batch={batch_index + 1} position={position}/{total_batches}")
             return
         if event == "done":
-            status = "done" if code == 0 else f"failed ({code})"
+            status = "done" if code == 0 else f"exited ({code}); pending payload recovery"
             tone = "dim" if code == 0 else "yellow"
             elapsed_seconds = details.get("elapsed_seconds")
             elapsed_suffix = ""
