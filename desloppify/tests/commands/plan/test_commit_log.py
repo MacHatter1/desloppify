@@ -19,9 +19,14 @@ def _git_context(
     head_sha: str = "abc1234567890",
     has_uncommitted: bool = False,
 ) -> SimpleNamespace:
+    normalized_branch = str(branch).strip() or "feat/cleanup"
+    normalized_head_sha = str(head_sha).strip() or "abc1234567890"
+    normalized_head_sha = normalized_head_sha[:40]
     return SimpleNamespace(
-        available=available, branch=branch, head_sha=head_sha,
-        has_uncommitted=has_uncommitted,
+        available=bool(available),
+        branch=normalized_branch,
+        head_sha=normalized_head_sha,
+        has_uncommitted=bool(has_uncommitted),
     )
 
 
@@ -46,7 +51,17 @@ def _record_args(
     note: str | None = None,
     only: list[str] | None = None,
 ) -> argparse.Namespace:
-    return argparse.Namespace(sha=sha, branch=branch, note=note, only=only)
+    normalized_only = [
+        pattern.strip()
+        for pattern in (only or [])
+        if isinstance(pattern, str) and pattern.strip()
+    ]
+    return argparse.Namespace(
+        sha=(sha.strip() if isinstance(sha, str) else sha),
+        branch=(branch.strip() if isinstance(branch, str) else branch),
+        note=(note.strip() if isinstance(note, str) else note),
+        only=normalized_only or None,
+    )
 
 
 def _history_args(*, top: int = 10) -> argparse.Namespace:
