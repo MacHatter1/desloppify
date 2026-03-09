@@ -126,10 +126,17 @@ def collect_batch_results(
             failure_set.add(idx)
             continue
         if parsed_from_log:
+            write_back_failed = False
             try:
                 safe_write_text(raw_path, json.dumps(payload, indent=2) + "\n")
             except OSError as exc:
+                write_back_failed = True
                 logger.warning("Failed writing normalized batch payload %s: %s", raw_path, exc)
+            if write_back_failed:
+                logger.debug(
+                    "Keeping in-memory payload for batch %s despite write-back failure.",
+                    idx + 1,
+                )
         try:
             assessments, issues, dimension_notes, dimension_judgment, quality = normalize_result_fn(
                 payload,

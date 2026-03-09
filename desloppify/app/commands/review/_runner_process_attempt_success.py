@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import logging
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from ._runner_process_types import CodexBatchRunnerDeps, _ExecutionResult
+
+logger = logging.getLogger(__name__)
 
 
 DefValidateFn = Callable[[Path], bool]
@@ -64,8 +67,12 @@ def handle_successful_attempt_core(
         if fallback_text:
             try:
                 deps.safe_write_text_fn(output_file, fallback_text)
-            except (OSError, RuntimeError, ValueError, TypeError):
-                pass
+            except (OSError, RuntimeError, ValueError, TypeError) as exc:
+                logger.debug(
+                    "Failed writing fallback runner output to %s: %s",
+                    output_file,
+                    exc,
+                )
             else:
                 if validate(output_file):
                     valid = True

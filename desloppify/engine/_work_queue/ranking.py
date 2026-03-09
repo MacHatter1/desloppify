@@ -14,13 +14,13 @@ from desloppify.engine._work_queue.helpers import (
     detail_dict,
     is_review_issue,
     is_subjective_issue,
-    workflow_stage_name,
     primary_command_for_issue,
     review_issue_weight,
     scope_matches,
     slugify,
     status_matches,
     supported_fixers_for_item,
+    workflow_stage_name,
 )
 from desloppify.engine._work_queue.ranking_output import (
     group_queue_items,
@@ -57,10 +57,13 @@ _TRIAGE_STAGE_ORDER = {
 def _workflow_stage_index(item: WorkQueueItem) -> int:
     raw_index = item.get("stage_index")
     if raw_index is not None:
-        try:
-            return int(raw_index)
-        except (TypeError, ValueError) as exc:
-            logger.warning("Invalid workflow stage index %r: %s", raw_index, exc)
+        if isinstance(raw_index, int):
+            return raw_index
+        if isinstance(raw_index, str):
+            stripped = raw_index.strip()
+            if stripped.lstrip("-").isdigit():
+                return int(stripped)
+        logger.warning("Invalid workflow stage index %r", raw_index)
     return _TRIAGE_STAGE_ORDER.get(workflow_stage_name(item).lower(), 0)
 
 

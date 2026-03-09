@@ -9,9 +9,20 @@ from desloppify.base.discovery.source import find_py_files
 from desloppify.engine.detectors.base import ClassInfo, FunctionInfo
 from desloppify.languages.python.extractors_shared import find_block_end, read_file
 
-_DATACLASS_DECORATOR_RE = re.compile(
-    r"^(?:[A-Za-z_][A-Za-z0-9_]*\.)*dataclass(?:\s*\([^)]*\))?$"
-)
+
+def _decorator_base_name(decorator: str) -> str | None:
+    """Return the right-most decorator name, stripping optional call args."""
+    expr = decorator.strip()
+    if "(" in expr:
+        if not expr.endswith(")"):
+            return None
+        expr = expr.split("(", 1)[0].strip()
+    if not expr:
+        return None
+    parts = expr.split(".")
+    if not all(part.isidentifier() for part in parts):
+        return None
+    return parts[-1]
 
 
 def extract_py_classes(path: Path) -> list[ClassInfo]:
@@ -174,7 +185,7 @@ def _has_dataclass_decorator(lines: list[str], class_start: int) -> bool:
         if not stripped.startswith("@"):
             break
         decorator = stripped[1:].split("#", 1)[0].strip()
-        if _DATACLASS_DECORATOR_RE.match(decorator):
+        if _decorator_base_name(decorator) == "dataclass":
             return True
         idx -= 1
     return False

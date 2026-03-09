@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from desloppify.app.commands.review.batches_runtime import make_run_log_writer
+from desloppify.base.discovery.file_paths import safe_write_text
 from desloppify.base.discovery.paths import get_project_root
 from desloppify.base.output.terminal import colorize
 
@@ -152,7 +153,7 @@ def run_codex_pipeline(
             prompt = build_stage_prompt(stage, si, prior_reports, repo_root=repo_root)
 
             prompt_file = prompts_dir / f"{stage}.md"
-            prompt_file.write_text(prompt, encoding="utf-8")
+            safe_write_text(prompt_file, prompt)
 
             if dry_run:
                 print(colorize(f"  Stage {stage}: prompt written to {prompt_file}", "cyan"))
@@ -285,7 +286,7 @@ def write_triage_run_summary(
         "run_dir": str(run_dir),
     }
     summary_path = run_dir / "run_summary.json"
-    summary_path.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+    safe_write_text(summary_path, json.dumps(summary, indent=2) + "\n")
     print(colorize(f"  Run summary: {summary_path}", "dim"))
     append_run_log(f"run-summary {summary_path}")
 

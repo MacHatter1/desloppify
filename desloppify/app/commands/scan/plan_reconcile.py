@@ -356,4 +356,5 @@ def reconcile_plan_post_scan(runtime: Any) -> None:
         try:
             save_plan(plan, plan_path)
         except PLAN_LOAD_EXCEPTIONS as exc:
+            runtime.state["_plan_reconcile_save_failed"] = True
             logger.warning("Plan reconciliation save failed: %s", exc)
