@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
+
+DimensionScoreRow = dict[str, Any]
+SubjectiveAtTargetFn = Callable[..., list[DimensionScoreRow]]
 
 
 def subjective_at_target_dimensions(
@@ -40,7 +44,7 @@ def bind_scorecard_subjective_at_target(
     *,
     reporting_dimensions_mod,
     subjective_integrity_mod,
-):
+) -> SubjectiveAtTargetFn:
     """Bind scorecard-specific dependencies once for import/output call sites."""
     return lambda state_or_dim_scores, dim_scores=None, *, target: (
         subjective_at_target_dimensions(

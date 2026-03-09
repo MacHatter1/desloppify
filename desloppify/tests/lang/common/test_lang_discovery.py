@@ -51,6 +51,35 @@ def test_load_all_uses_plugin_file_naming_convention(monkeypatch, tmp_path):
     assert len(imported) == 1
 
 
+def test_load_all_calls_module_register_entrypoint(monkeypatch, tmp_path):
+    pkg_dir = tmp_path / "python"
+    pkg_dir.mkdir()
+    (pkg_dir / "__init__.py").write_text("# package placeholder\n")
+
+    imported: list[str] = []
+    registered: list[str] = []
+
+    class _Module:
+        def __init__(self, name: str) -> None:
+            self._name = name
+
+        def register(self) -> None:
+            registered.append(self._name)
+
+    def fake_import_module(name, package=None):
+        imported.append(name)
+        return _Module(name)
+
+    monkeypatch.setattr(importlib, "import_module", fake_import_module)
+    monkeypatch.setattr(discovery_mod, "__file__", str(tmp_path / "discovery.py"))
+    registry_state.set_load_attempted(False)
+    registry_state.set_load_errors({})
+
+    load_all()
+    assert ".python" in imported
+    assert ".python" in registered
+
+
 def test_load_all_force_reload_reimports_without_reset_side_effects(monkeypatch, tmp_path):
     plugin_file = tmp_path / "plugin_go.py"
     plugin_file.write_text("# plugin placeholder\n")

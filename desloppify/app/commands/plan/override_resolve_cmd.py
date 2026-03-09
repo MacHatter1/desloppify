@@ -14,7 +14,10 @@ from desloppify.app.commands.helpers.attestation import (
 )
 from desloppify.app.commands.helpers.runtime import command_runtime
 from desloppify.app.commands.helpers.state import state_path
-from desloppify.app.commands.plan.triage.helpers import has_triage_in_queue, inject_triage_stages
+from desloppify.app.commands.plan.triage.helpers import (
+    has_triage_in_queue,
+    inject_triage_stages,
+)
 from desloppify.app.commands.resolve.cmd import cmd_resolve
 from desloppify.base.exception_sets import PLAN_LOAD_EXCEPTIONS
 from desloppify.base.output.fallbacks import log_best_effort_failure
@@ -28,17 +31,21 @@ from desloppify.engine.plan import (
     load_plan,
     purge_ids,
     save_plan,
+    triage_manual_stage_command,
+    triage_runner_commands,
 )
 
-from .override_resolve_helpers import blocked_triage_stages
-from .override_resolve_helpers import check_cluster_guard
-from .override_resolve_helpers import resolve_synthetic_ids
+from .override_resolve_helpers import (
+    blocked_triage_stages,
+    check_cluster_guard,
+    resolve_synthetic_ids,
+)
 
 logger = logging.getLogger(__name__)
 
 
 def cmd_plan_resolve(args: argparse.Namespace) -> None:
-    """Mark issues as fixed — delegates to cmd_resolve for rich UX."""
+    """Mark issues as fixed and delegate to resolve command UX."""
     patterns: list[str] = getattr(args, "patterns", [])
     attestation: str | None = getattr(args, "attest", None)
     note: str | None = getattr(args, "note", None)
@@ -55,18 +62,30 @@ def cmd_plan_resolve(args: argparse.Namespace) -> None:
         plan = load_plan()
 
         blocked_map = blocked_triage_stages(plan)
-        for sid in synthetic_ids:
-            if sid in blocked_map:
-                deps = ", ".join(dep.replace("triage::", "") for dep in blocked_map[sid])
-                print(colorize(f"  Cannot resolve {sid} — blocked by: {deps}", "red"))
-                print(colorize("  Complete those stages first, or use --force-resolve to override.", "dim"))
+        for synthetic_id in synthetic_ids:
+            if synthetic_id in blocked_map:
+                deps_text = ", ".join(
+                    dep.replace("triage::", "") for dep in blocked_map[synthetic_id]
+                )
+                print(
+                    colorize(
+                        f"  Cannot resolve {synthetic_id} — blocked by: {deps_text}",
+                        "red",
+                    )
+                )
+                print(
+                    colorize(
+                        "  Complete those stages first, or use --force-resolve to override.",
+                        "dim",
+                    )
+                )
                 if not getattr(args, "force_resolve", False):
                     return
 
         gated_ids = [
-            sid
-            for sid in synthetic_ids
-            if sid in {WORKFLOW_SCORE_CHECKPOINT_ID, WORKFLOW_CREATE_PLAN_ID}
+            synthetic_id
+            for synthetic_id in synthetic_ids
+            if synthetic_id in {WORKFLOW_SCORE_CHECKPOINT_ID, WORKFLOW_CREATE_PLAN_ID}
         ]
         if gated_ids:
             force = getattr(args, "force_resolve", False)
@@ -93,36 +112,123 @@ def cmd_plan_resolve(args: argparse.Namespace) -> None:
                     print(colorize(f"  Cannot resolve {wid} — triage not complete.", "red"))
                 print()
 
+                if next_stage == "commit":
+                    print(colorize("  Preferred runners:", "yellow"))
+                    for label, command in triage_runner_commands():
+                        print(colorize(f"    {label}: {command}", "dim"))
+                else:
+                    print(colorize("  Preferred runners:", "yellow"))
+                    for label, command in triage_runner_commands(only_stages=next_stage):
+                        print(colorize(f"    {label}: {command}", "dim"))
+                print(
+                    colorize(
+                        f"  Manual fallback: {triage_manual_stage_command(next_stage)}",
+                        "dim",
+                    )
+                )
+                print()
+
                 if next_stage == "observe":
-                    print(colorize("  You must analyze the findings before resolving this.", "yellow"))
-                    print(colorize("  Start by examining themes, root causes, and contradictions:", "dim"))
-                    print(colorize('    desloppify plan triage --stage observe --report "..."', "dim"))
+                    print(
+                        colorize(
+                            "  You must analyze the findings before resolving this.",
+                            "yellow",
+                        )
+                    )
+                    print(
+                        colorize(
+                            "  Start by examining themes, root causes, and contradictions:",
+                            "dim",
+                        )
+                    )
                     print()
-                    print(colorize("  The report must be 100+ chars describing what you found.", "dim"))
+                    print(
+                        colorize(
+                            "  The report must be 100+ chars describing what you found.",
+                            "dim",
+                        )
+                    )
                 elif next_stage == "reflect":
-                    print(colorize("  Observe is done. Now compare against previously completed work:", "yellow"))
-                    print(colorize('    desloppify plan triage --stage reflect --report "..."', "dim"))
+                    print(
+                        colorize(
+                            "  Observe is done. Now compare against previously completed work:",
+                            "yellow",
+                        )
+                    )
                     print()
-                    print(colorize("  The report must mention recurring dimensions if any exist.", "dim"))
+                    print(
+                        colorize(
+                            "  The report must mention recurring dimensions if any exist.",
+                            "dim",
+                        )
+                    )
                 elif next_stage == "organize":
-                    print(colorize("  Reflect is done. Now create clusters and prioritize:", "yellow"))
-                    print(colorize('    desloppify plan cluster create <name> --description "..."', "dim"))
-                    print(colorize("    desloppify plan cluster add <name> <issue-patterns>", "dim"))
-                    print(colorize('    desloppify plan cluster update <name> --steps "step1" "step2"', "dim"))
-                    print(colorize('    desloppify plan triage --stage organize --report "..."', "dim"))
+                    print(
+                        colorize(
+                            "  Reflect is done. Now create clusters and prioritize:",
+                            "yellow",
+                        )
+                    )
+                    print(
+                        colorize(
+                            '    desloppify plan cluster create <name> --description "..."',
+                            "dim",
+                        )
+                    )
+                    print(
+                        colorize(
+                            "    desloppify plan cluster add <name> <issue-patterns>",
+                            "dim",
+                        )
+                    )
+                    print(
+                        colorize(
+                            '    desloppify plan cluster update <name> --steps "step1" "step2"',
+                            "dim",
+                        )
+                    )
+                    print(
+                        colorize(
+                            f"    {triage_manual_stage_command('organize')}",
+                            "dim",
+                        )
+                    )
                     print()
-                    print(colorize("  All manual clusters must have descriptions and action_steps.", "dim"))
+                    print(
+                        colorize(
+                            "  All manual clusters must have descriptions and action_steps.",
+                            "dim",
+                        )
+                    )
                 elif next_stage == "enrich":
-                    print(colorize("  Organize is done. Now enrich steps with detail and issue refs:", "yellow"))
-                    print(colorize('    desloppify plan cluster update <name> --update-step N --detail "sub-details"', "dim"))
-                    print(colorize('    desloppify plan triage --stage enrich --report "..."', "dim"))
+                    print(
+                        colorize(
+                            "  Organize is done. Now enrich steps with detail and issue refs:",
+                            "yellow",
+                        )
+                    )
+                    print(
+                        colorize(
+                            '    desloppify plan cluster update <name> --update-step N --detail "sub-details"',
+                            "dim",
+                        )
+                    )
                 elif next_stage == "commit":
-                    print(colorize("  Enrich is done. Finalize the execution plan:", "yellow"))
-                    print(colorize('    desloppify plan triage --complete --strategy "..."', "dim"))
+                    print(
+                        colorize(
+                            "  Enrich is done. Finalize the execution plan:",
+                            "yellow",
+                        )
+                    )
 
                 print()
                 print(colorize(f"  Remaining stages: {', '.join(sorted(missing))}", "dim"))
-                print(colorize("  To skip triage: --force-resolve --note 'reason for skipping triage'", "dim"))
+                print(
+                    colorize(
+                        "  To skip triage: --force-resolve --note 'reason for skipping triage'",
+                        "dim",
+                    )
+                )
 
                 append_log_entry(
                     plan,
@@ -168,9 +274,19 @@ def cmd_plan_resolve(args: argparse.Namespace) -> None:
 
                 if not scan_ran and not scan_skipped and not force:
                     for wid in gated_ids:
-                        print(colorize(f"  Cannot resolve {wid} — no scan has run this cycle.", "red"))
+                        print(
+                            colorize(
+                                f"  Cannot resolve {wid} — no scan has run this cycle.",
+                                "red",
+                            )
+                        )
                     print()
-                    print(colorize("  You must run a scan before resolving workflow items:", "yellow"))
+                    print(
+                        colorize(
+                            "  You must run a scan before resolving workflow items:",
+                            "yellow",
+                        )
+                    )
                     print(colorize("    desloppify scan", "dim"))
                     print()
                     print(
@@ -187,7 +303,12 @@ def cmd_plan_resolve(args: argparse.Namespace) -> None:
                             "dim",
                         )
                     )
-                    print(colorize("  Or use: --force-resolve --note 'reason for skipping'", "dim"))
+                    print(
+                        colorize(
+                            "  Or use: --force-resolve --note 'reason for skipping'",
+                            "dim",
+                        )
+                    )
 
                     append_log_entry(
                         plan,
@@ -209,8 +330,8 @@ def cmd_plan_resolve(args: argparse.Namespace) -> None:
             print(colorize(msg, "green"))
         append_log_entry(plan, "done", issue_ids=synthetic_ids, actor="user", note=note)
         save_plan(plan)
-        for sid in synthetic_ids:
-            print(colorize(f"  Resolved: {sid}", "green"))
+        for synthetic_id in synthetic_ids:
+            print(colorize(f"  Resolved: {synthetic_id}", "green"))
         if not real_patterns:
             return
         patterns = real_patterns

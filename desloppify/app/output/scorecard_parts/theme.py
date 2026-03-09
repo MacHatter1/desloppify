@@ -36,7 +36,7 @@ def score_color(score: float, *, muted: bool = False) -> tuple[int, int, int]:
 
 def load_font(
     size: int, *, serif: bool = False, bold: bool = False, mono: bool = False
-):
+) -> object:
     """Load a font with cross-platform fallback."""
     image_font_mod = importlib.import_module("PIL.ImageFont")  # deferred: optional dependency
 

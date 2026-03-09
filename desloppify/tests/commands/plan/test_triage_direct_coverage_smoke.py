@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
+import inspect
+
 import desloppify.app.commands.plan.triage.helpers as triage_helpers_mod
 import desloppify.app.commands.plan.triage.services as triage_services_mod
 import desloppify.app.commands.plan.triage.stage_completion_commands as triage_completion_mod
 import desloppify.app.commands.plan.triage.runner.codex_runner as triage_codex_runner_mod
 import desloppify.app.commands.plan.triage.runner.orchestrator_common as triage_orchestrator_mod
+import desloppify.app.commands.plan.triage.runner.orchestrator_codex_observe as triage_observe_mod
+import desloppify.app.commands.plan.triage.runner.orchestrator_codex_parallel as triage_parallel_mod
+import desloppify.app.commands.plan.triage.display as triage_display_mod
+import desloppify.app.commands.plan.triage.display_layout as triage_display_layout_mod
 
 
 def test_triage_helper_modules_direct_coverage_smoke() -> None:
@@ -30,3 +36,30 @@ def test_triage_helper_modules_direct_coverage_smoke() -> None:
         "observe",
         "reflect",
     ]
+
+    codex_src = inspect.getsource(triage_codex_runner_mod)
+    observe_src = inspect.getsource(triage_observe_mod)
+    parallel_src = inspect.getsource(triage_parallel_mod)
+    assert "app.commands.review.runner_process_impl.types" not in codex_src
+    assert "app.commands.review.runner_parallel.types" not in observe_src
+    assert "app.commands.review.runner_parallel.types" not in parallel_src
+
+    display_src = inspect.getsource(triage_display_mod)
+    display_layout_src = inspect.getsource(triage_display_layout_mod)
+    assert "from . import display as display_mod" not in display_layout_src
+    assert "from .display_primitives import print_stage_progress" in display_src
+
+
+def test_count_log_activity_since_ignores_malformed_entries() -> None:
+    plan = {
+        "execution_log": [
+            {"timestamp": "2026-01-01T00:00:00Z", "action": "resolve"},
+            {"timestamp": "2026-01-01T00:00:00Z", "action": 123},
+            {"timestamp": 123, "action": "skip"},
+            {"action": "skip"},
+            {"timestamp": "2026-01-01T00:00:00Z"},
+            "bad-entry",
+        ]
+    }
+    counts = triage_helpers_mod.count_log_activity_since(plan, "2025-12-31T00:00:00Z")
+    assert counts == {"resolve": 1}

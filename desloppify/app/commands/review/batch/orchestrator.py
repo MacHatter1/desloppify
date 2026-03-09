@@ -22,6 +22,7 @@ from desloppify.intelligence.review.feedback_contract import (
 
 from ..helpers import parse_dimensions
 from ..importing.cmd import do_import as _do_import
+from ..importing.flags import ReviewImportConfig
 from ..packet.policy import coerce_review_batch_file_limit, redacted_review_config
 from ..prompt_sections import explode_to_single_dimension
 from ..runner_failures import print_failures, print_failures_and_raise
@@ -33,7 +34,7 @@ from ..runner_packets import (
     selected_batch_indexes,
     write_packet_snapshot,
 )
-from ..runner_parallel import collect_batch_results, execute_batches
+from ..runner_parallel import BatchExecutionOptions, collect_batch_results, execute_batches
 from ..runner_process import (
     CodexBatchRunnerDeps,
     FollowupScanDeps,
@@ -62,6 +63,7 @@ from .scope import (
 )
 from .core_normalize import normalize_batch_result
 from .core_parse import extract_json_payload, parse_batch_selection
+from . import execution_phases as review_batch_phases_mod
 from .merge import merge_batch_results
 from .prompt_template import render_batch_prompt
 from . import execution as review_batches_mod
@@ -240,6 +242,7 @@ def do_run_batches(args, state, lang, state_file, config: dict | None = None) ->
     from ..runtime.policy import resolve_batch_run_policy
 
     runtime_project_root = _runtime_project_root()
+    subagent_runs_dir = _subagent_runs_dir()
     policy = resolve_batch_run_policy(args)
     batch_timeout_seconds = policy.batch_timeout_seconds
     batch_max_retries = policy.batch_max_retries
@@ -252,7 +255,23 @@ def do_run_batches(args, state, lang, state_file, config: dict | None = None) ->
     )
     batch_stall_kill_seconds = policy.stall_kill_seconds
 
-    def _prepare_run_artifacts(*, stamp, selected_indexes, batches, packet_path, run_root, repo_root):
+    from desloppify.engine.plan import load_policy, render_policy_block
+    _policy_block = render_policy_block(load_policy())
+
+    def _prompt_fn_with_policy(**kwargs):
+        return render_batch_prompt(**kwargs, policy_block=_policy_block)
+
+    def _adapted_selected_batch_indexes(_args, *, batch_count):
+        return selected_batch_indexes(
+            raw_selection=getattr(args, "only_batches", None),
+            batch_count=batch_count,
+            parse_fn=parse_batch_selection,
+            colorize_fn=colorize,
+        )
+
+    def _adapted_prepare_run_artifacts(
+        *, stamp, selected_indexes, batches, packet_path, run_root, repo_root
+    ):
         return prepare_run_artifacts(
             stamp=stamp,
             selected_indexes=selected_indexes,
@@ -260,44 +279,13 @@ def do_run_batches(args, state, lang, state_file, config: dict | None = None) ->
             packet_path=packet_path,
             run_root=run_root,
             repo_root=repo_root,
-            build_prompt_fn=render_batch_prompt,
+            build_prompt_fn=_prompt_fn_with_policy,
             safe_write_text_fn=safe_write_text,
             colorize_fn=colorize,
         )
 
-    def _collect_batch_results(*, selected_indexes, failures, output_files, allowed_dims):
-        return collect_batch_results(
-            selected_indexes=selected_indexes,
-            failures=failures,
-            output_files=output_files,
-            allowed_dims=allowed_dims,
-            extract_payload_fn=lambda raw: extract_json_payload(raw, log_fn=log),
-            normalize_result_fn=lambda payload, dims: normalize_batch_result(
-                payload,
-                dims,
-                max_batch_issues=max_batch_issues_for_dimension_count(
-                    len(dims)
-                ),
-                abstraction_sub_axes=ABSTRACTION_SUB_AXES,
-            ),
-        )
-
-    return review_batches_mod.do_run_batches(
-        args,
-        state,
-        lang,
-        state_file,
-        config=config,
-        run_stamp_fn=run_stamp,
-        load_or_prepare_packet_fn=_load_or_prepare_packet,
-        selected_batch_indexes_fn=lambda args, *, batch_count: selected_batch_indexes(
-            raw_selection=getattr(args, "only_batches", None),
-            batch_count=batch_count,
-            parse_fn=parse_batch_selection,
-            colorize_fn=colorize,
-        ),
-        prepare_run_artifacts_fn=_prepare_run_artifacts,
-        run_codex_batch_fn=lambda *, prompt, repo_root, output_file, log_file: run_codex_batch(
+    def _adapted_run_codex_batch(*, prompt, repo_root, output_file, log_file):
+        return run_codex_batch(
             prompt=prompt,
             repo_root=repo_root,
             output_file=output_file,
@@ -307,22 +295,48 @@ def do_run_batches(args, state, lang, state_file, config: dict | None = None) ->
                 subprocess_run=subprocess.run,
                 timeout_error=subprocess.TimeoutExpired,
                 safe_write_text_fn=safe_write_text,
-                use_popen_runner=(getattr(subprocess.run, "__module__", "") == "subprocess"),
+                use_popen_runner=(
+                    getattr(subprocess.run, "__module__", "") == "subprocess"
+                ),
                 subprocess_popen=subprocess.Popen,
                 live_log_interval_seconds=batch_live_log_interval_seconds,
                 stall_after_output_seconds=batch_stall_kill_seconds,
                 max_retries=batch_max_retries,
                 retry_backoff_seconds=batch_retry_backoff_seconds,
             ),
-        ),
-        execute_batches_fn=execute_batches,
-        collect_batch_results_fn=_collect_batch_results,
-        print_failures_fn=print_failures,
-        print_failures_and_raise_fn=print_failures_and_raise,
-        merge_batch_results_fn=_merge_batch_results,
-        build_import_provenance_fn=build_batch_import_provenance,
-        do_import_fn=_do_import,
-        run_followup_scan_fn=lambda *, lang_name, scan_path: run_followup_scan(
+        )
+
+    def _adapted_execute_batches(**kwargs):
+        return execute_batches(
+            tasks=kwargs["tasks"],
+            options=BatchExecutionOptions(
+                run_parallel=kwargs["options"].run_parallel,
+                max_parallel_workers=kwargs["options"].max_parallel_workers,
+                heartbeat_seconds=kwargs["options"].heartbeat_seconds,
+            ),
+            progress_fn=kwargs.get("progress_fn"),
+            error_log_fn=kwargs.get("error_log_fn"),
+        )
+
+    def _adapted_collect_batch_results(
+        *, selected_indexes, failures, output_files, allowed_dims
+    ):
+        return collect_batch_results(
+            selected_indexes=selected_indexes,
+            failures=failures,
+            output_files=output_files,
+            allowed_dims=allowed_dims,
+            extract_payload_fn=lambda raw: extract_json_payload(raw, log_fn=log),
+            normalize_result_fn=lambda payload, dims: normalize_batch_result(
+                payload,
+                dims,
+                max_batch_issues=max_batch_issues_for_dimension_count(len(dims)),
+                abstraction_sub_axes=ABSTRACTION_SUB_AXES,
+            ),
+        )
+
+    def _adapted_run_followup_scan(*, lang_name, scan_path):
+        return run_followup_scan(
             lang_name=lang_name,
             scan_path=scan_path,
             deps=FollowupScanDeps(
@@ -333,11 +347,46 @@ def do_run_batches(args, state, lang, state_file, config: dict | None = None) ->
                 timeout_error=subprocess.TimeoutExpired,
                 colorize_fn=colorize,
             ),
-        ),
+        )
+
+    batch_deps = review_batches_mod.BatchRunDeps(
+        run_stamp_fn=run_stamp,
+        load_or_prepare_packet_fn=_load_or_prepare_packet,
+        selected_batch_indexes_fn=_adapted_selected_batch_indexes,
+        prepare_run_artifacts_fn=_adapted_prepare_run_artifacts,
+        run_codex_batch_fn=_adapted_run_codex_batch,
+        execute_batches_fn=_adapted_execute_batches,
+        collect_batch_results_fn=_adapted_collect_batch_results,
+        print_failures_fn=print_failures,
+        print_failures_and_raise_fn=print_failures_and_raise,
+        merge_batch_results_fn=_merge_batch_results,
+        build_import_provenance_fn=build_batch_import_provenance,
+        do_import_fn=_do_import,
+        run_followup_scan_fn=_adapted_run_followup_scan,
         safe_write_text_fn=safe_write_text,
         colorize_fn=colorize,
+    )
+    prepared = review_batch_phases_mod.prepare_batch_run(
+        args=args,
+        state=state,
+        lang=lang,
+        config=config or {},
+        deps=batch_deps,
         project_root=runtime_project_root,
-        subagent_runs_dir=_subagent_runs_dir(),
+        subagent_runs_dir=subagent_runs_dir,
+    )
+    if prepared is None:
+        return
+
+    executed = review_batch_phases_mod.execute_batch_run(
+        prepared=prepared,
+        deps=batch_deps,
+    )
+    review_batch_phases_mod.merge_and_import_batch_run(
+        prepared=prepared,
+        executed=executed,
+        state_file=state_file,
+        deps=batch_deps,
     )
 
 def _validate_run_dir(run_dir: Path) -> tuple[dict, Path, str]:
@@ -481,13 +530,17 @@ def do_import_run(
     packet_dimensions = normalize_dimension_list(packet.get("dimensions", []))
     lang_name = getattr(lang, "name", None) or str(getattr(lang, "lang", ""))
     scored_dimensions = scored_dimensions_for_lang(lang_name) if lang_name else []
+    _assessments = merged.get("assessments")
+    _assessments_dict = _assessments if isinstance(_assessments, dict) else {}
     merged_assessment_dims = normalize_dimension_list(
-        list((merged.get("assessments") or {}).keys())
+        list(_assessments_dict.keys())
     )
+    _issues = merged.get("issues")
+    _issues_list = _issues if isinstance(_issues, list) else []
     merged_issue_dims = normalize_dimension_list(
         [
             issue.get("dimension")
-            for issue in (merged.get("issues") or [])
+            for issue in _issues_list
             if isinstance(issue, dict)
         ]
     )
@@ -515,10 +568,12 @@ def do_import_run(
         state,
         lang,
         state_file,
-        config=config,
-        allow_partial=allow_partial,
-        trusted_assessment_source=True,
-        trusted_assessment_label=f"trusted import-run replay from {run_dir.name}",
+        import_config=ReviewImportConfig(
+            config=config,
+            allow_partial=allow_partial,
+            trusted_assessment_source=True,
+            trusted_assessment_label=f"trusted import-run replay from {run_dir.name}",
+        ),
         dry_run=dry_run,
     )
 

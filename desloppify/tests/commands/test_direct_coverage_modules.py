@@ -61,7 +61,7 @@ import desloppify.languages.python.detectors.private_imports as private_imports
 import desloppify.languages.python.detectors.smells_ast._dispatch as smells_ast_dispatch
 import desloppify.languages.python.detectors.smells_ast._helpers as smells_ast_shared
 import desloppify.languages.python.detectors.smells_ast._source_detectors as smells_ast_source_detectors
-import desloppify.languages.python.detectors.smells_ast._tree_context_detectors as smells_ast_tree_context_detectors
+import desloppify.languages.python.detectors.smells_ast._tree_context_paths as smells_ast_tree_context_paths
 import desloppify.languages.python.detectors.smells_ast._tree_quality_detectors as smells_ast_tree_quality_detectors
 import desloppify.languages.python.detectors.smells_ast._tree_quality_detectors_types as smells_ast_tree_quality_detectors_types
 import desloppify.languages.python.detectors.smells_ast._tree_safety_detectors as smells_ast_tree_safety_detectors
@@ -71,9 +71,9 @@ import desloppify.languages.python.extractors_shared as py_extractors_shared
 import desloppify.languages.python.phases as py_phases
 import desloppify.languages.python.phases_quality as py_phases_quality
 import desloppify.languages.typescript.detectors._smell_detectors_safety as ts_smell_detectors_safety
-import desloppify.languages.typescript.detectors.deps_runtime as ts_deps_runtime
+import desloppify.languages.typescript.detectors.deps.runtime as ts_deps_runtime
 import desloppify.languages.typescript.extractors_components as ts_extractors_components
-from desloppify.intelligence.review import prepare_batches as review_prepare_batches
+from desloppify.intelligence.review import prepare_batches_builders as review_prepare_batches
 from desloppify.languages import resolution as lang_resolution
 from desloppify.languages.csharp import move as csharp_move
 from desloppify.languages.csharp import review as csharp_review
@@ -122,7 +122,7 @@ def test_smoke_commands():
         next_output.build_query_payload,
         next_render_support.render_queue_header,
         review_batch_merge.merge_batch_results,
-        review_batches.do_run_batches,
+        review_batches.BatchRunDeps,
         review_import.do_import,
         review_import_helpers.load_import_issues_data,
         review_prepare.do_prepare,
@@ -168,7 +168,7 @@ def test_smoke_engine():
         smells_ast_shared._looks_like_path_var,
         smells_ast_source_detectors.detect_duplicate_constants,
         smells_ast_source_detectors.detect_vestigial_parameter,
-        smells_ast_tree_context_detectors._detect_hardcoded_path_sep,
+        smells_ast_tree_context_paths._detect_hardcoded_path_sep,
         smells_ast_tree_quality_detectors._detect_optional_param_sprawl,
         smells_ast_tree_quality_detectors_types._detect_optional_param_sprawl,
         smells_ast_tree_safety_detectors._detect_silent_except,

@@ -34,9 +34,7 @@ def assessment_weight(
     note = dimension_notes.get(dimension, {})
     note_evidence = len(note.get("evidence", [])) if isinstance(note, dict) else 0
     issue_count = sum(
-        1
-        for issue in issues
-        if str(issue.get("dimension", "")).strip() == dimension
+        1 for issue in issues if issue["dimension"].strip() == dimension
     )
     return float(1 + note_evidence + issue_count)
 
@@ -63,9 +61,9 @@ def _accumulate_batch_scores(
     abstraction_sub_axes: tuple[str, ...],
 ) -> None:
     """Accumulate assessment scores, dimension notes, and sub-axis data from one batch."""
-    result_issues = result.get("issues", [])
-    result_notes = result.get("dimension_notes", {})
-    for key, score in result.get("assessments", {}).items():
+    result_issues = result["issues"]
+    result_notes = result["dimension_notes"]
+    for key, score in result["assessments"].items():
         if isinstance(score, bool):
             continue
         score_value = float(score)
@@ -104,11 +102,11 @@ def _accumulate_batch_scores(
 
 def _issue_identity_key(issue: BatchIssuePayload) -> str:
     """Build a stable concept key; prefer dimension+identifier when available."""
-    dim = str(issue.get("dimension", "")).strip()
-    ident = str(issue.get("identifier", "")).strip()
+    dim = issue["dimension"].strip()
+    ident = issue["identifier"].strip()
     if ident:
         return f"{dim}::{ident}"
-    summary = str(issue.get("summary", "")).strip()
+    summary = issue["summary"].strip()
     summary_terms = sorted(normalize_word_set(summary))
     if summary_terms:
         return f"{dim}::summary::{','.join(summary_terms[:8])}"
@@ -122,7 +120,7 @@ def _accumulate_batch_quality(
     evidence_density_values: list[float],
 ) -> float:
     """Accumulate quality metrics from one batch. Returns high-score-missing-issues delta."""
-    quality: object = result.get("quality", {})
+    quality: object = result["quality"]
     if not isinstance(quality, dict):
         return 0.0
     coverage = quality.get("dimension_coverage")

@@ -413,37 +413,21 @@ def test_load_dimensions_for_lang_meta_enabled_dimension_requires_no_append(
 
 
 def test_dimension_metadata_uses_prompt_meta_overrides(monkeypatch):
-    payload = (
-        ["custom_dimension"],
-        {
-            "custom_dimension": {
-                "description": "custom",
-                "look_for": ["x"],
-                "skip": ["y"],
-                "meta": {
-                    "enabled_by_default": True,
-                    "display_name": "Custom Dimension",
-                    "weight": 7.5,
-                    "reset_on_scan": False,
-                },
-            }
-        },
-        "p" * 120,
-    )
+    """Unknown custom dimensions get sane defaults from the static catalog.
 
-    monkeypatch.setattr(
-        dimensions_metadata_mod,
-        "load_dimensions",
-        lambda: payload,
-    )
-    monkeypatch.setattr(dimensions_metadata_mod, "_available_languages", lambda: [])
+    The base-layer metadata API no longer dynamically loads prompt metadata
+    overrides (configure_subjective_dimension_providers is a no-op since the
+    catalog PR #226).  Unknown dimensions receive fallback values:
+    display_name from title-casing the key, weight 1.0, and they are not in
+    the resettable-default set.
+    """
     dimensions_metadata_mod.load_subjective_dimension_metadata.cache_clear()
     try:
         assert (
             dimensions_metadata_mod.dimension_display_name("custom_dimension")
             == "Custom Dimension"
         )
-        assert dimensions_metadata_mod.dimension_weight("custom_dimension") == 7.5
+        assert dimensions_metadata_mod.dimension_weight("custom_dimension") == 1.0
         assert (
             "custom_dimension"
             not in dimensions_metadata_mod.resettable_default_dimensions()
@@ -452,64 +436,30 @@ def test_dimension_metadata_uses_prompt_meta_overrides(monkeypatch):
         dimensions_metadata_mod.load_subjective_dimension_metadata.cache_clear()
 
 
-def test_dimension_metadata_can_override_weight_per_language(monkeypatch):
-    shared_payload = (
-        ["shared_dimension"],
-        {
-            "shared_dimension": {
-                "description": "shared",
-                "look_for": ["x"],
-                "skip": ["y"],
-                "meta": {
-                    "enabled_by_default": True,
-                    "display_name": "Shared Dimension",
-                    "weight": 2.0,
-                },
-            }
-        },
-        "p" * 120,
-    )
-    lang_payload = (
-        ["shared_dimension"],
-        {
-            "shared_dimension": {
-                "description": "shared",
-                "look_for": ["x"],
-                "skip": ["y"],
-                "meta": {
-                    "enabled_by_default": True,
-                    "display_name": "Shared Dimension (Py)",
-                    "weight": 6.0,
-                },
-            }
-        },
-        "p" * 120,
-    )
+def test_dimension_metadata_can_override_weight_per_language():
+    """Per-language weight overrides are no longer supported via dynamic providers.
 
-    monkeypatch.setattr(
-        dimensions_metadata_mod, "load_dimensions", lambda: shared_payload
-    )
-    monkeypatch.setattr(
-        dimensions_metadata_mod,
-        "load_dimensions_for_lang",
-        lambda _lang: lang_payload,
-    )
-    monkeypatch.setattr(dimensions_metadata_mod, "_available_languages", lambda: [])
+    Since the catalog PR #226, the base-layer metadata uses a static catalog.
+    Language-specific filtering now happens in intelligence-layer metadata
+    APIs.  Unknown dimensions get fallback weight 1.0 regardless of language.
+    """
     dimensions_metadata_mod.load_subjective_dimension_metadata.cache_clear()
     dimensions_metadata_mod.load_subjective_dimension_metadata_for_lang.cache_clear()
     try:
-        assert dimensions_metadata_mod.dimension_weight("shared_dimension") == 2.0
+        # Unknown dimension gets fallback weight
+        assert dimensions_metadata_mod.dimension_weight("shared_dimension") == 1.0
         assert (
             dimensions_metadata_mod.dimension_weight(
                 "shared_dimension", lang_name="python"
             )
-            == 6.0
+            == 1.0
         )
+        # Unknown dimension gets title-cased display name
         assert (
             dimensions_metadata_mod.dimension_display_name(
                 "shared_dimension", lang_name="python"
             )
-            == "Shared Dimension (Py)"
+            == "Shared Dimension"
         )
     finally:
         dimensions_metadata_mod.load_subjective_dimension_metadata.cache_clear()

@@ -79,22 +79,24 @@ def resolve_detection_root(
     """Best root to auto-detect language from."""
     marker_provider = marker_provider or _lang_config_markers
     markers = marker_provider()
-    root = project_root if project_root is not None else get_project_root()
+    project_root_path = (
+        project_root if project_root is not None else get_project_root()
+    )
 
     raw_path = getattr(args, "path", None)
     if not raw_path:
-        return root
+        return project_root_path
 
     candidate = Path(raw_path)
     if not candidate.is_absolute():
-        candidate = root / candidate
+        candidate = project_root_path / candidate
     candidate = candidate.resolve()
-    search_root = candidate if candidate.is_dir() else candidate.parent
+    candidate_root = candidate if candidate.is_dir() else candidate.parent
 
-    for root in (search_root, *search_root.parents):
-        if any((root / marker).exists() for marker in markers):
-            return root
-    return search_root
+    for probe_root in (candidate_root, *candidate_root.parents):
+        if any((probe_root / marker).exists() for marker in markers):
+            return probe_root
+    return candidate_root
 
 
 def auto_detect_lang_name(args: object) -> str | None:

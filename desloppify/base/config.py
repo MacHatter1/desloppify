@@ -8,6 +8,9 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from desloppify.base.config_migration import (
+    _migrate_from_state_files as _migrate_from_state_files_impl,
+)
 from desloppify.base.config_schema import (
     CONFIG_SCHEMA,
     DEFAULT_TARGET_STRICT_SCORE,
@@ -224,109 +227,9 @@ def config_for_query(config: dict[str, Any]) -> dict[str, Any]:
     return {k: config.get(k, schema.default) for k, schema in CONFIG_SCHEMA.items()}
 
 
-def _merge_config_value(config: dict, key: str, value: object) -> None:
-    """Merge a config value into the target dict."""
-    if key not in config:
-        config[key] = copy.deepcopy(value)
-        return
-    if isinstance(value, list) and isinstance(config[key], list):
-        for item in value:
-            if item not in config[key]:
-                config[key].append(item)
-        return
-    if isinstance(value, dict) and isinstance(config[key], dict):
-        for dk, dv in value.items():
-            if dk not in config[key]:
-                config[key][dk] = copy.deepcopy(dv)
-        return
-
-
-def _load_state_file_payload(path: Path) -> dict | None:
-    try:
-        payload = json.loads(path.read_text())
-    except (json.JSONDecodeError, UnicodeDecodeError, OSError) as exc:
-        logger.debug("Skipping unreadable state file %s: %s", path, exc)
-        return None
-    if isinstance(payload, dict):
-        return payload
-    return None
-
-
-def _merge_legacy_state_config(config: dict, old_config: dict) -> None:
-    for key, value in old_config.items():
-        if key not in CONFIG_SCHEMA:
-            continue
-        _merge_config_value(config, key, value)
-
-
-def _strip_config_from_state_file(path: Path, state_data: dict) -> None:
-    if "config" not in state_data:
-        return
-    del state_data["config"]
-    try:
-        safe_write_text(path, json.dumps(state_data, indent=2) + "\n")
-    except OSError as exc:
-        log_best_effort_failure(
-            logger,
-            f"rewrite state file {path} after config migration",
-            exc,
-        )
-
-
-def _migrate_single_state_file(config: dict, path: Path) -> bool:
-    state_data = _load_state_file_payload(path)
-    if state_data is None:
-        return False
-    old_config = state_data.get("config")
-    if not isinstance(old_config, dict) or not old_config:
-        return False
-
-    _merge_legacy_state_config(config, old_config)
-    return True
-
-
-def _state_files_for_migration(state_dir: Path) -> list[Path]:
-    """Return state files in deterministic migration order."""
-    scoped = sorted(state_dir.glob("state-*.json"), key=lambda p: p.name)
-    root = sorted(state_dir.glob("state.json"), key=lambda p: p.name)
-    return [*scoped, *root]
-
-
 def _migrate_from_state_files(config_path: Path) -> dict:
-    """Migrate config keys from state-*.json files into config.json.
-
-    Reads state["config"] from all state files, merges them (union for
-    lists, merge for dicts), writes config.json, and strips "config" from
-    the state files.
-    """
-    config: dict = {}
-    state_dir = config_path.parent
-    if not state_dir.exists():
-        return config
-
-    state_files = _state_files_for_migration(state_dir)
-    migrated_any = False
-    migrated_files: list[Path] = []
-    for sf in state_files:
-        if _migrate_single_state_file(config, sf):
-            migrated_any = True
-            migrated_files.append(sf)
-
-    if migrated_any and config:
-        try:
-            save_config(config, config_path)
-        except OSError as exc:
-            log_best_effort_failure(
-                logger, f"save migrated config to {config_path}", exc
-            )
-        else:
-            for sf in migrated_files:
-                state_data = _load_state_file_payload(sf)
-                if state_data is None:
-                    continue
-                _strip_config_from_state_file(sf, state_data)
-
-    return config
+    """Compatibility wrapper for state-file config migration."""
+    return _migrate_from_state_files_impl(config_path, save_config_fn=save_config)
 
 
 __all__ = [

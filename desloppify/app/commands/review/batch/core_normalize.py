@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import cast
 
 from desloppify.intelligence.review.feedback_contract import (
     DIMENSION_NOTE_ISSUES_KEY,

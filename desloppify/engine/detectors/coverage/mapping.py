@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 import os
-from pathlib import Path
 
 from desloppify.base.discovery.paths import get_project_root
 from desloppify.engine.detectors.coverage.mapping_imports import (
@@ -15,10 +14,10 @@ from desloppify.engine.detectors.coverage.mapping_imports import (
 )
 from desloppify.engine.detectors.test_coverage.io import read_coverage_file
 from desloppify.engine.detectors.coverage.mapping_analysis import (
-    analyze_test_quality_core,
-    build_test_import_index_core,
-    get_test_files_for_prod_core,
-    transitive_coverage_core,
+    analyze_test_quality as _analyze_test_quality,
+    build_test_import_index as _build_test_import_index,
+    get_test_files_for_prod as _get_test_files_for_prod,
+    transitive_coverage,
 )
 
 logger = logging.getLogger(__name__)
@@ -206,21 +205,12 @@ def _strip_test_markers(basename: str, lang_name: str) -> str | None:
     return None
 
 
-def transitive_coverage(
-    directly_tested: set[str],
-    graph: dict,
-    production_files: set[str],
-) -> set[str]:
-    """BFS from directly-tested files through dep-graph imports."""
-    return transitive_coverage_core(directly_tested, graph, production_files)
-
-
 def analyze_test_quality(
     test_files: set[str],
     lang_name: str,
 ) -> dict[str, dict]:
     """Analyze test quality per file."""
-    return analyze_test_quality_core(
+    return _analyze_test_quality(
         test_files,
         lang_name,
         load_lang_module=_load_lang_test_coverage_module,
@@ -237,7 +227,7 @@ def get_test_files_for_prod(
     parsed_imports_by_test: dict[str, set[str]] | None = None,
 ) -> list[str]:
     """Find which test files exercise a given production file."""
-    return get_test_files_for_prod_core(
+    return _get_test_files_for_prod(
         prod_file,
         test_files,
         graph,
@@ -255,7 +245,7 @@ def build_test_import_index(
     lang_name: str,
 ) -> dict[str, set[str]]:
     """Parse test import sources once, producing a test->production import index."""
-    return build_test_import_index_core(
+    return _build_test_import_index(
         test_files,
         production_files,
         lang_name,

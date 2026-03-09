@@ -6,15 +6,15 @@ import argparse
 
 from desloppify.app.commands.helpers.runtime import command_runtime
 from desloppify.app.commands.helpers.state import require_completed_scan
-from desloppify.app.commands.plan.triage import confirmations as _confirmations_mod
+from desloppify.app.commands.plan.triage import confirmations_router as _confirmations_router_mod
 from desloppify.app.commands.plan.triage import display as _display_mod
 from desloppify.app.commands.plan.triage import helpers as _helpers_mod
 from desloppify.app.commands.plan.triage import services as _services_mod
 from desloppify.app.commands.plan.triage import stage_completion_commands as _completion_mod
 from desloppify.app.commands.plan.triage import stage_flow_commands as _flow_mod
-from desloppify.app.commands.plan.triage_playbook import TRIAGE_CMD_OBSERVE
 from desloppify.base.output.terminal import colorize
 from desloppify.engine.plan import (
+    TRIAGE_CMD_OBSERVE,
     append_log_entry,
     build_triage_prompt,
     collect_triage_input,
@@ -24,8 +24,6 @@ from desloppify.engine.plan import (
     save_plan,
 )
 
-_MIN_ATTESTATION_LEN = _confirmations_mod.MIN_ATTESTATION_LEN
-_validate_attestation = _confirmations_mod.validate_attestation
 _triage_coverage = _helpers_mod.triage_coverage
 
 
@@ -136,7 +134,7 @@ def cmd_plan_triage(args: argparse.Namespace) -> None:
         _cmd_triage_start(args, services=resolved_services)
         return
     if getattr(args, "confirm", None):
-        _confirmations_mod.cmd_confirm_stage(args, services=resolved_services)
+        _confirmations_router_mod.cmd_confirm_stage(args, services=resolved_services)
         return
     if getattr(args, "complete", False):
         _completion_mod.cmd_triage_complete(args, services=resolved_services)
@@ -180,8 +178,6 @@ def cmd_plan_triage(args: argparse.Namespace) -> None:
     _display_mod.cmd_triage_dashboard(args, services=resolved_services)
 
 __all__ = [
-    "_MIN_ATTESTATION_LEN",
     "_triage_coverage",
-    "_validate_attestation",
     "cmd_plan_triage",
 ]

@@ -203,14 +203,14 @@ def detect_naming_inconsistencies(
     return results, total_dirs
 
 
-def make_boundary_issues_impl(
+def make_boundary_issues(
     single_entries: list[dict],
     path: Path,
     graph: dict,
     lang: LangRuntimeContract,
     shared_prefix: str,
     tools_prefix: str,
-) -> tuple[list[dict], int]:
+) -> tuple[list[Issue], int]:
     """Create boundary-candidate issues, deduplicated against single-use."""
     single_use_emitted = set()
     for entry in single_entries:
@@ -221,7 +221,7 @@ def make_boundary_issues_impl(
         if not is_size_ok and not is_colocated:
             single_use_emitted.add(rel(entry["file"]))
 
-    results = []
+    results: list[Issue] = []
     deduped = 0
     boundary_entries, total_shared = coupling_detector_mod.detect_boundary_candidates(
         path,
@@ -253,23 +253,25 @@ def make_boundary_issues_impl(
             )
         )
     if deduped:
-        log(f"         ({deduped} boundary candidates skipped — covered by single_use)")
+        log(
+            f"         ({deduped} boundary candidates skipped — covered by single_use)"
+        )
     return results, total_shared
 
 
-def phase_coupling_impl(
+def phase_coupling(
     path: Path,
     lang: LangRuntimeContract,
-    *,
-    make_boundary_issues_fn=make_boundary_issues_impl,
 ) -> tuple[list[Issue], dict[str, int]]:
-    """Run the coupling phase with injectable boundary issue construction."""
-    results = []
+    """Run the coupling phase."""
+    results: list[Issue] = []
     graph = deps_detector_mod.build_dep_graph(path)
     lang.dep_graph = graph
     zone_map = lang.zone_map
 
-    single_use_issues, single_entries, single_candidates = detect_single_use(path, graph, lang)
+    single_use_issues, single_entries, single_candidates = detect_single_use(
+        path, graph, lang
+    )
     results.extend(single_use_issues)
 
     src_path = get_src_path()
@@ -281,12 +283,14 @@ def phase_coupling_impl(
     )
     results.extend(coupling_issues)
 
-    boundary_issues, _ = make_boundary_issues_fn(
+    boundary_issues, _ = make_boundary_issues(
         single_entries, path, graph, lang, shared_prefix, tools_prefix
     )
     results.extend(boundary_issues)
 
-    cross_tool_issues, cross_edges = detect_cross_tool_imports(path, graph, lang, tools_prefix)
+    cross_tool_issues, cross_edges = detect_cross_tool_imports(
+        path, graph, lang, tools_prefix
+    )
     results.extend(cross_tool_issues)
 
     cycle_orphan_issues, total_graph_files = detect_cycles_and_orphans(path, graph, lang)
@@ -322,7 +326,7 @@ __all__ = [
     "detect_naming_inconsistencies",
     "detect_pattern_anomalies",
     "detect_single_use",
-    "make_boundary_issues_impl",
+    "make_boundary_issues",
     "orphaned_detector_mod",
-    "phase_coupling_impl",
+    "phase_coupling",
 ]

@@ -5,8 +5,8 @@ from __future__ import annotations
 import threading
 import time
 
-import desloppify.app.commands.review._runner_parallel_progress as progress_mod
-from desloppify.app.commands.review._runner_parallel_types import BatchExecutionOptions
+import desloppify.app.commands.review.runner_parallel.progress as progress_mod
+from desloppify.app.commands.review.runner_parallel.types import BatchExecutionOptions
 
 
 def test_coerce_batch_execution_options_defaults() -> None:

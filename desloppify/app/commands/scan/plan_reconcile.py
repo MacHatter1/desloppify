@@ -17,6 +17,7 @@ from desloppify.engine.plan import (
     append_log_entry,
     auto_cluster_issues,
     load_plan,
+    mark_postflight_scan_completed,
     reconcile_plan_after_scan,
     save_plan,
     sync_communicate_score_needed,
@@ -24,6 +25,9 @@ from desloppify.engine.plan import (
     sync_stale_dimensions,
     sync_triage_needed,
     sync_unscored_dimensions,
+)
+from desloppify.engine._work_queue.synthetic_workflow import (
+    build_deferred_disposition_item,
 )
 
 logger = logging.getLogger(__name__)
@@ -57,6 +61,13 @@ def _apply_plan_reconciliation(plan: dict[str, object], state: state_mod.StateMo
 def _sync_unscored_dimensions(plan: dict[str, object], state: state_mod.StateModel, sync_fn) -> bool:
     """Sync unscored subjective dimensions into the plan queue."""
     sync = sync_fn(plan, state)
+    if sync.resurfaced:
+        print(
+            colorize(
+                f"  Plan: {len(sync.resurfaced)} skipped subjective dimension(s) resurfaced — never reviewed.",
+                "yellow",
+            )
+        )
     if sync.injected:
         print(
             colorize(
@@ -121,9 +132,28 @@ def _seed_plan_start_scores(plan: dict[str, object], state: state_mod.StateModel
         "objective": scores.objective,
         "verified": scores.verified,
     }
+    # New cycle — clear the communicate-score sentinel so it can fire again.
+    plan.pop("previous_plan_start_scores", None)
     # Record scan count at cycle start so gates can detect whether a new scan ran
     plan["scan_count_at_plan_start"] = int(state.get("scan_count", 0) or 0)
     return True
+
+
+def _has_objective_cycle(
+    state: state_mod.StateModel,
+    plan: dict[str, object],
+) -> bool | None:
+    """Return True when objective queue work exists and a cycle baseline should freeze."""
+    try:
+        from desloppify.app.commands.helpers.queue_progress import (
+            plan_aware_queue_breakdown,
+        )
+
+        breakdown = plan_aware_queue_breakdown(state, plan)
+    except PLAN_LOAD_EXCEPTIONS as exc:
+        log_best_effort_failure(logger, "compute queue breakdown for plan-start seeding", exc)
+        return None
+    return breakdown.objective_actionable > 0
 
 
 def _clear_plan_start_scores_if_queue_empty(
@@ -131,6 +161,12 @@ def _clear_plan_start_scores_if_queue_empty(
 ) -> bool:
     """Clear plan-start score snapshot once the queue is fully drained."""
     if not plan.get("plan_start_scores"):
+        return False
+    # Don't clear while communicate-score is pending — the rebaseline just
+    # set plan_start_scores and the user hasn't seen the update yet.
+    from desloppify.engine._plan.constants import WORKFLOW_COMMUNICATE_SCORE_ID
+
+    if WORKFLOW_COMMUNICATE_SCORE_ID in plan.get("queue_order", []):
         return False
 
     try:
@@ -150,7 +186,26 @@ def _clear_plan_start_scores_if_queue_empty(
         return False
     state["_plan_start_scores_for_reveal"] = dict(plan["plan_start_scores"])
     plan["plan_start_scores"] = {}
+    # Clear the cycle sentinel so communicate-score can be injected
+    # in the next cycle.
+    plan.pop("previous_plan_start_scores", None)
     return True
+
+
+def _mark_postflight_scan_completed_if_ready(
+    state: state_mod.StateModel,
+    plan: dict[str, object],
+) -> bool:
+    """Record that the scan stage completed for the current empty-queue boundary."""
+    if build_deferred_disposition_item(plan) is not None:
+        return False
+    objective_cycle = _has_objective_cycle(state, plan)
+    if objective_cycle is not False:
+        return False
+    return mark_postflight_scan_completed(
+        plan,
+        scan_count=int(state.get("scan_count", 0) or 0),
+    )
 
 
 def _subjective_policy_context(
@@ -258,7 +313,18 @@ def _sync_communicate_score_and_log(
     *,
     policy,
 ) -> bool:
-    communicate_sync = sync_communicate_score_needed(plan, state, policy=policy)
+    from desloppify.engine.plan import ScoreSnapshot
+
+    snapshot = state_mod.score_snapshot(state)
+    current_scores = ScoreSnapshot(
+        strict=snapshot.strict,
+        overall=snapshot.overall,
+        objective=snapshot.objective,
+        verified=snapshot.verified,
+    )
+    communicate_sync = sync_communicate_score_needed(
+        plan, state, policy=policy, current_scores=current_scores,
+    )
     if not communicate_sync.changes:
         return False
     append_log_entry(
@@ -306,7 +372,74 @@ def _sync_plan_start_scores_and_log(
     return cleared
 
 
-def reconcile_plan_post_scan(runtime: Any) -> None:
+def _sync_postflight_scan_completion_and_log(
+    plan: dict[str, object],
+    state: state_mod.StateModel,
+) -> bool:
+    changed = _mark_postflight_scan_completed_if_ready(state, plan)
+    if changed:
+        append_log_entry(
+            plan,
+            "complete_postflight_scan",
+            actor="system",
+            detail={"scan_count": int(state.get("scan_count", 0) or 0)},
+        )
+    return changed
+
+
+def _sync_post_scan_without_policy(
+    *,
+    plan: dict[str, object],
+    state: state_mod.StateModel,
+) -> bool:
+    """Run post-scan sync steps that do not require subjective policy context."""
+    dirty = False
+    if _apply_plan_reconciliation(plan, state, reconcile_plan_after_scan):
+        dirty = True
+    if _sync_unscored_and_log(plan, state):
+        dirty = True
+    return dirty
+
+
+def _sync_post_scan_with_policy(
+    *,
+    plan: dict[str, object],
+    state: state_mod.StateModel,
+    target_strict: float,
+    policy,
+    cycle_just_completed: bool,
+) -> bool:
+    """Run post-scan sync steps that require policy/cycle context."""
+    dirty = False
+    if _sync_stale_and_log(
+        plan,
+        state,
+        policy=policy,
+        cycle_just_completed=cycle_just_completed,
+    ):
+        dirty = True
+    if _sync_auto_clusters_and_log(
+        plan,
+        state,
+        target_strict=target_strict,
+        policy=policy,
+        cycle_just_completed=cycle_just_completed,
+    ):
+        dirty = True
+    if _sync_communicate_score_and_log(plan, state, policy=policy):
+        dirty = True
+    if _sync_create_plan_and_log(plan, state, policy=policy):
+        dirty = True
+    if _sync_triage_and_log(plan, state, policy=policy):
+        dirty = True
+    if _sync_plan_start_scores_and_log(plan, state):
+        dirty = True
+    if _sync_postflight_scan_completion_and_log(plan, state):
+        dirty = True
+    return dirty
+
+
+def reconcile_plan_post_scan(runtime: ScanRuntime) -> None:
     """Reconcile plan queue metadata and stale subjective review dimensions."""
     plan_path = runtime.state_path.parent / "plan.json" if runtime.state_path else None
     try:
@@ -314,43 +447,22 @@ def reconcile_plan_post_scan(runtime: Any) -> None:
     except PLAN_LOAD_EXCEPTIONS as exc:
         logger.warning("Plan reconciliation skipped (load failed): %s", exc)
         return
-    dirty = False
 
-    if _apply_plan_reconciliation(plan, runtime.state, reconcile_plan_after_scan):
-        dirty = True
+    dirty = _sync_post_scan_without_policy(plan=plan, state=runtime.state)
 
-    if _sync_unscored_and_log(plan, runtime.state):
-        dirty = True
-
+    # Policy must be computed after the without-policy steps, which mutate
+    # plan (reconcile/prune) and state (unscored sync) before policy reads them.
     target_strict, policy, cycle_just_completed = _subjective_policy_context(
         runtime,
         plan,
     )
-    if _sync_stale_and_log(
-        plan,
-        runtime.state,
-        policy=policy,
-        cycle_just_completed=cycle_just_completed,
-    ):
-        dirty = True
-
-    if _sync_auto_clusters_and_log(
-        plan,
-        runtime.state,
+    dirty = _sync_post_scan_with_policy(
+        plan=plan,
+        state=runtime.state,
         target_strict=target_strict,
         policy=policy,
         cycle_just_completed=cycle_just_completed,
-    ):
-        dirty = True
-
-    if _sync_communicate_score_and_log(plan, runtime.state, policy=policy):
-        dirty = True
-    if _sync_create_plan_and_log(plan, runtime.state, policy=policy):
-        dirty = True
-    if _sync_triage_and_log(plan, runtime.state, policy=policy):
-        dirty = True
-    if _sync_plan_start_scores_and_log(plan, runtime.state):
-        dirty = True
+    ) or dirty
 
     if dirty:
         try:

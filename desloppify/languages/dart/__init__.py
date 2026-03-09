@@ -6,6 +6,7 @@ from desloppify.base.discovery.paths import get_area
 from desloppify.engine.policy.zones import COMMON_ZONE_RULES, Zone, ZoneRule
 from desloppify.engine.hook_registry import register_lang_hooks
 from desloppify.languages import register_lang
+from desloppify.languages._framework import registry_state
 from desloppify.languages._framework.base.phase_builders import (
     detector_phase_security,
     detector_phase_signature,
@@ -56,11 +57,6 @@ DART_ZONE_RULES = [
     ),
 ] + COMMON_ZONE_RULES
 
-
-register_lang_hooks("dart", test_coverage=dart_test_coverage_hooks)
-
-
-@register_lang("dart")
 class DartConfig(LangConfig):
     """Dart/Flutter language configuration."""
 
@@ -105,6 +101,15 @@ class DartConfig(LangConfig):
             zone_rules=DART_ZONE_RULES,
         )
 
+
+def register() -> None:
+    """Register Dart language config + hooks through an explicit entrypoint."""
+    register_lang_hooks("dart", test_coverage=dart_test_coverage_hooks)
+    if registry_state.is_registered("dart"):
+        return
+    register_lang("dart")(DartConfig)
+
+
 __all__ = [
     "get_area",
     "COMMON_ZONE_RULES",
@@ -137,4 +142,5 @@ __all__ = [
     "DART_ENTRY_PATTERNS",
     "DART_ZONE_RULES",
     "DartConfig",
+    "register",
 ]

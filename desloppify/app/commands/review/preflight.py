@@ -13,6 +13,7 @@ import sys
 from desloppify.app.commands.helpers.query import load_query
 from desloppify.base.exception_sets import CommandError
 from desloppify.base.output.terminal import colorize
+from desloppify.engine._work_queue.core import QueueBuildOptions, build_work_queue
 from desloppify.engine._work_queue.context import queue_context
 from desloppify.state import StateModel, save_state
 
@@ -115,10 +116,40 @@ def _objective_and_subjective_backlog(
 ) -> tuple[int, int]:
     ctx = queue_context(state)
     objective_total = ctx.policy.objective_count
-    # Subjective dimensions are resolved BY running reviews, so they never
-    # block review --prepare (that would be circular).  Only objective
-    # issues constitute genuine blocking backlog.
-    return objective_total, 0
+    if not blocking_dims:
+        return objective_total, 0
+
+    normalized_blocking_dims = {_normalize_dimension_key(dim) for dim in blocking_dims}
+    queue = build_work_queue(
+        state,
+        options=QueueBuildOptions(
+            count=None,
+            status="open",
+            include_skipped=False,
+            include_subjective=True,
+            context=ctx,
+        ),
+    )
+
+    def _item_dimension_key(item: dict) -> str | None:
+        detail = item.get("detail")
+        if not isinstance(detail, dict):
+            return None
+        dimension = detail.get("dimension")
+        if not isinstance(dimension, str) or not dimension.strip():
+            return None
+        return _normalize_dimension_key(dimension)
+
+    subjective_total = 0
+    for item in queue.get("items", []):
+        detector = str(item.get("detector", ""))
+        if detector not in {"review", "concerns"}:
+            continue
+        dim_key = _item_dimension_key(item)
+        if dim_key and dim_key in normalized_blocking_dims:
+            subjective_total += 1
+
+    return objective_total, subjective_total
 
 
 def _print_backlog_blocked_message(

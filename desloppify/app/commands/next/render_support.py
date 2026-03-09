@@ -146,6 +146,7 @@ def render_cluster_item(item: dict) -> None:
     print(colorize("  " + "─" * 60, "dim"))
     print(f"  {colorize(item.get('summary', ''), 'yellow')}")
 
+    # Action steps
     if action_steps:
         show_count = min(3, len(action_steps))
         for i, step in enumerate(action_steps[:show_count], 1):
@@ -159,11 +160,13 @@ def render_cluster_item(item: dict) -> None:
     if dep_order is not None and dep_order <= 2:
         print(colorize("  Priority: complete before other clusters", "cyan"))
 
+    # Cluster members
     members = item.get("members", [])
     if members:
         _render_cluster_files(members)
         _render_cluster_sample(members)
 
+    # Primary action
     autofix_hint = item.get("autofix_hint")
     primary_command = item.get("primary_command")
     if autofix_hint:

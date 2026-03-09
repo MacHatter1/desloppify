@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Any
 
 from desloppify.base.output.terminal import colorize
 
@@ -27,7 +28,10 @@ def run_stamp() -> str:
     return datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
 
 
-def ensure_triage_started(plan: dict, services: TriageServices) -> dict:
+def ensure_triage_started(
+    plan: dict[str, Any],
+    services: TriageServices,
+) -> dict[str, Any]:
     """Auto-start triage if not started. Returns updated plan."""
     if not has_triage_in_queue(plan):
         inject_triage_stages(plan)

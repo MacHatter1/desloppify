@@ -43,7 +43,8 @@ def safe_relpath(path: str | Path, start: str | Path) -> str:
         return str(Path(path).resolve())
 
 
-def rel(path: str) -> str:
+def rel(path: str | Path) -> str:
+    """Return a normalized project-relative path when possible."""
     root = get_project_root()
     resolved = Path(path).resolve()
     try:

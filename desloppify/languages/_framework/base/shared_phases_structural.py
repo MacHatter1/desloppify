@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -31,6 +32,11 @@ from desloppify.languages._framework.issue_factories import (
     make_single_use_issues,
 )
 from desloppify.state import Issue, make_issue
+
+StructuralPhaseRunner = Callable[
+    [Path, LangRuntimeContract],
+    tuple[list[Issue], dict[str, int]],
+]
 
 
 def run_structural_phase(
@@ -195,7 +201,7 @@ def make_structural_coupling_phase_pair(
     complexity_signals: list[ComplexitySignal],
     build_dep_graph_fn,
     log_fn,
-) -> tuple:
+) -> tuple[StructuralPhaseRunner, StructuralPhaseRunner]:
     """Create default structural/coupling phase callables for a language."""
 
     def phase_structural(path: Path, lang: LangRuntimeContract) -> tuple[list[Issue], dict[str, int]]:

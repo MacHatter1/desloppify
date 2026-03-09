@@ -1,4 +1,4 @@
-"""Shared data types for language-agnostic detectors."""
+"""Neutral detector datatypes shared across engine and language framework."""
 
 from __future__ import annotations
 
@@ -24,11 +24,7 @@ class FunctionInfo:
 
 @dataclass
 class ClassInfo:
-    """Extracted class/component info for cross-language analysis.
-
-    For OOP classes: methods/attributes/base_classes are populated directly.
-    For React components: metrics holds hook counts (context_hooks, use_effects, etc.).
-    """
+    """Extracted class/component info for cross-language analysis."""
 
     name: str
     file: str
@@ -42,34 +38,36 @@ class ClassInfo:
 
 @dataclass
 class ComplexitySignal:
-    """A complexity signal to detect in source files.
-
-    Either pattern-based (regex matched per line, counted) or compute-based
-    (custom function that analyzes content and returns count + label).
-    """
+    """A complexity signal to detect in source files."""
 
     name: str
-    pattern: str | None = None  # regex (None = uses compute fn)
+    pattern: str | None = None
     weight: int = 1
     threshold: int = 0
-    compute: Callable | None = None  # (content, lines) -> (count, label) | None
+    compute: Callable | None = None
 
 
 @dataclass
 class GodRule:
-    """A rule for detecting god classes/components.
-
-    The extract callable pulls a metric from ClassInfo; if it meets the threshold,
-    the rule fires and contributes to the "reasons" list.
-    """
+    """A rule for detecting god classes/components."""
 
     name: str
     description: str
-    extract: Callable  # (ClassInfo) -> int
+    extract: Callable
     threshold: int
 
 
-# ── Shared thresholds (concern generator + detectors) ─────
 ELEVATED_PARAMS_THRESHOLD = 8
 ELEVATED_NESTING_THRESHOLD = 6
 ELEVATED_LOC_THRESHOLD = 300
+
+
+__all__ = [
+    "ClassInfo",
+    "ComplexitySignal",
+    "ELEVATED_LOC_THRESHOLD",
+    "ELEVATED_NESTING_THRESHOLD",
+    "ELEVATED_PARAMS_THRESHOLD",
+    "FunctionInfo",
+    "GodRule",
+]

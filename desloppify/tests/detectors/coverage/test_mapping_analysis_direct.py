@@ -15,7 +15,7 @@ class _ReadResult:
         self.content = content
 
 
-def test_transitive_coverage_core_walks_only_production_imports() -> None:
+def test_transitive_coverage_walks_only_production_imports() -> None:
     directly_tested = {"src/a.ts"}
     graph = {
         "src/a.ts": {"imports": {"src/b.ts", "tests/helper.ts"}},
@@ -24,12 +24,12 @@ def test_transitive_coverage_core_walks_only_production_imports() -> None:
     }
     production = {"src/a.ts", "src/b.ts", "src/c.ts"}
 
-    transitive = analysis_mod.transitive_coverage_core(directly_tested, graph, production)
+    transitive = analysis_mod.transitive_coverage(directly_tested, graph, production)
 
     assert transitive == {"src/b.ts", "src/c.ts"}
 
 
-def test_analyze_test_quality_core_classifies_multiple_quality_buckets() -> None:
+def test_analyze_test_quality_classifies_multiple_quality_buckets() -> None:
     contents = {
         "tests/thorough.test.ts": (
             "test('x', () => {\n"
@@ -64,7 +64,7 @@ def test_analyze_test_quality_core_classifies_multiple_quality_buckets() -> None
         assert context == "coverage_quality_analysis"
         return _ReadResult(True, contents[path])
 
-    quality = analysis_mod.analyze_test_quality_core(
+    quality = analysis_mod.analyze_test_quality(
         set(contents),
         "typescript",
         load_lang_module=load_lang_module,
@@ -77,7 +77,7 @@ def test_analyze_test_quality_core_classifies_multiple_quality_buckets() -> None
     assert quality["tests/empty.test.ts"]["quality"] == "no_tests"
 
 
-def test_analyze_test_quality_core_tolerates_placeholder_typeerror() -> None:
+def test_analyze_test_quality_tolerates_placeholder_typeerror() -> None:
     def load_lang_module(_lang):
         return SimpleNamespace(
             ASSERT_PATTERNS=[re.compile(r"expect\(")],
@@ -88,7 +88,7 @@ def test_analyze_test_quality_core_tolerates_placeholder_typeerror() -> None:
             is_placeholder_test=lambda content: bool(content),
         )
 
-    quality = analysis_mod.analyze_test_quality_core(
+    quality = analysis_mod.analyze_test_quality(
         {"tests/a.test.ts"},
         "typescript",
         load_lang_module=load_lang_module,
@@ -100,7 +100,7 @@ def test_analyze_test_quality_core_tolerates_placeholder_typeerror() -> None:
     assert quality["tests/a.test.ts"]["placeholder"] is False
 
 
-def test_get_test_files_for_prod_core_uses_graph_parsed_imports_and_fallbacks() -> None:
+def test_get_test_files_for_prod_uses_graph_parsed_imports_and_fallbacks() -> None:
     prod = "/repo/src/a.ts"
     test_files = {
         "/repo/tests/a.test.ts",
@@ -132,7 +132,7 @@ def test_get_test_files_for_prod_core_uses_graph_parsed_imports_and_fallbacks() 
             return prod
         return None
 
-    matched = analysis_mod.get_test_files_for_prod_core(
+    matched = analysis_mod.get_test_files_for_prod(
         prod,
         test_files,
         graph,
@@ -147,7 +147,7 @@ def test_get_test_files_for_prod_core_uses_graph_parsed_imports_and_fallbacks() 
     assert "/repo/tests/c.test.ts" in parse_calls
 
 
-def test_build_test_import_index_core_passes_module_lookup_map() -> None:
+def test_build_test_import_index_passes_module_lookup_map() -> None:
     captures: list[dict[str, str]] = []
 
     def parse_test_imports(test_path, production_files, prod_by_module, lang_name):
@@ -157,7 +157,7 @@ def test_build_test_import_index_core_passes_module_lookup_map() -> None:
         captures.append(dict(prod_by_module))
         return {"/repo/pkg/util.py"}
 
-    index = analysis_mod.build_test_import_index_core(
+    index = analysis_mod.build_test_import_index(
         {"/repo/tests/a.test.py", "/repo/tests/b.test.py"},
         {"/repo/pkg/__init__.py", "/repo/pkg/util.py"},
         "python",

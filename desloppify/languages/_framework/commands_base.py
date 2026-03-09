@@ -18,20 +18,6 @@ from desloppify.engine.detectors import complexity as complexity_detector
 from desloppify.engine.detectors import large as large_detector
 from desloppify.engine.detectors import naming as naming_detector
 from desloppify.engine.detectors import single_use as single_use_detector
-from desloppify.languages._framework.commands_base_registry import (
-    build_standard_detect_registry,
-    make_cmd_cycles,
-    make_cmd_deps,
-    make_cmd_dupes,
-    make_cmd_orphaned,
-)
-from desloppify.languages._framework.commands_base_scaffold import (
-    SCAFFOLD_HOLISTIC_REVIEW_DIMENSIONS,
-    SCAFFOLD_VERIFY_HINT,
-    scaffold_find_replacements,
-    scaffold_find_self_replacements,
-    scaffold_verify_hint,
-)
 
 if TYPE_CHECKING:
     import argparse

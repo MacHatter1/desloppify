@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -222,7 +223,10 @@ def ts_extract_classes(
     return classes
 
 
-def make_ts_extractor(spec: TreeSitterLangSpec, file_finder):
+def make_ts_extractor(
+    spec: TreeSitterLangSpec,
+    file_finder: Callable[[Path], list[str]],
+) -> Callable[[Path], list[FunctionInfo]]:
     """Create a function extractor bound to a TreeSitterLangSpec + file finder.
 
     Returns a callable with signature (path: Path) -> list[FunctionInfo],

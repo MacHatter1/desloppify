@@ -38,6 +38,7 @@ def _plan_with_stages(*stage_names: str, confirmed: bool = False) -> dict:
             "report": (
                 "A sufficiently long report for the stage that meets minimum "
                 "length requirements and more text to ensure validation passes"
+                " — covers r1 r2 r3 r4 r5"
             ),
             "cited_ids": ["r1", "r2", "r3"],
             "timestamp": "2025-06-01T00:00:00Z",
@@ -114,7 +115,7 @@ class TestReflectFoldConfirmObserve:
             "and the observation analysis is correct and complete"
         )
         reflect_report = (
-            "No recurring patterns detected. This is a first triage so "
+            "No recurring patterns detected for r1 r2 r3 r4 r5. This is a first triage so "
             "the strategy is to address naming issues first. No prior completed "
             "work to compare against."
         )
@@ -216,7 +217,7 @@ class TestOrganizeFoldConfirmReflect:
             "approach addresses the core naming dimension issues properly"
         )
         organize_report = (
-            "Organized all issues into fix-naming cluster. Priority is to "
+            "Organized all issues r1 r2 r3 r4 r5 into fix-naming cluster. Priority is to "
             "address the naming conventions first as they affect readability. "
             "This is the primary focus and unblocks future work."
         )

@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Any, Callable
 
 from desloppify.base.coercions import coerce_confidence
-from desloppify.base.discovery.file_paths import rel
 from desloppify.base.discovery.paths import get_project_root
 from desloppify.base.output.terminal import log
 from desloppify.engine.policy.zones import should_skip_issue

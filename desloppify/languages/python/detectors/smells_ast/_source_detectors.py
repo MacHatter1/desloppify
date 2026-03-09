@@ -9,6 +9,9 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+ConstantLocations = dict[tuple[str, str], list[tuple[str, int]]]
+SmellCounts = dict[str, list[dict[str, object]]]
+
 
 def _is_within(root: Path, candidate: Path) -> bool:
     """Return whether candidate is within root after path resolution."""
@@ -22,8 +25,8 @@ def _is_within(root: Path, candidate: Path) -> bool:
 def collect_module_constants(
     filepath: str,
     content: str,
-    constants_by_key: dict[tuple[str, str], list[tuple[str, int]]],
-):
+    constants_by_key: ConstantLocations,
+) -> None:
     """Collect module-level constant assignments for cross-file duplicate detection.
 
     Only collects UPPER_CASE or _UPPER_CASE names assigned to simple literals
@@ -62,9 +65,9 @@ def collect_module_constants(
 
 
 def detect_duplicate_constants(
-    constants_by_key: dict[tuple[str, str], list[tuple[str, int]]],
-    smell_counts: dict[str, list],
-):
+    constants_by_key: ConstantLocations,
+    smell_counts: SmellCounts,
+) -> None:
     """Flag constants defined identically in multiple files."""
     for (name, _value_repr), locations in constants_by_key.items():
         if len(locations) < 2:
@@ -88,8 +91,8 @@ def detect_star_import_no_all(
     filepath: str,
     content: str,
     scan_root: Path,
-    smell_counts: dict[str, list],
-):
+    smell_counts: SmellCounts,
+) -> None:
     """Flag `from X import *` where the target module has no __all__.
 
     Resolves relative and absolute imports within the scan root and checks
@@ -199,8 +202,8 @@ def detect_vestigial_parameter(
     filepath: str,
     content: str,
     lines: list[str],
-    smell_counts: dict[str, list],
-):
+    smell_counts: SmellCounts,
+) -> None:
     """Flag function parameters annotated as unused/deprecated in nearby comments.
 
     Scans comments within the line range of each function signature for keywords

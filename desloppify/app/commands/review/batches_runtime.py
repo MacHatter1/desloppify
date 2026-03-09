@@ -13,6 +13,13 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .runner_parallel import BatchProgressEvent
 
+from .batch.execution_progress import (
+    build_initial_batch_status,
+    build_progress_reporter,
+    mark_interrupted_batches,
+    record_execution_issue,
+)
+
 
 @dataclass(frozen=True)
 class BatchRunSummaryConfig:
@@ -54,99 +61,57 @@ class BatchProgressTracker:
     batch_positions: dict[int, int] = field(init=False)
     batch_status: dict[str, dict[str, object]] = field(init=False)
     stall_warned_batches: set[int] = field(default_factory=set, init=False)
+    _progress_reporter: Callable[[BatchProgressEvent], None] = field(
+        init=False, repr=False
+    )
 
     def __post_init__(self) -> None:
         self.batch_positions = {
             batch_idx: pos + 1 for pos, batch_idx in enumerate(self.selected_indexes)
         }
-        self.batch_status = {
-            str(idx + 1): {
-                "position": self.batch_positions.get(idx, 0),
-                "status": "pending",
-                "prompt_path": str(self.prompt_files[idx]),
-                "result_path": str(self.output_files[idx]),
-                "log_path": str(self.log_files[idx]),
-            }
-            for idx in self.selected_indexes
-        }
+        self.batch_status = build_initial_batch_status(
+            selected_indexes=self.selected_indexes,
+            batch_positions=self.batch_positions,
+            prompt_files=self.prompt_files,
+            output_files=self.output_files,
+            log_files=self.log_files,
+        )
+        self._progress_reporter = build_progress_reporter(
+            batch_positions=self.batch_positions,
+            batch_status=self.batch_status,
+            stall_warned_batches=self.stall_warned_batches,
+            total_batches=self.total_batches,
+            stall_warning_seconds=float(self.stall_warning_seconds),
+            prompt_files=self.prompt_files,
+            output_files=self.output_files,
+            log_files=self.log_files,
+            append_run_log=self.append_run_log_fn,
+            colorize_fn=self.colorize_fn,
+        )
 
     def report(self, batch_index: int, event: str, code: int | None = None, **details) -> None:
-        if event == "heartbeat":
-            self._report_heartbeat(details)
-            return
-
-        position = self.batch_positions.get(batch_index, 0)
-        key = str(batch_index + 1)
-        state = self.batch_status.setdefault(
-            key,
-            {
-                "position": position,
-                "status": "pending",
-                "prompt_path": str(self.prompt_files.get(batch_index, "")),
-                "result_path": str(self.output_files.get(batch_index, "")),
-                "log_path": str(self.log_files.get(batch_index, "")),
-            },
+        self._progress_reporter(
+            BatchProgressEvent(
+                batch_index=batch_index,
+                event=event,
+                code=code,
+                details=dict(details),
+            )
         )
-        if event == "queued":
-            state["status"] = "queued"
-            print(
-                self.colorize_fn(
-                    f"  Batch {position}/{self.total_batches} queued (#{batch_index + 1})",
-                    "dim",
-                )
-            )
-            self.append_run_log_fn(
-                f"batch-queued batch={batch_index + 1} position={position}/{self.total_batches}"
-            )
-            return
-        if event == "start":
-            state["status"] = "running"
-            state["started_at"] = datetime.now(UTC).isoformat(timespec="seconds")
-            print(
-                self.colorize_fn(
-                    f"  Batch {position}/{self.total_batches} started (#{batch_index + 1})",
-                    "dim",
-                )
-            )
-            self.append_run_log_fn(
-                f"batch-start batch={batch_index + 1} position={position}/{self.total_batches}"
-            )
-            return
-        if event != "done":
-            return
-        self._mark_done(batch_index, code=code, details=details)
 
     def report_event(self, progress_event: BatchProgressEvent) -> None:
         """Typed event entrypoint shared with runner_parallel callbacks."""
-        if not hasattr(progress_event, "batch_index") or not hasattr(
-            progress_event,
-            "event",
-        ):
-            return
-        details = getattr(progress_event, "details", {})
-        payload = details if isinstance(details, dict) else {}
-        self.report(
-            int(getattr(progress_event, "batch_index", -1)),
-            str(getattr(progress_event, "event", "")),
-            getattr(progress_event, "code", None),
-            **payload,
-        )
+        self._progress_reporter(progress_event)
 
     def record_execution_issue(self, batch_index: int, exc: Exception) -> None:
-        if batch_index < 0:
-            self.append_run_log_fn(f"execution-error heartbeat error={exc}")
-            return
-        self.append_run_log_fn(f"execution-error batch={batch_index + 1} error={exc}")
+        record_execution_issue(self.append_run_log_fn, batch_index, exc)
 
     def mark_interrupted(self) -> None:
-        for idx in self.selected_indexes:
-            key = str(idx + 1)
-            state = self.batch_status.setdefault(
-                key,
-                {"position": self.batch_positions.get(idx, 0), "status": "pending"},
-            )
-            if state.get("status") in {"pending", "queued", "running"}:
-                state["status"] = "interrupted"
+        mark_interrupted_batches(
+            selected_indexes=self.selected_indexes,
+            batch_status=self.batch_status,
+            batch_positions=self.batch_positions,
+        )
 
     def mark_final_statuses(
         self,
@@ -162,7 +127,7 @@ class BatchProgressTracker:
                 {"position": self.batch_positions.get(idx, 0), "status": "pending"},
             )
             if idx not in failure_set:
-                state["status"] = "succeeded"
+                state["status"] = "recovered" if idx in execution_failure_set else "succeeded"
                 continue
             if idx in execution_failure_set:
                 state["status"] = "failed"
@@ -171,128 +136,6 @@ class BatchProgressTracker:
                 state["status"] = "missing_output"
                 continue
             state["status"] = "parse_failed"
-
-    def _report_heartbeat(self, details: dict[str, object]) -> None:
-        active, queued, elapsed = _normalize_heartbeat_payload(details)
-        if not active and not queued:
-            return
-        segments = _heartbeat_segments(active, elapsed)
-        queued_segment = f", queued {len(queued)}" if queued else ""
-        print(
-            self.colorize_fn(
-                "  Batch heartbeat: "
-                f"{len(active)}/{self.total_batches} active{queued_segment} "
-                f"({', '.join(segments) if segments else 'running batches pending'})",
-                "dim",
-            )
-        )
-        self.append_run_log_fn(
-            "heartbeat "
-            f"active={[idx + 1 for idx in active]} queued={[idx + 1 for idx in queued]} "
-            f"elapsed={{{_heartbeat_elapsed_log(active, elapsed)}}}"
-        )
-        if self.stall_warning_seconds <= 0:
-            return
-        slow_active = _slow_active_batches(
-            active,
-            elapsed=elapsed,
-            threshold=self.stall_warning_seconds,
-        )
-        newly_warned = [idx for idx in slow_active if idx not in self.stall_warned_batches]
-        if not newly_warned:
-            return
-        self.stall_warned_batches.update(newly_warned)
-        warning_message = (
-            "  Stall warning: batches "
-            f"{[idx + 1 for idx in sorted(newly_warned)]} exceeded "
-            f"{self.stall_warning_seconds}s elapsed. "
-            "This may be normal for long runs; review run.log and batch logs."
-        )
-        print(self.colorize_fn(warning_message, "yellow"))
-        self.append_run_log_fn(
-            "stall-warning "
-            f"threshold={self.stall_warning_seconds}s "
-            f"batches={[idx + 1 for idx in sorted(newly_warned)]}"
-        )
-
-    def _mark_done(self, batch_index: int, *, code: int | None, details: dict[str, object]) -> None:
-        position = self.batch_positions.get(batch_index, 0)
-        key = str(batch_index + 1)
-        state = self.batch_status.setdefault(
-            key,
-            {
-                "position": position,
-                "status": "pending",
-                "prompt_path": str(self.prompt_files.get(batch_index, "")),
-                "result_path": str(self.output_files.get(batch_index, "")),
-                "log_path": str(self.log_files.get(batch_index, "")),
-            },
-        )
-        status = "done" if code == 0 else f"failed ({code})"
-        tone = "dim" if code == 0 else "yellow"
-        elapsed_seconds = details.get("elapsed_seconds")
-        elapsed_suffix = ""
-        if isinstance(elapsed_seconds, int | float):
-            elapsed_suffix = f" in {int(max(0, elapsed_seconds))}s"
-            state["elapsed_seconds"] = int(max(0, elapsed_seconds))
-        state["status"] = "succeeded" if code == 0 else "failed"
-        state["exit_code"] = int(code) if isinstance(code, int) else code
-        state["completed_at"] = datetime.now(UTC).isoformat(timespec="seconds")
-        self.stall_warned_batches.discard(batch_index)
-        print(
-            self.colorize_fn(
-                f"  Batch {position}/{self.total_batches} {status}{elapsed_suffix} (#{batch_index + 1})",
-                tone,
-            )
-        )
-        self.append_run_log_fn(
-            f"batch-done batch={batch_index + 1} position={position}/{self.total_batches} "
-            f"code={code} elapsed={state.get('elapsed_seconds', 0)}"
-        )
-
-
-def _normalize_heartbeat_payload(
-    details: dict[str, object],
-) -> tuple[list[int], list[int], dict[int, object]]:
-    active = details.get("active_batches")
-    queued = details.get("queued_batches", [])
-    elapsed = details.get("elapsed_seconds", {})
-    active_list = active if isinstance(active, list) else []
-    queued_list = queued if isinstance(queued, list) else []
-    elapsed_map = elapsed if isinstance(elapsed, dict) else {}
-    return active_list, queued_list, elapsed_map
-
-
-def _elapsed_seconds_for(elapsed: dict[int, object], index: int) -> int:
-    raw_secs = elapsed.get(index, 0)
-    return int(raw_secs) if isinstance(raw_secs, int | float) else 0
-
-
-def _heartbeat_segments(active: list[int], elapsed: dict[int, object]) -> list[str]:
-    segments: list[str] = []
-    for idx in active[:6]:
-        segments.append(f"#{idx + 1}:{_elapsed_seconds_for(elapsed, idx)}s")
-    if len(active) > 6:
-        segments.append(f"+{len(active) - 6} more")
-    return segments
-
-
-def _heartbeat_elapsed_log(active: list[int], elapsed: dict[int, object]) -> str:
-    return ", ".join(f"{idx + 1}:{elapsed.get(idx, 0)}" for idx in active)
-
-
-def _slow_active_batches(
-    active: list[int],
-    *,
-    elapsed: dict[int, object],
-    threshold: int,
-) -> list[int]:
-    return [
-        idx
-        for idx in active
-        if _elapsed_seconds_for(elapsed, idx) >= threshold
-    ]
-
 
 def resolve_run_log_path(
     raw_run_log_file: object,

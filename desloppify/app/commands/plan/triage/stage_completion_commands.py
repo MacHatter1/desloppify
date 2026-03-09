@@ -17,10 +17,12 @@ from .helpers import (
 from .services import TriageServices, default_triage_services
 from ._stage_records import record_confirm_existing_completion
 from ._stage_rendering import _print_complete_summary
+from ._stage_validation_completion_stages import (
+    _auto_confirm_sense_check_for_complete,
+)
 from ._stage_validation import (
     _auto_confirm_enrich_for_complete,
     _auto_confirm_organize_for_complete,
-    _auto_confirm_sense_check_for_complete,
     _completion_clusters_valid,
     _completion_strategy_valid,
     _confirm_existing_stages_valid,

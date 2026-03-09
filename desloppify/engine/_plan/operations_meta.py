@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from desloppify.engine._plan.schema import (
     ExecutionLogEntry,
     PlanModel,
@@ -10,6 +12,46 @@ from desloppify.engine._plan.schema import (
 from desloppify.engine._state.schema import utc_now
 
 _DEFAULT_MAX_LOG_ENTRIES = 10000
+
+
+@dataclass(frozen=True)
+class AppendLogOptions:
+    """Optional metadata fields for execution log entries."""
+
+    issue_ids: list[str] | None = None
+    cluster_name: str | None = None
+    actor: str = "user"
+    note: str | None = None
+    detail: dict | None = None
+
+
+def _append_log_options(
+    *,
+    options: AppendLogOptions | None,
+    legacy_kwargs: dict[str, object],
+) -> AppendLogOptions:
+    """Resolve append-log options from modern object or legacy kwargs."""
+    allowed_keys = {"issue_ids", "cluster_name", "actor", "note", "detail"}
+    unknown = sorted(set(legacy_kwargs) - allowed_keys)
+    if unknown:
+        joined = ", ".join(unknown)
+        raise TypeError(f"Unexpected keyword argument(s): {joined}")
+    if options is not None and legacy_kwargs:
+        raise TypeError("Pass either options=... or legacy keyword args, not both")
+    if options is not None:
+        return options
+    issue_ids = legacy_kwargs.get("issue_ids")
+    cluster_name = legacy_kwargs.get("cluster_name")
+    actor = legacy_kwargs.get("actor")
+    note = legacy_kwargs.get("note")
+    detail = legacy_kwargs.get("detail")
+    return AppendLogOptions(
+        issue_ids=list(issue_ids) if isinstance(issue_ids, list) else None,
+        cluster_name=None if cluster_name is None else str(cluster_name),
+        actor=str(actor) if actor is not None else "user",
+        note=None if note is None else str(note),
+        detail=detail if isinstance(detail, dict) else None,
+    )
 
 
 def _get_log_cap() -> int:
@@ -28,22 +70,23 @@ def append_log_entry(
     plan: PlanModel,
     action: str,
     *,
-    issue_ids: list[str] | None = None,
-    cluster_name: str | None = None,
-    actor: str = "user",
-    note: str | None = None,
-    detail: dict | None = None,
+    options: AppendLogOptions | None = None,
+    **legacy_kwargs,
 ) -> None:
     """Append a structured entry to the plan's execution log."""
+    append_options = _append_log_options(
+        options=options,
+        legacy_kwargs=legacy_kwargs,
+    )
     log = plan.get("execution_log", [])
     entry: ExecutionLogEntry = {
         "timestamp": utc_now(),
         "action": action,
-        "issue_ids": issue_ids or [],
-        "cluster_name": cluster_name,
-        "actor": actor,
-        "note": note,
-        "detail": detail or {},
+        "issue_ids": append_options.issue_ids or [],
+        "cluster_name": append_options.cluster_name,
+        "actor": append_options.actor,
+        "note": append_options.note,
+        "detail": append_options.detail or {},
     }
     log.append(entry)
     cap = _get_log_cap()

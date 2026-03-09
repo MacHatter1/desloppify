@@ -13,14 +13,9 @@ from desloppify.engine.plan import (
     add_to_cluster,
     append_log_entry,
     load_plan,
-    normalize_step,
-    parse_steps_file,
-    plan_lock,
     remove_from_cluster,
     save_plan,
-    step_summary,
 )
-from desloppify.state import utc_now
 
 from .cluster_ops_display import _cmd_cluster_list
 from .cluster_ops_display import _cmd_cluster_show
@@ -37,45 +32,51 @@ _HEX8_RE = re.compile(r"^[0-9a-f]{8}$")
 
 def _suggest_close_matches(state: dict, plan: dict | None, patterns: list[str]) -> None:
     """Print fuzzy match suggestions for patterns that resolved to zero issues."""
+    # Collect all known issue IDs from state, queue order, and cluster membership
     all_ids: list[str] = list(state.get("issues", {}).keys())
     if plan is not None:
         seen_ids: set[str] = set(all_ids)
         for fid in plan.get("queue_order", []):
-            if fid not in seen_ids:
-                seen_ids.add(fid)
-                all_ids.append(fid)
+            if fid in seen_ids:
+                continue
+            seen_ids.add(fid)
+            all_ids.append(fid)
         for cluster in plan.get("clusters", {}).values():
             for fid in cluster.get("issue_ids", []):
-                if fid not in seen_ids:
-                    seen_ids.add(fid)
-                    all_ids.append(fid)
+                if fid in seen_ids:
+                    continue
+                seen_ids.add(fid)
+                all_ids.append(fid)
 
     for pattern in patterns:
         segments = pattern.split("::")
         last_seg = segments[-1]
-        suggestions: list[str] = []
 
         if _HEX8_RE.match(last_seg):
-            suggestions = [fid for fid in all_ids if fid.endswith(f"::{last_seg}") or fid == last_seg]
-            if suggestions:
-                print(colorize(f"  No match for: {pattern!r}", "yellow"))
-                print(colorize("  Did you mean:", "dim"))
-                for match in suggestions[:3]:
-                    print(colorize(f"    {match}", "dim"))
-                print(colorize(f"  Tip: match by hash suffix alone: {last_seg}", "dim"))
-            continue
+            suggestions = [
+                fid for fid in all_ids
+                if fid.endswith(f"::{last_seg}") or fid == last_seg
+            ]
+            tip = f"match by hash suffix alone: {last_seg}"
+        else:
+            slug = segments[-2] if len(segments) >= 2 else ""
+            suggestions = []
+            for fid in all_ids:
+                if f"::{last_seg}::" in fid or fid.endswith(f"::{last_seg}"):
+                    suggestions.append(fid)
+                    continue
+                if slug and (f"::{slug}::" in fid or fid.endswith(f"::{slug}")):
+                    suggestions.append(fid)
+            tip = None
 
-        slug = segments[-2] if len(segments) >= 2 else ""
-        for fid in all_ids:
-            if f"::{last_seg}::" in fid or fid.endswith(f"::{last_seg}"):
-                suggestions.append(fid)
-            elif slug and (f"::{slug}::" in fid or fid.endswith(f"::{slug}")):
-                suggestions.append(fid)
-        if suggestions:
-            print(colorize(f"  No match for: {pattern!r}", "yellow"))
-            print(colorize("  Did you mean:", "dim"))
-            for match in suggestions[:3]:
-                print(colorize(f"    {match}", "dim"))
+        if not suggestions:
+            continue
+        print(colorize(f"  No match for: {pattern!r}", "yellow"))
+        print(colorize("  Did you mean:", "dim"))
+        for match in suggestions[:3]:
+            print(colorize(f"    {match}", "dim"))
+        if tip:
+            print(colorize(f"  Tip: {tip}", "dim"))
 
 
 def _print_pattern_hints() -> None:
@@ -178,18 +179,7 @@ def _cmd_cluster_remove(args: argparse.Namespace) -> None:
 
 def _cmd_cluster_update(args: argparse.Namespace) -> None:
     """Update cluster description, steps, and/or priority."""
-    _cmd_cluster_update_impl(
-        args,
-        load_plan_fn=load_plan,
-        save_plan_fn=save_plan,
-        append_log_entry_fn=append_log_entry,
-        plan_lock_fn=plan_lock,
-        parse_steps_file_fn=parse_steps_file,
-        normalize_step_fn=normalize_step,
-        step_summary_fn=step_summary,
-        utc_now_fn=utc_now,
-        colorize_fn=colorize,
-    )
+    _cmd_cluster_update_impl(args)
 
 
 def cmd_cluster_dispatch(args: argparse.Namespace) -> None:

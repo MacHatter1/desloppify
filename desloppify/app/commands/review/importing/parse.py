@@ -382,7 +382,7 @@ def _parse_and_validate_import(
     *,
     options: ImportParseOptions | None = None,
 ) -> tuple[ReviewImportPayload | None, list[str]]:
-    """Parse and validate a review import file (pure function)."""
+    """Load, parse, and validate a review import file with filesystem I/O."""
     resolved_options = _coerce_import_parse_options(options)
 
     raw_payload, load_errors = _load_import_json(import_file)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from contextlib import contextmanager
+from collections.abc import Iterator
 from pathlib import Path
 
 from desloppify.base.discovery.file_paths import matches_exclusion
@@ -13,7 +14,7 @@ from desloppify.base.discovery.file_paths import (
 from desloppify.base.discovery.file_paths import (
     safe_relpath as _safe_relpath,
 )
-from desloppify.base.runtime_state import current_runtime_context
+from desloppify.base.runtime_state import FileTextReadResult, current_runtime_context
 from desloppify.base.discovery.paths import get_project_root
 
 # Directories that are never useful to scan — always pruned during traversal.
@@ -70,7 +71,7 @@ def disable_file_cache() -> None:
 
 
 @contextmanager
-def file_cache_scope():
+def file_cache_scope() -> Iterator[None]:
     """Temporarily enable file cache within a context, with nested safety."""
     runtime = current_runtime_context()
     was_enabled = runtime.cache_enabled
@@ -91,6 +92,11 @@ def is_file_cache_enabled() -> bool:
 def read_file_text(filepath: str) -> str | None:
     """Read a file as text, with optional caching."""
     return current_runtime_context().file_text_cache.read(filepath)
+
+
+def read_file_text_result(filepath: str) -> FileTextReadResult:
+    """Read a file as text and include read-status metadata."""
+    return current_runtime_context().file_text_cache.read_result(filepath)
 
 
 def clear_source_file_cache_for_tests() -> None:
@@ -184,6 +190,12 @@ def find_source_files(
 
 
 def find_ts_files(path: str | Path) -> list[str]:
+    """Find TypeScript ``.ts`` source files (excluding ``.tsx``)."""
+    return find_source_files(path, [".ts"])
+
+
+def find_ts_and_tsx_files(path: str | Path) -> list[str]:
+    """Find TypeScript source files across ``.ts`` and ``.tsx`` extensions."""
     return find_source_files(path, [".ts", ".tsx"])
 
 
@@ -205,9 +217,11 @@ __all__ = [
     "file_cache_scope",
     "is_file_cache_enabled",
     "read_file_text",
+    "read_file_text_result",
     "clear_source_file_cache_for_tests",
     "find_source_files",
     "find_ts_files",
+    "find_ts_and_tsx_files",
     "find_tsx_files",
     "find_py_files",
 ]

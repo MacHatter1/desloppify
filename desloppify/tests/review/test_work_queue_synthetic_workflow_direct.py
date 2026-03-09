@@ -54,6 +54,61 @@ def test_build_create_plan_and_import_scores_items() -> None:
     assert "untrusted source" in import_item["detail"]["explanation"]
 
 
+def test_build_create_plan_item_uses_confirm_for_unconfirmed_recorded_stage() -> None:
+    from desloppify.engine._plan.constants import WORKFLOW_CREATE_PLAN_ID
+
+    create_item = workflow_mod.build_create_plan_item(
+        {
+            "queue_order": [WORKFLOW_CREATE_PLAN_ID, "triage::reflect"],
+            "epic_triage_meta": {
+                "triage_stages": {
+                    "observe": {
+                        "report": "done",
+                        "timestamp": "2026-03-09T00:00:00Z",
+                    },
+                },
+            },
+        }
+    )
+    assert create_item is not None
+    assert create_item["id"] == WORKFLOW_CREATE_PLAN_ID
+    assert create_item["primary_command"].startswith(
+        "desloppify plan triage --confirm observe"
+    )
+
+
+def test_build_create_plan_item_advances_to_next_pending_stage() -> None:
+    from desloppify.engine._plan.constants import WORKFLOW_CREATE_PLAN_ID
+
+    create_item = workflow_mod.build_create_plan_item(
+        {
+            "queue_order": [WORKFLOW_CREATE_PLAN_ID, "triage::reflect"],
+            "epic_triage_meta": {
+                "triage_stages": {
+                    "observe": {
+                        "report": "done",
+                        "timestamp": "2026-03-09T00:00:00Z",
+                        "confirmed_at": "2026-03-09T00:01:00Z",
+                    },
+                },
+            },
+        }
+    )
+    assert create_item is not None
+    assert create_item["id"] == WORKFLOW_CREATE_PLAN_ID
+    assert (
+        create_item["primary_command"]
+        == "desloppify plan triage --run-stages --runner codex --only-stages reflect"
+    )
+    tools = create_item["detail"]["planning_tools"]
+    assert tools[0]["command"] == (
+        "desloppify plan triage --run-stages --runner codex --only-stages reflect"
+    )
+    assert tools[1]["command"] == (
+        "desloppify plan triage --run-stages --runner claude --only-stages reflect"
+    )
+
+
 def test_build_communicate_score_item_formats_command_and_delta(monkeypatch) -> None:
     from desloppify.engine._plan.constants import WORKFLOW_COMMUNICATE_SCORE_ID
 
@@ -73,3 +128,59 @@ def test_build_communicate_score_item_formats_command_and_delta(monkeypatch) -> 
     assert item["summary"].endswith("80.0/100")
     assert item["detail"]["delta"] == 0.0
     assert WORKFLOW_COMMUNICATE_SCORE_ID in item["primary_command"]
+
+
+def test_build_deferred_disposition_item_returns_none_without_temporary_skips() -> None:
+    assert workflow_mod.build_deferred_disposition_item({"skipped": {}}) is None
+    assert workflow_mod.build_deferred_disposition_item(
+        {"skipped": {"i1": {"kind": "permanent"}}}
+    ) is None
+
+
+def test_build_deferred_disposition_item_with_temporary_skips() -> None:
+    from desloppify.engine._plan.constants import WORKFLOW_DEFERRED_DISPOSITION_ID
+
+    item = workflow_mod.build_deferred_disposition_item(
+        {
+            "skipped": {
+                "i1": {"kind": "temporary"},
+                "i2": {"kind": "temporary"},
+                "i3": {"kind": "permanent"},
+            }
+        }
+    )
+
+    assert item is not None
+    assert item["id"] == WORKFLOW_DEFERRED_DISPOSITION_ID
+    assert item["kind"] == "workflow_action"
+    assert "0 clusters + 2 individual items" in item["summary"]
+    assert item["primary_command"] == 'desloppify plan unskip "*"'
+    assert item["detail"]["deferred_cluster_count"] == 0
+    assert item["detail"]["deferred_individual_count"] == 2
+    tools = item["detail"]["planning_tools"]
+    assert len(tools) == 4
+    assert tools[0]["command"] == "desloppify plan queue --include-skipped"
+    assert "cluster-or-id" in tools[2]["command"]
+    assert "decision_options" in item["detail"]
+    assert len(item["detail"]["decision_options"]) == 2
+
+
+def test_build_deferred_disposition_item_counts_clusters_and_individuals() -> None:
+    item = workflow_mod.build_deferred_disposition_item(
+        {
+            "skipped": {
+                "i1": {"kind": "temporary"},
+                "i2": {"kind": "temporary"},
+                "i3": {"kind": "temporary"},
+            },
+            "clusters": {
+                "auto/a": {"issue_ids": ["i1", "i2"]},
+                "auto/b": {"issue_ids": ["i2"]},
+            },
+        }
+    )
+
+    assert item is not None
+    assert "2 clusters + 1 individual item" in item["summary"]
+    assert item["detail"]["deferred_cluster_count"] == 2
+    assert item["detail"]["deferred_individual_count"] == 1

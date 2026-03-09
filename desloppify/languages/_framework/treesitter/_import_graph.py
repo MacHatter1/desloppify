@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -94,7 +95,10 @@ def ts_build_dep_graph(
     return graph
 
 
-def make_ts_dep_builder(spec: TreeSitterLangSpec, file_finder):
+def make_ts_dep_builder(
+    spec: TreeSitterLangSpec,
+    file_finder: Callable[[Path], list[str]],
+) -> Callable[[Path], dict[str, dict[str, Any]]]:
     """Create a dep graph builder bound to a TreeSitterLangSpec + file finder.
 
     Returns a callable with signature (path: Path) -> dict,

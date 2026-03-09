@@ -35,7 +35,7 @@ def _plan_with_stages(*stage_names: str, confirmed: bool = False) -> dict:
     for name in stage_names:
         stages[name] = {
             "stage": name,
-            "report": f"A sufficiently long report for {name} stage that meets minimum length requirements and more text",
+            "report": f"A sufficiently long report for {name} stage that meets minimum length requirements and more text — covers r1 r2 r3",
             "cited_ids": ["r1", "r2", "r3"],
             "timestamp": "2025-06-01T00:00:00Z",
             "issue_count": 5,
@@ -129,7 +129,7 @@ class TestReflectLogging:
         monkeypatch.setattr(triage_mod, "save_plan", lambda p, *a, **kw: None)
         monkeypatch.setattr(triage_mod, "require_completed_scan", lambda s: True)
 
-        report = "A sufficiently long report about strategy and comparing issues against completed work and more text"
+        report = "A sufficiently long report about strategy and comparing issues r1 r2 against completed work and more text"
         args = _fake_args(stage="reflect", report=report)
         triage_mod.cmd_plan_triage(args)
         assert "triage_reflect" in _log_actions(plan)

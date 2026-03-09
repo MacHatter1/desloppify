@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from .metrics import _COMPLEXITY_TIER_UPGRADE
 
+CoverageIssue = dict[str, object]
+IssueDetail = dict[str, int | float | str]
+
 
 def transitive_coverage_gap_issue(
     *,
@@ -12,10 +15,10 @@ def transitive_coverage_gap_issue(
     importer_count: int,
     loc_weight: float,
     complexity: float,
-) -> dict:
+) -> CoverageIssue:
     """Build issue payload for modules covered only transitively."""
     is_complex = complexity >= _COMPLEXITY_TIER_UPGRADE
-    detail: dict = {
+    detail: IssueDetail = {
         "kind": "transitive_only",
         "loc": loc,
         "importer_count": importer_count,
@@ -43,11 +46,11 @@ def untested_module_issue(
     importer_count: int,
     loc_weight: float,
     complexity: float,
-) -> dict:
+) -> CoverageIssue:
     """Build issue payload for untested production modules."""
     is_complex = complexity >= _COMPLEXITY_TIER_UPGRADE
     if importer_count >= 10 or is_complex:
-        detail: dict = {
+        detail: IssueDetail = {
             "kind": "untested_critical",
             "loc": loc,
             "importer_count": importer_count,

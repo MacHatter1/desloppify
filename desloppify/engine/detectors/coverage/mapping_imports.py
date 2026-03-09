@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 from desloppify.engine.detectors.test_coverage.io import read_coverage_file

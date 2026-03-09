@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from desloppify.base.discovery.file_paths import rel
 from desloppify.base.output.terminal import log

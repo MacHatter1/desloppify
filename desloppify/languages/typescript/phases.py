@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 from desloppify.languages._framework.base.types import LangRuntimeContract
 from desloppify.languages.typescript.phases_basic import (
-    phase_deprecated,
-    phase_exports,
-    phase_logs,
-    phase_unused,
+    phase_deprecated as _phase_deprecated,
+    phase_exports as _phase_exports,
+    phase_logs as _phase_logs,
+    phase_unused as _phase_unused,
 )
 from desloppify.languages.typescript.phases_config import (
     TS_COMPLEXITY_SIGNALS,
@@ -18,106 +19,87 @@ from desloppify.languages.typescript.phases_config import (
     TS_SKIP_NAMES,
 )
 from desloppify.languages.typescript.phases_coupling import (
-    detect_coupling_violations as _detect_coupling_violations_impl,
-    detect_cross_tool_imports as _detect_cross_tool_imports_impl,
-    detect_cycles_and_orphans as _detect_cycles_and_orphans_impl,
-    detect_facades as _detect_facades_impl,
-    detect_naming_inconsistencies as _detect_naming_inconsistencies_impl,
-    detect_pattern_anomalies as _detect_pattern_anomalies_impl,
-    detect_single_use as _detect_single_use_impl,
-    make_boundary_issues_impl,
+    detect_coupling_violations,
+    detect_cross_tool_imports,
+    detect_cycles_and_orphans,
+    detect_facades,
+    detect_naming_inconsistencies,
+    detect_pattern_anomalies,
+    detect_single_use,
+    make_boundary_issues,
     orphaned_detector_mod,
-    phase_coupling_impl,
+    phase_coupling as _phase_coupling,
 )
-from desloppify.languages.typescript.phases_smells import phase_smells
+from desloppify.languages.typescript.phases_smells import phase_smells as _phase_smells
 from desloppify.languages.typescript.phases_structural import (
     _detect_flat_dirs,
     _detect_passthrough,
     _detect_props_bloat,
     _detect_structural_signals,
-    phase_structural,
+    phase_structural as _phase_structural,
 )
 from desloppify.state import Issue
 
-
-def _detect_single_use(path: Path, graph: dict, lang: LangRuntimeContract):
-    return _detect_single_use_impl(path, graph, lang)
-
-
-def _detect_coupling_violations(
-    path: Path,
-    graph: dict,
-    lang: LangRuntimeContract,
-    shared_prefix: str,
-    tools_prefix: str,
-):
-    return _detect_coupling_violations_impl(path, graph, lang, shared_prefix, tools_prefix)
+PhasePotentialMap = dict[str, int]
+PhaseResult = tuple[list[Issue], PhasePotentialMap]
+PhaseWrapper = Callable[[Path, LangRuntimeContract], PhaseResult]
 
 
-def _detect_cross_tool_imports(
-    path: Path,
-    graph: dict,
-    lang: LangRuntimeContract,
-    tools_prefix: str,
-):
-    return _detect_cross_tool_imports_impl(path, graph, lang, tools_prefix)
+def phase_logs(path: Path, lang: LangRuntimeContract) -> tuple[list[Issue], dict[str, int]]:
+    """Run the logs phase using the shared typed phase wrapper signature."""
+    return _phase_logs(path, lang)
 
 
-def _detect_cycles_and_orphans(path: Path, graph: dict, lang: LangRuntimeContract):
-    return _detect_cycles_and_orphans_impl(path, graph, lang)
+def phase_unused(path: Path, lang: LangRuntimeContract) -> tuple[list[Issue], dict[str, int]]:
+    """Run the unused phase using the shared typed phase wrapper signature."""
+    return _phase_unused(path, lang)
 
 
-def _detect_facades(graph: dict, lang: LangRuntimeContract):
-    return _detect_facades_impl(graph, lang)
+def phase_exports(path: Path, lang: LangRuntimeContract) -> tuple[list[Issue], dict[str, int]]:
+    """Run the dead-exports phase using the shared typed phase wrapper signature."""
+    return _phase_exports(path, lang)
 
 
-def _detect_pattern_anomalies(path: Path):
-    return _detect_pattern_anomalies_impl(path)
+def phase_deprecated(path: Path, lang: LangRuntimeContract) -> tuple[list[Issue], dict[str, int]]:
+    """Run the deprecated API phase using the shared typed phase wrapper signature."""
+    return _phase_deprecated(path, lang)
 
 
-def _detect_naming_inconsistencies(path: Path, lang: LangRuntimeContract):
-    return _detect_naming_inconsistencies_impl(path, lang)
-
-
-def _make_boundary_issues(
-    single_entries: list[dict],
-    path: Path,
-    graph: dict,
-    lang: LangRuntimeContract,
-    shared_prefix: str,
-    tools_prefix: str,
-):
-    return make_boundary_issues_impl(
-        single_entries,
-        path,
-        graph,
-        lang,
-        shared_prefix,
-        tools_prefix,
-    )
+def phase_structural(path: Path, lang: LangRuntimeContract) -> tuple[list[Issue], dict[str, int]]:
+    """Run the structural phase using the shared typed phase wrapper signature."""
+    return _phase_structural(path, lang)
 
 
 def phase_coupling(path: Path, lang: LangRuntimeContract) -> tuple[list[Issue], dict[str, int]]:
-    return phase_coupling_impl(path, lang, make_boundary_issues_fn=_make_boundary_issues)
+    """Run the coupling phase using the shared typed phase wrapper signature."""
+    return _phase_coupling(path, lang)
+
+
+def phase_smells(path: Path, lang: LangRuntimeContract) -> tuple[list[Issue], dict[str, int]]:
+    """Run the smells phase using the shared typed phase wrapper signature."""
+    return _phase_smells(path, lang)
 
 
 __all__ = [
+    "PhasePotentialMap",
+    "PhaseResult",
+    "PhaseWrapper",
     "TS_COMPLEXITY_SIGNALS",
     "TS_GOD_RULES",
     "TS_SKIP_DIRS",
     "TS_SKIP_NAMES",
-    "_detect_coupling_violations",
-    "_detect_cross_tool_imports",
-    "_detect_cycles_and_orphans",
-    "_detect_facades",
+    "detect_coupling_violations",
+    "detect_cross_tool_imports",
+    "detect_cycles_and_orphans",
+    "detect_facades",
+    "detect_naming_inconsistencies",
+    "detect_pattern_anomalies",
+    "detect_single_use",
     "_detect_flat_dirs",
-    "_detect_naming_inconsistencies",
     "_detect_passthrough",
-    "_detect_pattern_anomalies",
     "_detect_props_bloat",
-    "_detect_single_use",
     "_detect_structural_signals",
-    "_make_boundary_issues",
+    "make_boundary_issues",
     "orphaned_detector_mod",
     "phase_coupling",
     "phase_deprecated",

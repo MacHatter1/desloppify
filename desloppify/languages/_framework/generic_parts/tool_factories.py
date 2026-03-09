@@ -104,7 +104,7 @@ def make_detect_fn(
 ) -> Callable:
     """Create detect function that runs a tool with an optional injected runner."""
 
-    def detect(path, **kwargs):
+    def detect(path: Path, **kwargs: Any) -> list[dict[str, Any]]:
         del kwargs
         result = run_tool_result(cmd, path, parser, run_subprocess=run_subprocess)
         return list(result.entries)
@@ -128,7 +128,12 @@ def make_generic_fixer(
         run_subprocess=run_subprocess,
     )
 
-    def fix(entries, dry_run=False, path=None, **kwargs):
+    def fix(
+        entries: list[dict[str, Any]],
+        dry_run: bool = False,
+        path: Path | None = None,
+        **kwargs: Any,
+    ) -> FixResult:
         del kwargs
         if dry_run or not path:
             return FixResult(entries=[{"file": e["file"], "line": e["line"]} for e in entries])

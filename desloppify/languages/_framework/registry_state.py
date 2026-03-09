@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import ItemsView
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -24,18 +24,17 @@ __all__ = [
     "get_load_errors",
 ]
 
+
 @dataclass
 class _RegistryState:
-    registry: dict[str, LangConfig]  # type: ignore[type-arg]  # runtime uses Any
-    load_attempted: bool
-    load_errors: dict[str, BaseException]
+    """Mutable language-registry state container."""
+
+    registry: dict[str, LangConfig] = field(default_factory=dict)
+    load_attempted: bool = False
+    load_errors: dict[str, BaseException] = field(default_factory=dict)
 
 
-_STATE = _RegistryState(
-    registry={},
-    load_attempted=False,
-    load_errors={},
-)
+_STATE = _RegistryState()
 
 
 # ── Public API ────────────────────────────────────────────

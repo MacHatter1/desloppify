@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-import pytest
+from desloppify.app.commands.plan import cluster_update as cluster_update_mod
 
 from desloppify.app.commands.plan.triage._stage_validation import (
     _cluster_file_overlaps,
@@ -181,7 +181,6 @@ def test_cluster_file_overlaps_auto_excluded() -> None:
 def test_depends_on_persisted(monkeypatch, capsys, tmp_path: Path) -> None:
     """--depends-on should persist on cluster dict."""
     from desloppify.app.commands.plan import cluster_handlers
-    from desloppify.engine import plan as plan_mod
 
     test_plan = {
         "clusters": {
@@ -192,9 +191,9 @@ def test_depends_on_persisted(monkeypatch, capsys, tmp_path: Path) -> None:
         "execution_log": [],
     }
     saved_plans: list[dict] = []
-    monkeypatch.setattr(cluster_handlers, "load_plan", lambda: test_plan)
-    monkeypatch.setattr(cluster_handlers, "save_plan", lambda p: saved_plans.append(p))
-    monkeypatch.setattr(cluster_handlers, "append_log_entry", lambda *a, **kw: None)
+    monkeypatch.setattr(cluster_update_mod, "load_plan", lambda: test_plan)
+    monkeypatch.setattr(cluster_update_mod, "save_plan", lambda p: saved_plans.append(p))
+    monkeypatch.setattr(cluster_update_mod, "append_log_entry", lambda *a, **kw: None)
 
     args = argparse.Namespace(
         cluster_name="cluster-b",
@@ -219,7 +218,7 @@ def test_depends_on_invalid_cluster(monkeypatch, capsys) -> None:
         "queue_order": [],
         "execution_log": [],
     }
-    monkeypatch.setattr(cluster_handlers, "load_plan", lambda: test_plan)
+    monkeypatch.setattr(cluster_update_mod, "load_plan", lambda: test_plan)
 
     args = argparse.Namespace(
         cluster_name="cluster-a",
@@ -248,9 +247,9 @@ def test_effort_persisted_add_step(monkeypatch, capsys) -> None:
         "queue_order": [],
         "execution_log": [],
     }
-    monkeypatch.setattr(cluster_handlers, "load_plan", lambda: test_plan)
-    monkeypatch.setattr(cluster_handlers, "save_plan", lambda p: None)
-    monkeypatch.setattr(cluster_handlers, "append_log_entry", lambda *a, **kw: None)
+    monkeypatch.setattr(cluster_update_mod, "load_plan", lambda: test_plan)
+    monkeypatch.setattr(cluster_update_mod, "save_plan", lambda p: None)
+    monkeypatch.setattr(cluster_update_mod, "append_log_entry", lambda *a, **kw: None)
 
     args = argparse.Namespace(
         cluster_name="cluster-a",
@@ -281,9 +280,9 @@ def test_effort_persisted_update_step(monkeypatch, capsys) -> None:
         "queue_order": [],
         "execution_log": [],
     }
-    monkeypatch.setattr(cluster_handlers, "load_plan", lambda: test_plan)
-    monkeypatch.setattr(cluster_handlers, "save_plan", lambda p: None)
-    monkeypatch.setattr(cluster_handlers, "append_log_entry", lambda *a, **kw: None)
+    monkeypatch.setattr(cluster_update_mod, "load_plan", lambda: test_plan)
+    monkeypatch.setattr(cluster_update_mod, "save_plan", lambda p: None)
+    monkeypatch.setattr(cluster_update_mod, "append_log_entry", lambda *a, **kw: None)
 
     args = argparse.Namespace(
         cluster_name="cluster-a",
@@ -314,9 +313,9 @@ def test_long_title_warning(monkeypatch, capsys) -> None:
         "queue_order": [],
         "execution_log": [],
     }
-    monkeypatch.setattr(cluster_handlers, "load_plan", lambda: test_plan)
-    monkeypatch.setattr(cluster_handlers, "save_plan", lambda p: None)
-    monkeypatch.setattr(cluster_handlers, "append_log_entry", lambda *a, **kw: None)
+    monkeypatch.setattr(cluster_update_mod, "load_plan", lambda: test_plan)
+    monkeypatch.setattr(cluster_update_mod, "save_plan", lambda p: None)
+    monkeypatch.setattr(cluster_update_mod, "append_log_entry", lambda *a, **kw: None)
 
     long_title = "x" * 200
     args = argparse.Namespace(
@@ -345,9 +344,9 @@ def test_short_title_no_warning(monkeypatch, capsys) -> None:
         "queue_order": [],
         "execution_log": [],
     }
-    monkeypatch.setattr(cluster_handlers, "load_plan", lambda: test_plan)
-    monkeypatch.setattr(cluster_handlers, "save_plan", lambda p: None)
-    monkeypatch.setattr(cluster_handlers, "append_log_entry", lambda *a, **kw: None)
+    monkeypatch.setattr(cluster_update_mod, "load_plan", lambda: test_plan)
+    monkeypatch.setattr(cluster_update_mod, "save_plan", lambda p: None)
+    monkeypatch.setattr(cluster_update_mod, "append_log_entry", lambda *a, **kw: None)
 
     args = argparse.Namespace(
         cluster_name="cluster-a",
@@ -377,9 +376,9 @@ def test_issue_refs_persisted_add_step(monkeypatch, capsys) -> None:
         "queue_order": [],
         "execution_log": [],
     }
-    monkeypatch.setattr(cluster_handlers, "load_plan", lambda: test_plan)
-    monkeypatch.setattr(cluster_handlers, "save_plan", lambda p: None)
-    monkeypatch.setattr(cluster_handlers, "append_log_entry", lambda *a, **kw: None)
+    monkeypatch.setattr(cluster_update_mod, "load_plan", lambda: test_plan)
+    monkeypatch.setattr(cluster_update_mod, "save_plan", lambda p: None)
+    monkeypatch.setattr(cluster_update_mod, "append_log_entry", lambda *a, **kw: None)
 
     args = argparse.Namespace(
         cluster_name="cluster-a",

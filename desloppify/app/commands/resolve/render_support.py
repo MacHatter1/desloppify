@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from desloppify import state as state_mod
 from desloppify.base.output.terminal import colorize
 from desloppify.engine._state.schema import StateModel
 
+if TYPE_CHECKING:
+    from desloppify.state import ScoreSnapshot
 
-def score_snapshot_or_warn(state: StateModel):
+
+def score_snapshot_or_warn(state: StateModel) -> ScoreSnapshot | None:
     snapshot = state_mod.score_snapshot(state)
     if (
         snapshot.overall is None

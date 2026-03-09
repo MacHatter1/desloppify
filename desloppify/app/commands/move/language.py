@@ -80,18 +80,22 @@ def load_lang_move_module(lang_name: str) -> ModuleType:
     try:
         return importlib.import_module(module_name)
     except ImportError as exc:
+        if exc.name != module_name:
+            raise CommandError(
+                f"Failed to import language move module {module_name}: {exc}"
+            ) from exc
         logger.debug(
-            "Failed to load language-specific move module %s: %s",
+            "Language-specific move module missing: %s",
             module_name,
-            exc,
         )
     # Fall back to the scaffold move module that provides default stubs.
+    scaffold_module = "desloppify.languages._framework.scaffold_move"
     try:
-        return importlib.import_module("desloppify.languages._framework.scaffold_move")
-    except ImportError as ex:
+        return importlib.import_module(scaffold_module)
+    except ImportError as exc:
         raise CommandError(
-            f"Move not yet supported for language: {lang_name} ({ex})"
-        ) from ex
+            f"Move not yet supported for language: {lang_name} ({exc})"
+        ) from exc
 
 
 def resolve_move_verify_hint(move_mod: ModuleType) -> str:

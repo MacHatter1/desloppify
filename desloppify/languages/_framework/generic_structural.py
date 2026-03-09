@@ -3,16 +3,25 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
+from typing import TYPE_CHECKING, Callable
 
 from desloppify.languages._framework.base.types import DetectorPhase
 from desloppify.languages._framework.treesitter import (
     PARSE_INIT_ERRORS as _TS_INIT_ERRORS,
 )
 
+if TYPE_CHECKING:
+    from desloppify.languages._framework.base.types import LangRuntimeContract
+    from desloppify.languages._framework.treesitter import TreeSitterLangSpec
+    from desloppify.state import Issue
+
 logger = logging.getLogger(__name__)
 
 
-def _make_structural_phase(treesitter_spec=None) -> DetectorPhase:
+def _make_structural_phase(
+    treesitter_spec: TreeSitterLangSpec | None = None,
+) -> DetectorPhase:
     """Create a structural analysis phase for generic plugins."""
     from desloppify.base.output.terminal import log
     from desloppify.engine.detectors.base import ComplexitySignal
@@ -97,7 +106,10 @@ def _make_structural_phase(treesitter_spec=None) -> DetectorPhase:
             GodRule("attributes", "attributes", lambda c: len(c.attributes), 10),
         ]
 
-    def run(path, lang):
+    def run(
+        path: Path,
+        lang: LangRuntimeContract,
+    ) -> tuple[list[Issue], dict[str, int]]:
         from desloppify.languages._framework.base.shared_phases import (
             run_structural_phase,
         )
@@ -122,7 +134,7 @@ def _make_structural_phase(treesitter_spec=None) -> DetectorPhase:
 def _make_god_extractor(treesitter_spec, file_finder):
     """Create a god-class extractor function bound to the given spec."""
 
-    def extractor(path):
+    def extractor(path: Path):
         return _extract_ts_classes(path, treesitter_spec, file_finder)
 
     return extractor
@@ -162,11 +174,16 @@ def _extract_ts_classes(path, treesitter_spec, file_finder):
         return []
 
 
-def _make_coupling_phase(dep_graph_fn) -> DetectorPhase:
+def _make_coupling_phase(
+    dep_graph_fn: Callable[[Path], dict[str, dict[str, object]]],
+) -> DetectorPhase:
     """Create a coupling phase for generic plugins with a dep graph."""
     from desloppify.base.output.terminal import log
 
-    def run(path, lang):
+    def run(
+        path: Path,
+        lang: LangRuntimeContract,
+    ) -> tuple[list[Issue], dict[str, int]]:
         from desloppify.languages._framework.base.shared_phases import (
             run_coupling_phase,
         )

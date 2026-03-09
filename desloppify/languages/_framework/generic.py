@@ -14,10 +14,8 @@ from desloppify.languages._framework.base.types import LangConfig
 from desloppify.languages._framework.generic_capabilities import (
     SHARED_PHASE_LABELS,
     capability_report,
-    empty_dep_graph,
     generic_zone_rules,
     make_file_finder,
-    noop_extract_functions,
 )
 from desloppify.languages._framework.generic_parts.parsers import (
     PARSERS as _PARSERS,

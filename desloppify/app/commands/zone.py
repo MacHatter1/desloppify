@@ -114,8 +114,9 @@ def _zone_set(args: argparse.Namespace):
             if updated:
                 state_mod.save_state(state, sp)
             print(f"  Applied to {updated} issue(s).")
-    except Exception:
+    except (ImportError, OSError, TypeError, ValueError):
         print(colorize("  (Will apply on next scan.)", "dim"))
+        return
 
 
 def _zone_clear(args: argparse.Namespace):
@@ -149,7 +150,8 @@ def _zone_clear(args: argparse.Namespace):
                 if updated:
                     state_mod.save_state(state, sp)
                 print(f"  Re-stamped {updated} issue(s) to 'production' (will reclassify on next scan).")
-        except Exception:
+        except (ImportError, OSError, TypeError, ValueError):
             print(colorize("  (Will apply on next scan.)", "dim"))
+            return
     else:
         print(colorize(f"  No override found for {normalized}", "yellow"))

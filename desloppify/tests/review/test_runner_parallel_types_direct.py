@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from desloppify.app.commands.review._runner_parallel_types import (
+from desloppify.app.commands.review.runner_parallel.types import (
     BatchExecutionOptions,
     BatchProgressEvent,
     BatchResult,

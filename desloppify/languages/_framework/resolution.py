@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import desloppify.engine.hook_registry as hook_registry_mod
+
 from . import registry_state
 from .base.types import LangConfig
 from .contract_validation import validate_lang_contract
@@ -13,12 +15,13 @@ _MARKER_GLOB_CHARS = ("*", "?", "[")
 
 
 def _reset_dynamic_registries_for_refresh() -> None:
-    """Reset registries that plugins populate at import time."""
+    """Reset mutable registries before refresh-driven discovery."""
     from desloppify.base.registry import reset_registered_detectors
     from desloppify.engine._scoring.policy.core import reset_registered_scoring_policies
 
     reset_registered_detectors()
     reset_registered_scoring_policies()
+    hook_registry_mod.clear_lang_hooks_for_tests()
 
 
 def make_lang_config(name: str, cfg_cls: type) -> LangConfig:
@@ -33,7 +36,11 @@ def make_lang_config(name: str, cfg_cls: type) -> LangConfig:
     return cfg
 
 
-def get_lang(name: str, *, refresh_registry: bool = False) -> LangConfig:
+def get_lang(
+    name: str,
+    *,
+    refresh_registry: bool = False,
+) -> LangConfig:
     """Get a language config by name.
 
     All plugins (full and generic) store LangConfig instances in the registry.
@@ -113,7 +120,10 @@ def _detect_marker_exists(project_root: Path, marker: str) -> bool:
     return False
 
 
-def available_langs(*, refresh_registry: bool = False) -> list[str]:
+def available_langs(
+    *,
+    refresh_registry: bool = False,
+) -> list[str]:
     """Return list of registered language names."""
     if refresh_registry:
         _reset_dynamic_registries_for_refresh()

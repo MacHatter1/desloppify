@@ -10,27 +10,19 @@ from desloppify.base.subjective_dimension_catalog import (
     RESET_ON_SCAN_DIMENSIONS,
 )
 from desloppify.base.subjective_dimension_catalog import WEIGHT_BY_DIMENSION
+from desloppify.base.subjective_dimensions_constants import (
+    normalize_dimension_name as _normalize_dimension_name,
+)
+from desloppify.base.subjective_dimensions_constants import (
+    normalize_lang_name as _normalize_lang_name,
+)
+from desloppify.base.subjective_dimensions_constants import (
+    title_display_name as _title_display_name,
+)
 from desloppify.base.text_utils import is_numeric
 
 
-def _normalize_dimension_name(name: str) -> str:
-    return "_".join(str(name).strip().lower().replace("-", "_").split())
-
-
-def _title_display_name(dimension_key: str) -> str:
-    return dimension_key.replace("_", " ").title()
-
-
-def _normalize_lang_name(lang_name: str | None) -> str | None:
-    if not isinstance(lang_name, str):
-        return None
-    cleaned = lang_name.strip().lower()
-    return cleaned or None
-
-
 def _clear_subjective_dimension_caches() -> None:
-    default_dimension_keys.cache_clear()
-    default_dimension_keys_for_lang.cache_clear()
     load_subjective_dimension_metadata.cache_clear()
     load_subjective_dimension_metadata_for_lang.cache_clear()
 
@@ -58,13 +50,11 @@ def reset_subjective_dimension_providers() -> None:
     _clear_subjective_dimension_caches()
 
 
-@lru_cache(maxsize=1)
 def default_dimension_keys() -> tuple[str, ...]:
     """Return canonical default subjective dimension keys."""
     return tuple(sorted(DISPLAY_NAMES.keys()))
 
 
-@lru_cache(maxsize=16)
 def default_dimension_keys_for_lang(lang_name: str | None) -> tuple[str, ...]:
     """Return default subjective dimension keys for a language.
 

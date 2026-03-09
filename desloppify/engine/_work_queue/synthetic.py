@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from desloppify.engine._state.schema import StateModel
 from desloppify.engine._scoring.subjective.core import DISPLAY_NAMES
+from desloppify.engine._state.schema import StateModel
 from desloppify.engine._work_queue.helpers import (
     detail_dict,
     slugify,
@@ -17,6 +17,7 @@ from desloppify.engine._work_queue.helpers import (
 from desloppify.engine._work_queue.synthetic_workflow import (
     build_communicate_score_item,
     build_create_plan_item,
+    build_deferred_disposition_item,
     build_import_scores_item,
     build_score_checkpoint_item,
 )
@@ -96,13 +97,16 @@ def build_triage_stage_items(plan: dict, state: dict) -> list[WorkQueueItem]:
 
     Returns an empty list when no triage stages are pending.
     """
-    from desloppify.engine._plan.triage_playbook import (
-        TRIAGE_STAGE_DEPENDENCIES,
-        TRIAGE_STAGE_LABELS,
-    )
     from desloppify.engine._plan.constants import (
         TRIAGE_IDS,
         TRIAGE_STAGE_IDS,
+    )
+    from desloppify.engine._plan.triage_playbook import (
+        TRIAGE_STAGE_DEPENDENCIES,
+        TRIAGE_STAGE_LABELS,
+        triage_manual_stage_command,
+        triage_run_stages_command,
+        triage_runner_commands,
     )
 
     order = plan.get("queue_order", [])
@@ -138,9 +142,8 @@ def build_triage_stage_items(plan: dict, state: dict) -> list[WorkQueueItem]:
             if f"triage::{dep}" in present and dep not in confirmed
         )
 
-        cmd = f"desloppify plan triage --stage {name}"
-        if name == "commit":
-            cmd = 'desloppify plan triage --complete --strategy "..."'
+        only_stages = None if name == "commit" else name
+        cmd = triage_run_stages_command(only_stages=only_stages)
 
         item: WorkQueueItem = {
             "id": sid,
@@ -154,6 +157,11 @@ def build_triage_stage_items(plan: dict, state: dict) -> list[WorkQueueItem]:
                 "total_review_issues": open_review_count,
                 "stage": name,
                 "stage_label": label_map.get(name, name),
+                "runner_commands": [
+                    {"label": label, "command": command}
+                    for label, command in triage_runner_commands(only_stages=only_stages)
+                ],
+                "manual_fallback": triage_manual_stage_command(name),
             },
             "blocked_by": blocked_by,
             "is_blocked": bool(blocked_by),
@@ -251,8 +259,8 @@ def build_subjective_items(
                 "cli_keys": cli_keys,
             },
             "status": "open",
-            "kind": "subjective_dimension",
         }
+        item["kind"] = "subjective_dimension"
         item["primary_command"] = primary_command
         item["initial_review"] = is_unassessed
         items.append(item)
@@ -262,6 +270,7 @@ def build_subjective_items(
 __all__ = [
     "build_communicate_score_item",
     "build_create_plan_item",
+    "build_deferred_disposition_item",
     "build_import_scores_item",
     "build_score_checkpoint_item",
     "build_subjective_items",

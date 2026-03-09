@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from desloppify.base.discovery.source import find_ts_files
+from desloppify.base.discovery.source import find_ts_and_tsx_files
 from desloppify.base.discovery.paths import get_area
 from desloppify.engine.hook_registry import register_lang_hooks
 from desloppify.engine.policy.zones import COMMON_ZONE_RULES, Zone, ZoneRule
@@ -37,7 +37,7 @@ from desloppify.languages.typescript.review import (
 )
 from desloppify.languages.typescript._zones import TS_ZONE_RULES
 from desloppify.languages.typescript.detectors import deps as deps_detector_mod
-from desloppify.languages.typescript.detectors.security import detect_ts_security_result
+from desloppify.languages.typescript.detectors.security.detector import _detect_ts_security_result
 from desloppify.languages.typescript.phases import (
     TS_COMPLEXITY_SIGNALS,
     TS_GOD_RULES,
@@ -58,7 +58,7 @@ register_lang_hooks("typescript", test_coverage=ts_test_coverage_hooks)
 @register_lang("typescript")
 class TypeScriptConfig(LangConfig):
     def detect_lang_security_detailed(self, files, zone_map):
-        result = detect_ts_security_result(files, zone_map)
+        result = _detect_ts_security_result(files, zone_map)
         return LangSecurityResult(
             entries=result.entries,
             files_scanned=result.population_size,
@@ -108,7 +108,7 @@ class TypeScriptConfig(LangConfig):
                 BoundaryRule("shared/", "tools/", "shared→tools"),
             ],
             typecheck_cmd="npx tsc --noEmit",
-            file_finder=find_ts_files,
+            file_finder=find_ts_and_tsx_files,
             large_threshold=500,
             complexity_threshold=15,
             default_scan_profile="full",

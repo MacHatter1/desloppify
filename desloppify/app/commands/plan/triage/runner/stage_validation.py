@@ -2,22 +2,103 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 
 from desloppify.engine.plan import TriageInput
 
-from ..helpers import manual_clusters_with_issues, observe_dimension_breakdown
-from ..stage_helpers import unclustered_review_issues, unenriched_clusters
 from .._stage_validation import (
     _cluster_file_overlaps,
     _clusters_with_directory_scatter,
     _clusters_with_high_step_ratio,
-    _underspecified_steps,
     _steps_missing_issue_refs,
     _steps_with_bad_paths,
     _steps_with_vague_detail,
     _steps_without_effort,
+    _underspecified_steps,
 )
+from ..helpers import manual_clusters_with_issues, observe_dimension_breakdown
+from ..stage_helpers import unclustered_review_issues, unenriched_clusters
+
+
+@dataclass(frozen=True)
+class EnrichQualityFailure:
+    """Structured enrich-quality validation failure."""
+
+    code: str
+    message: str
+
+
+def run_enrich_quality_checks(
+    plan: dict,
+    repo_root: Path,
+    *,
+    phase_label: str,
+) -> list[EnrichQualityFailure]:
+    """Run enrich-level executor-readiness checks for a phase."""
+    sense_suffix = f" after {phase_label}" if phase_label == "sense-check" else ""
+    failures: list[EnrichQualityFailure] = []
+
+    underspec = _underspecified_steps(plan)
+    if underspec:
+        total = sum(n for _, n, _ in underspec)
+        failures.append(
+            EnrichQualityFailure(
+                code="underspecified_steps",
+                message=f"{total} step(s) still lack detail or issue_refs{sense_suffix}.",
+            )
+        )
+
+    bad_paths = _steps_with_bad_paths(plan, repo_root)
+    if bad_paths:
+        total = sum(len(bp) for _, _, bp in bad_paths)
+        if phase_label == "sense-check":
+            message = f"{total} file path(s) don't exist on disk{sense_suffix}."
+        else:
+            message = f"{total} file path(s) in step details don't exist on disk."
+        failures.append(
+            EnrichQualityFailure(code="missing_paths", message=message)
+        )
+
+    untagged = _steps_without_effort(plan)
+    if untagged:
+        total = sum(n for _, n, _ in untagged)
+        if phase_label == "sense-check":
+            message = f"{total} step(s) have no effort tag{sense_suffix}."
+        else:
+            message = (
+                f"{total} step(s) have no effort tag "
+                "(trivial/small/medium/large)."
+            )
+        failures.append(
+            EnrichQualityFailure(code="missing_effort", message=message)
+        )
+
+    no_refs = _steps_missing_issue_refs(plan)
+    if no_refs:
+        total = sum(n for _, n, _ in no_refs)
+        if phase_label == "sense-check":
+            message = f"{total} step(s) have no issue_refs{sense_suffix}."
+        else:
+            message = f"{total} step(s) have no issue_refs for traceability."
+        failures.append(
+            EnrichQualityFailure(code="missing_issue_refs", message=message)
+        )
+
+    vague = _steps_with_vague_detail(plan, repo_root)
+    if vague:
+        if phase_label == "sense-check":
+            message = f"{len(vague)} step(s) have vague detail{sense_suffix}."
+        else:
+            message = (
+                f"{len(vague)} step(s) have vague detail (< 80 chars, no file paths). "
+                "Executor-ready means: file path + specific instruction."
+            )
+        failures.append(
+            EnrichQualityFailure(code="vague_detail", message=message)
+        )
+
+    return failures
 
 
 def validate_stage(
@@ -57,6 +138,19 @@ def validate_stage(
         report = stages["reflect"].get("report", "")
         if len(report) < 100:
             return False, f"Reflect report too short ({len(report)} chars, need 100+)."
+        missing = stages["reflect"].get("missing_issue_ids", [])
+        if missing:
+            return False, f"Reflect report leaves {len(missing)} issue(s) unaccounted for."
+        duplicates = stages["reflect"].get("duplicate_issue_ids", [])
+        if duplicates:
+            return False, f"Reflect report duplicates {len(duplicates)} issue(s)."
+        issue_count = int(stages["reflect"].get("issue_count", 0) or 0)
+        cited = stages["reflect"].get("cited_ids", [])
+        if issue_count > 0 and len(cited) < issue_count:
+            return False, (
+                f"Reflect report cites only {len(cited)}/{issue_count} issue(s). "
+                "A reflect blueprint must account for every open review issue."
+            )
         return True, ""
 
     if stage == "organize":
@@ -101,31 +195,9 @@ def validate_stage(
     if stage == "enrich":
         if "enrich" not in stages:
             return False, "Enrich stage not recorded."
-        underspec = _underspecified_steps(plan)
-        if underspec:
-            total = sum(n for _, n, _ in underspec)
-            return False, f"{total} step(s) still lack detail or issue_refs."
-        bad_paths = _steps_with_bad_paths(plan, repo_root)
-        if bad_paths:
-            total = sum(len(bp) for _, _, bp in bad_paths)
-            return False, f"{total} file path(s) in step details don't exist on disk."
-        # Effort tags are now blocking
-        untagged = _steps_without_effort(plan)
-        if untagged:
-            total = sum(n for _, n, _ in untagged)
-            return False, f"{total} step(s) have no effort tag (trivial/small/medium/large)."
-        # Issue refs are now blocking
-        no_refs = _steps_missing_issue_refs(plan)
-        if no_refs:
-            total = sum(n for _, n, _ in no_refs)
-            return False, f"{total} step(s) have no issue_refs for traceability."
-        # Vague detail is now blocking
-        vague = _steps_with_vague_detail(plan, repo_root)
-        if vague:
-            return False, (
-                f"{len(vague)} step(s) have vague detail (< 80 chars, no file paths). "
-                f"Executor-ready means: file path + specific instruction."
-            )
+        failures = run_enrich_quality_checks(plan, repo_root, phase_label="enrich")
+        if failures:
+            return False, failures[0].message
         return True, ""
 
     if stage == "sense-check":
@@ -134,26 +206,13 @@ def validate_stage(
         report = stages["sense-check"].get("report", "")
         if len(report) < 100:
             return False, f"Sense-check report too short ({len(report)} chars, need 100+)."
-        # Re-run all enrich-level checks (subagents may have introduced issues)
-        underspec = _underspecified_steps(plan)
-        if underspec:
-            total = sum(n for _, n, _ in underspec)
-            return False, f"{total} step(s) still lack detail or issue_refs after sense-check."
-        bad_paths = _steps_with_bad_paths(plan, repo_root)
-        if bad_paths:
-            total = sum(len(bp) for _, _, bp in bad_paths)
-            return False, f"{total} file path(s) don't exist on disk after sense-check."
-        untagged = _steps_without_effort(plan)
-        if untagged:
-            total = sum(n for _, n, _ in untagged)
-            return False, f"{total} step(s) have no effort tag after sense-check."
-        no_refs = _steps_missing_issue_refs(plan)
-        if no_refs:
-            total = sum(n for _, n, _ in no_refs)
-            return False, f"{total} step(s) have no issue_refs after sense-check."
-        vague = _steps_with_vague_detail(plan, repo_root)
-        if vague:
-            return False, f"{len(vague)} step(s) have vague detail after sense-check."
+        failures = run_enrich_quality_checks(
+            plan,
+            repo_root,
+            phase_label="sense-check",
+        )
+        if failures:
+            return False, failures[0].message
         return True, ""
 
     return False, f"Unknown stage: {stage}"
@@ -186,7 +245,7 @@ def validate_completion(
     if unclustered:
         return False, f"{len(unclustered)} review issue(s) not in any cluster."
 
-    # Quality warnings (non-blocking but logged)
+    # Quality advisories (non-blocking but surfaced to caller)
     clusters = plan.get("clusters", {})
     # Check dependency ordering
     for name, c in clusters.items():
@@ -196,16 +255,18 @@ def validate_completion(
 
     # Check for all-trivial clusters
     all_trivial_clusters = []
-    total_steps = 0
     for name, c in clusters.items():
         if c.get("auto") or not c.get("issue_ids"):
             continue
         steps = c.get("action_steps") or []
-        total_steps += len(steps)
         if steps and all(
             isinstance(s, dict) and s.get("effort") == "trivial" for s in steps
         ):
             all_trivial_clusters.append(name)
+
+    if all_trivial_clusters:
+        names = ", ".join(sorted(all_trivial_clusters))
+        return True, f"Advisory: all action steps are marked trivial in cluster(s): {names}"
 
     return True, ""
 
@@ -267,7 +328,9 @@ def build_auto_attestation(
 
 
 __all__ = [
+    "EnrichQualityFailure",
     "build_auto_attestation",
+    "run_enrich_quality_checks",
     "validate_completion",
     "validate_stage",
 ]

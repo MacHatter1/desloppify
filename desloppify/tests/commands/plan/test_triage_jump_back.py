@@ -38,6 +38,7 @@ def _plan_with_stages(*stage_names: str, confirmed: bool = False) -> dict:
             "report": (
                 "A sufficiently long report for the stage that meets minimum "
                 "length requirements and more text to ensure validation passes"
+                " — covers r1 r2 r3 r4 r5"
             ),
             "cited_ids": ["r1", "r2", "r3"],
             "timestamp": "2025-06-01T00:00:00Z",
@@ -112,7 +113,7 @@ class TestJumpBackReflect:
         monkeypatch.setattr(triage_mod, "save_plan", lambda p: None)
 
         new_report = (
-            "Revised strategy: after further analysis, the naming issues "
+            "Revised strategy for r1 r2 r3 r4 r5: after further analysis, the naming issues "
             "have a deeper root cause than initially thought. Need to "
             "restructure approach to address the root cause first."
         )
@@ -324,7 +325,7 @@ class TestStageProgressShowsNeedsConfirm:
 
         # Jump back to reflect with new report — clears organize confirmation
         new_report = (
-            "Revised strategy: after further analysis, the naming issues "
+            "Revised strategy for r1 r2 r3 r4 r5: after further analysis, the naming issues "
             "have a deeper root cause than initially thought. Need to "
             "restructure approach to address the root cause first."
         )

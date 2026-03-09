@@ -10,24 +10,31 @@ duplicating the phase construction logic.
 
 from __future__ import annotations
 
+from pathlib import Path
+from typing import TYPE_CHECKING
+
 from desloppify.base.output.terminal import log
 from desloppify.languages._framework.base.types import DetectorPhase
-from desloppify.state import make_issue
+from desloppify.state import Issue, make_issue
+
+if TYPE_CHECKING:
+    from desloppify.languages._framework.base.types import LangRuntimeContract
+    from desloppify.languages._framework.treesitter import TreeSitterLangSpec
 
 # ── Phase factories ────────────────────────────────────────
 
 
-def make_ast_smells_phase(spec) -> DetectorPhase:
+def make_ast_smells_phase(spec: TreeSitterLangSpec) -> DetectorPhase:
     """Create an AST smells phase: empty catches + unreachable code."""
 
-    def run(path, lang):
+    def run(path: Path, lang: LangRuntimeContract) -> tuple[list[Issue], dict[str, int]]:
         from desloppify.languages._framework.treesitter._smells import (
             detect_empty_catches,
             detect_unreachable_code,
         )
 
         file_list = lang.file_finder(path)
-        issues = []
+        issues: list[Issue] = []
         potentials: dict[str, int] = {}
 
         catches = detect_empty_catches(file_list, spec)
@@ -57,16 +64,16 @@ def make_ast_smells_phase(spec) -> DetectorPhase:
     return DetectorPhase("AST smells", run)
 
 
-def make_cohesion_phase(spec) -> DetectorPhase:
+def make_cohesion_phase(spec: TreeSitterLangSpec) -> DetectorPhase:
     """Create a responsibility cohesion phase."""
 
-    def run(path, lang):
+    def run(path: Path, lang: LangRuntimeContract) -> tuple[list[Issue], dict[str, int]]:
         from desloppify.languages._framework.treesitter._cohesion import (
             detect_responsibility_cohesion,
         )
 
         file_list = lang.file_finder(path)
-        issues = []
+        issues: list[Issue] = []
         potentials: dict[str, int] = {}
 
         entries, checked = detect_responsibility_cohesion(file_list, spec)
@@ -95,16 +102,16 @@ def make_cohesion_phase(spec) -> DetectorPhase:
     return DetectorPhase("Responsibility cohesion", run)
 
 
-def make_unused_imports_phase(spec) -> DetectorPhase:
+def make_unused_imports_phase(spec: TreeSitterLangSpec) -> DetectorPhase:
     """Create an unused imports phase."""
 
-    def run(path, lang):
+    def run(path: Path, lang: LangRuntimeContract) -> tuple[list[Issue], dict[str, int]]:
         from desloppify.languages._framework.treesitter._unused_imports import (
             detect_unused_imports,
         )
 
         file_list = lang.file_finder(path)
-        issues = []
+        issues: list[Issue] = []
         potentials: dict[str, int] = {}
 
         entries = detect_unused_imports(file_list, spec)

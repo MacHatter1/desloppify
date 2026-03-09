@@ -23,6 +23,7 @@ from .batch.orchestrator import FOLLOWUP_SCAN_TIMEOUT_SECONDS
 from .helpers import parse_dimensions
 from .packet.policy import coerce_review_batch_file_limit, redacted_review_config
 from .importing.cmd import do_import, do_validate_import
+from .importing.flags import ReviewImportConfig
 from .runner_packets import run_stamp, sha256_file, write_packet_snapshot
 from .runner_process import FollowupScanDeps, run_followup_scan
 from .runtime.setup import setup_lang_concrete
@@ -291,9 +292,13 @@ def _build_claude_launch_prompt(
         "3. Do not include provenance metadata (CLI injects canonical provenance).\n"
     )
 
+    from desloppify.engine.plan import load_policy, render_policy_block
+    policy_text = render_policy_block(load_policy())
+
     return join_non_empty_sections(
         header,
         *batch_sections,
+        policy_text,
         render_scoring_frame(),
         render_scan_evidence_note(),
         render_task_requirements(issues_cap=combined_cap, dim_set=all_dims),
@@ -521,13 +526,18 @@ def do_external_submit(
     canonical_path = session_dir / f"canonical_import_{stamp}.json"
     safe_write_text(canonical_path, json.dumps(canonical_payload, indent=2) + "\n")
 
+    _import_config = ReviewImportConfig(
+        config=config,
+        allow_partial=allow_partial,
+        attested_external=True,
+        manual_attest=str(session.get("attest", EXTERNAL_ATTEST_TEXT)),
+    )
+
     if dry_run:
         do_validate_import(
             str(canonical_path),
             lang,
-            allow_partial=allow_partial,
-            attested_external=True,
-            manual_attest=str(session.get("attest", EXTERNAL_ATTEST_TEXT)),
+            import_config=_import_config,
         )
         return
 
@@ -536,10 +546,7 @@ def do_external_submit(
         state,
         lang,
         state_file,
-        config=config,
-        allow_partial=allow_partial,
-        attested_external=True,
-        manual_attest=str(session.get("attest", EXTERNAL_ATTEST_TEXT)),
+        import_config=_import_config,
     )
 
     submitted_at = _iso_seconds(_utc_now())

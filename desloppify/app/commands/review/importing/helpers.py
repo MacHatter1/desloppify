@@ -138,29 +138,17 @@ def _normalize_import_payload_shape(
 def _parse_and_validate_import(
     import_file: str,
     *,
-    config: ImportLoadConfig | None = None,
-    lang_name: str | None = None,
-    allow_partial: bool = False,
-    trusted_assessment_source: bool = False,
-    trusted_assessment_label: str | None = None,
-    attested_external: bool = False,
-    manual_override: bool = False,
-    manual_attest: str | None = None,
+    config: ImportLoadConfig,
 ) -> tuple[ReviewImportPayload | None, list[str]]:
-    """Parse and validate a review import file (pure function).
+    """Load, parse, and validate a review import file.
+
+    This helper performs filesystem I/O by reading ``import_file`` before
+    normalizing and validating the payload.
 
     Returns ``(data, errors)`` where *data* is the normalized payload on
     success, or ``None`` when errors prevent import.
     """
-    options = config or ImportLoadConfig(
-        lang_name=lang_name,
-        allow_partial=allow_partial,
-        trusted_assessment_source=trusted_assessment_source,
-        trusted_assessment_label=trusted_assessment_label,
-        attested_external=attested_external,
-        manual_override=manual_override,
-        manual_attest=manual_attest,
-    )
+    options = config
     issues_path = Path(import_file)
     if not issues_path.exists():
         return None, [f"file not found: {import_file}"]
@@ -270,33 +258,15 @@ def _parse_and_validate_import(
 def load_import_issues_data(
     import_file: str,
     *,
-    config: ImportLoadConfig | None = None,
-    colorize_fn=None,
-    lang_name: str | None = None,
-    allow_partial: bool = False,
-    trusted_assessment_source: bool = False,
-    trusted_assessment_label: str | None = None,
-    attested_external: bool = False,
-    manual_override: bool = False,
-    manual_attest: str | None = None,
+    config: ImportLoadConfig,
 ) -> ReviewImportPayload:
     """Load and normalize review import payload to object format.
 
     Raises ``ImportPayloadLoadError`` when validation fails.
     """
-    _ = colorize_fn
-    options = config or ImportLoadConfig(
-        lang_name=lang_name,
-        allow_partial=allow_partial,
-        trusted_assessment_source=trusted_assessment_source,
-        trusted_assessment_label=trusted_assessment_label,
-        attested_external=attested_external,
-        manual_override=manual_override,
-        manual_attest=manual_attest,
-    )
     data, errors = _parse_and_validate_import(
         import_file,
-        config=options,
+        config=config,
     )
     if errors:
         raise ImportPayloadLoadError(errors)

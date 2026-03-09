@@ -21,6 +21,16 @@ _PLUGIN_IMPORT_ERRORS: tuple[type[Exception], ...] = (
 )
 
 
+def _register_module_entrypoint(module: object) -> None:
+    """Run a module-level register() entrypoint when provided."""
+    register_fn = getattr(module, "register", None)
+    if register_fn is None:
+        return
+    if not callable(register_fn):
+        raise TypeError("Language module register entrypoint must be callable")
+    register_fn()
+
+
 def raise_load_errors() -> None:
     errors = registry_state.get_load_errors()
     if not errors:
@@ -89,7 +99,8 @@ def load_all(*, force_reload: bool = False) -> None:
     for f in sorted(lang_dir.glob("plugin_*.py")):
         module_name = f".{f.stem}"
         try:
-            importlib.import_module(module_name, base_package)
+            module = importlib.import_module(module_name, base_package)
+            _register_module_entrypoint(module)
         except _PLUGIN_IMPORT_ERRORS as ex:
             logger.debug("Language plugin import failed for %s: %s", module_name, ex)
             failures[module_name] = ex
@@ -103,7 +114,8 @@ def load_all(*, force_reload: bool = False) -> None:
         ):
             module_name = f".{d.name}"
             try:
-                importlib.import_module(module_name, base_package)
+                module = importlib.import_module(module_name, base_package)
+                _register_module_entrypoint(module)
             except _PLUGIN_IMPORT_ERRORS as ex:
                 logger.debug(
                     "Language package import failed for %s: %s", module_name, ex
@@ -132,6 +144,7 @@ def load_all(*, force_reload: bool = False) -> None:
                         try:
                             mod = importlib.util.module_from_spec(spec)
                             spec.loader.exec_module(mod)
+                            _register_module_entrypoint(mod)
                         except _PLUGIN_IMPORT_ERRORS as ex:
                             logger.debug(
                                 "User plugin import failed for %s: %s", f.name, ex

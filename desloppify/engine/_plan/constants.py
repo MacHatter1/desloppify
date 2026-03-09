@@ -23,6 +23,7 @@ WORKFLOW_CREATE_PLAN_ID = "workflow::create-plan"
 WORKFLOW_SCORE_CHECKPOINT_ID = "workflow::score-checkpoint"
 WORKFLOW_IMPORT_SCORES_ID = "workflow::import-scores"
 WORKFLOW_COMMUNICATE_SCORE_ID = "workflow::communicate-score"
+WORKFLOW_DEFERRED_DISPOSITION_ID = "workflow::deferred-disposition"
 WORKFLOW_PREFIX = "workflow::"
 SYNTHETIC_PREFIXES = ("triage::", "workflow::", "subjective::")
 
@@ -33,11 +34,12 @@ class QueueSyncResult:
 
     injected: list[str] = field(default_factory=list)
     pruned: list[str] = field(default_factory=list)
+    resurfaced: list[str] = field(default_factory=list)
     deferred: bool = False
 
     @property
     def changes(self) -> int:
-        return len(self.injected) + len(self.pruned)
+        return len(self.injected) + len(self.pruned) + len(self.resurfaced)
 
 
 __all__ = [
@@ -49,6 +51,7 @@ __all__ = [
     "TRIAGE_PREFIX",
     "TRIAGE_STAGE_IDS",
     "WORKFLOW_COMMUNICATE_SCORE_ID",
+    "WORKFLOW_DEFERRED_DISPOSITION_ID",
     "WORKFLOW_CREATE_PLAN_ID",
     "WORKFLOW_IMPORT_SCORES_ID",
     "WORKFLOW_PREFIX",

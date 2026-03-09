@@ -10,6 +10,7 @@ Covers:
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from desloppify.engine._plan.subjective_policy import compute_subjective_visibility
@@ -322,7 +323,7 @@ class TestSubjectivePolicyScanPathAndPlan:
 
 class TestWorkflowRunScanItem:
     def test_run_scan_item_injected_when_queue_empty_and_plan_active(self):
-        """When queue is empty and plan_start_scores exist, workflow::run-scan appears."""
+        """When queue is empty and no post-flight scan is recorded, workflow::run-scan appears."""
         from desloppify.engine._work_queue.core import (
             QueueBuildOptions,
             build_work_queue,
@@ -381,8 +382,70 @@ class TestWorkflowRunScanItem:
         run_scan_items = [i for i in result["items"] if i.get("id") == "workflow::run-scan"]
         assert len(run_scan_items) == 0
 
-    def test_run_scan_not_injected_without_plan_start_scores(self):
-        """No workflow::run-scan when plan_start_scores is empty (no active cycle)."""
+    def test_deferred_disposition_blocks_run_scan_when_temporary_skips_exist(self):
+        """Deferred temporary skips must be resolved before post-flight scan begins."""
+        from desloppify.engine._work_queue.core import (
+            QueueBuildOptions,
+            build_work_queue,
+        )
+
+        state: dict = {
+            "issues": {
+                "f1": {
+                    "id": "f1", "detector": "unused", "status": "open",
+                    "file": "src/a.ts", "tier": 1, "confidence": "high",
+                    "summary": "test", "detail": {},
+                },
+            },
+            "scan_count": 5,
+        }
+        plan = {
+            "plan_start_scores": {"strict": 75.0},
+            "queue_order": [],
+            "skipped": {"f1": {"kind": "temporary"}},
+        }
+        result = build_work_queue(
+            state,
+            options=QueueBuildOptions(
+                status="open",
+                count=None,
+                plan=plan,
+            ),
+        )
+        ids = [item["id"] for item in result["items"]]
+        assert ids == ["workflow::deferred-disposition"]
+        deferred = result["items"][0]
+        assert deferred["kind"] == "workflow_action"
+        assert "0 clusters + 1 individual item" in deferred["summary"]
+        assert deferred["primary_command"] == 'desloppify plan unskip "*"'
+
+    def test_deferred_disposition_not_shown_for_permanent_skips(self):
+        """Permanent skips are decisions already; only run-scan should remain."""
+        from desloppify.engine._work_queue.core import (
+            QueueBuildOptions,
+            build_work_queue,
+        )
+
+        state: dict = {"issues": {}, "scan_count": 5}
+        plan = {
+            "plan_start_scores": {"strict": 75.0},
+            "queue_order": [],
+            "skipped": {"f1": {"kind": "permanent"}},
+        }
+        result = build_work_queue(
+            state,
+            options=QueueBuildOptions(
+                status="open",
+                count=None,
+                plan=plan,
+            ),
+        )
+        ids = [item["id"] for item in result["items"]]
+        assert "workflow::deferred-disposition" not in ids
+        assert ids == ["workflow::run-scan"]
+
+    def test_run_scan_injected_without_plan_start_scores(self):
+        """Post-flight scan still surfaces when score-cycle metadata is empty."""
         from desloppify.engine._work_queue.core import (
             QueueBuildOptions,
             build_work_queue,
@@ -402,7 +465,55 @@ class TestWorkflowRunScanItem:
                 plan=plan,
             ),
         )
+        assert result["items"][0]["id"] == "workflow::run-scan"
+
+    def test_run_scan_not_injected_after_postflight_scan_completed(self):
+        """Once the scan stage completes for this boundary, empty queue stays empty."""
+        from desloppify.engine._work_queue.core import (
+            QueueBuildOptions,
+            build_work_queue,
+        )
+
+        state: dict = {"issues": {}, "scan_count": 5}
+        plan = {
+            "plan_start_scores": {},
+            "queue_order": [],
+            "skipped": {},
+            "refresh_state": {"postflight_scan_completed_at_scan_count": 5},
+        }
+        result = build_work_queue(
+            state,
+            options=QueueBuildOptions(
+                status="open",
+                count=None,
+                plan=plan,
+            ),
+        )
         assert result["total"] == 0
+
+    def test_deferred_disposition_injected_without_plan_start_scores(self):
+        """Deferred temporary skips should still surface even without score-cycle metadata."""
+        from desloppify.engine._work_queue.core import (
+            QueueBuildOptions,
+            build_work_queue,
+        )
+
+        state: dict = {"issues": {}, "scan_count": 5}
+        plan = {
+            "plan_start_scores": {},
+            "queue_order": [],
+            "skipped": {"f1": {"kind": "temporary"}},
+        }
+        result = build_work_queue(
+            state,
+            options=QueueBuildOptions(
+                status="open",
+                count=None,
+                plan=plan,
+            ),
+        )
+        assert result["total"] == 1
+        assert result["items"][0]["id"] == "workflow::deferred-disposition"
 
     def test_run_scan_not_injected_without_plan(self):
         """No workflow::run-scan when no plan is provided."""
@@ -611,11 +722,14 @@ class TestQueueGuardScanPath:
             "new_ids": set(),
         }
         with (
-            patch("desloppify.app.commands.resolve.queue_guard.has_living_plan", return_value=True),
-            patch("desloppify.app.commands.resolve.queue_guard.load_plan", return_value={
-                "queue_order": ["f1"],
-                "skipped": {},
-            }),
+            patch(
+                "desloppify.app.commands.resolve.queue_guard.resolve_plan_load_status",
+                return_value=SimpleNamespace(
+                    degraded=False,
+                    error_kind=None,
+                    plan={"queue_order": ["f1"], "skipped": {}},
+                ),
+            ),
             patch(
                 "desloppify.app.commands.resolve.queue_guard.build_work_queue",
                 return_value=mock_result,

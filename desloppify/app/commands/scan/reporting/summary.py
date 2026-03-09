@@ -14,8 +14,8 @@ from desloppify.app.commands.status.strict_target import (
 )
 from desloppify.base.output.fallbacks import log_best_effort_failure
 from desloppify.base.output.terminal import colorize
+from desloppify.engine._concerns.generators import generate_concerns
 from desloppify.engine._state.schema import StateModel
-from desloppify.engine.concerns import generate_concerns
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +138,7 @@ def _unscored_subjective_callout(state: StateModel) -> None:
         import desloppify.engine._scoring.results.core as scoring_mod
         breakdown = scoring_mod.compute_health_breakdown(dim_scores)
         subj_pct = round(float(breakdown.get("subjective_fraction", 0.0) or 0.0) * 100)
-    except Exception:
+    except (ImportError, TypeError, ValueError):
         subj_pct = 0
 
     if unscored_subj == total_subj:

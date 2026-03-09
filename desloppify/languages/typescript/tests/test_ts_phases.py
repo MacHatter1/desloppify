@@ -52,10 +52,11 @@ def test_phase_structural_uses_lang_thresholds(monkeypatch, tmp_path: Path):
         "desloppify.engine.detectors.flat_dirs.detect_flat_dirs", lambda *a, **k: ([], 0)
     )
     monkeypatch.setattr(
-        "desloppify.languages.typescript.extractors.extract_ts_components", lambda _p: []
+        "desloppify.languages.typescript.extractors_components.extract_ts_components",
+        lambda _p: [],
     )
     monkeypatch.setattr(
-        "desloppify.languages.typescript.extractors.detect_passthrough_components",
+        "desloppify.languages.typescript.extractors_components.detect_passthrough_components",
         lambda _p: [],
     )
     monkeypatch.setattr(
@@ -116,7 +117,7 @@ def test_phase_coupling_passes_orphaned_options(monkeypatch, tmp_path: Path):
         ),
     )
     monkeypatch.setattr(
-        "desloppify.languages.typescript.phases._make_boundary_issues",
+        "desloppify.languages.typescript.phases_coupling.make_boundary_issues",
         lambda single_entries, path, graph, lang, shared_prefix, tools_prefix: ([], 0),
     )
     monkeypatch.setattr(

@@ -46,9 +46,14 @@ from desloppify.engine._plan.triage_playbook import (
     TRIAGE_CMD_OBSERVE,
     TRIAGE_CMD_ORGANIZE,
     TRIAGE_CMD_REFLECT,
+    TRIAGE_CMD_RUN_STAGES_CLAUDE,
+    TRIAGE_CMD_RUN_STAGES_CODEX,
     TRIAGE_CMD_SENSE_CHECK,
     TRIAGE_STAGE_DEPENDENCIES,
     TRIAGE_STAGE_LABELS,
+    triage_manual_stage_command,
+    triage_run_stages_command,
+    triage_runner_commands,
 )
 
 # --- operations -------------------------------------------------------------
@@ -77,6 +82,18 @@ from desloppify.engine._plan.operations_skip import (
     resurface_stale_skips,
     skip_items,
     unskip_items,
+)
+from desloppify.engine._plan.project_policy import (
+    add_rule,
+    load_policy,
+    remove_rule,
+    render_policy_block,
+    save_policy,
+)
+from desloppify.engine._plan.refresh_lifecycle import (
+    clear_postflight_scan_completion,
+    mark_postflight_scan_completed,
+    postflight_scan_pending,
 )
 from desloppify.engine._plan.skip_policy import (
     SKIP_KIND_LABELS,
@@ -115,7 +132,6 @@ from desloppify.engine._plan.reconcile import (
 
 # --- schema -----------------------------------------------------------------
 from desloppify.engine._plan.schema import (
-    ActionStep,
     EPIC_PREFIX,
     PLAN_VERSION,
     VALID_EPIC_DIRECTIONS,
@@ -161,6 +177,7 @@ from desloppify.engine._plan.sync_triage import (
 
 # --- sync: workflow ---------------------------------------------------------
 from desloppify.engine._plan.sync_workflow import (
+    ScoreSnapshot,
     sync_communicate_score_needed,
     sync_create_plan_needed,
     sync_import_scores_needed,
@@ -177,6 +194,7 @@ from desloppify.engine._plan._sync_context import (
     has_objective_backlog as _has_objective_backlog,
 )
 from desloppify.engine._plan.subjective_policy import compute_subjective_visibility
+from desloppify.engine._plan.plan_public_exports import PLAN_PUBLIC_EXPORTS
 
 
 def triage_phase_banner(plan: PlanModel, state: dict | None = None) -> str:
@@ -191,13 +209,17 @@ def triage_phase_banner(plan: PlanModel, state: dict | None = None) -> str:
     order = set(plan.get("queue_order", []))
     has_triage = any(sid in order for sid in TRIAGE_IDS)
     meta = plan.get("epic_triage_meta", {})
+    run_hint = (
+        f"Run: {TRIAGE_CMD_RUN_STAGES_CODEX} "
+        f"(or {TRIAGE_CMD_RUN_STAGES_CLAUDE})"
+    )
 
     if not has_triage:
         # No stages in queue — check for deferred recommendation
         if meta.get("triage_recommended"):
             return (
                 "TRIAGE RECOMMENDED — review issues changed since last triage. "
-                "Run: desloppify plan triage"
+                f"{run_hint}"
             )
         return ""
 
@@ -211,132 +233,12 @@ def triage_phase_banner(plan: PlanModel, state: dict | None = None) -> str:
     if completed:
         return (
             f"TRIAGE MODE ({len(completed)}/5 stages complete) — "
-            "complete all stages to exit. Run: desloppify plan triage"
+            f"complete all stages to exit. {run_hint}"
         )
     return (
         "TRIAGE MODE — review issues need analysis before fixing. "
-        "Run: desloppify plan triage"
+        f"{run_hint}"
     )
 
 
-__all__ = [
-    # schema
-    "EPIC_PREFIX",
-    "ExecutionLogEntry",
-    "PLAN_VERSION",
-    "Cluster",
-    "CommitRecord",
-    "ItemOverride",
-    "PlanModel",
-    "SkipEntry",
-    "SupersededEntry",
-    "VALID_EPIC_DIRECTIONS",
-    "VALID_SKIP_KINDS",
-    "USER_SKIP_KINDS",
-    "empty_plan",
-    "ensure_plan_defaults",
-    "triage_clusters",
-    "validate_plan",
-    # persistence
-    "PLAN_FILE",
-    "get_plan_file",
-    "has_living_plan",
-    "load_plan",
-    "plan_lock",
-    "plan_path_for_state",
-    "save_plan",
-    # operations
-    "add_to_cluster",
-    "annotate_issue",
-    "append_log_entry",
-    "clear_focus",
-    "create_cluster",
-    "delete_cluster",
-    "describe_issue",
-    "merge_clusters",
-    "move_cluster",
-    "move_items",
-    "purge_ids",
-    "remove_from_cluster",
-    "reset_plan",
-    "resurface_stale_skips",
-    "set_focus",
-    "skip_items",
-    "skip_kind_from_flags",
-    "skip_kind_requires_attestation",
-    "skip_kind_requires_note",
-    "skip_kind_state_status",
-    "SKIP_KIND_LABELS",
-    "unskip_items",
-    "annotation_counts",
-    "auto_complete_steps",
-    "format_steps",
-    "normalize_step",
-    "parse_steps_file",
-    "step_summary",
-    # reconcile
-    "ReconcileResult",
-    "ReviewImportSyncResult",
-    "reconcile_plan_after_scan",
-    "sync_plan_after_review_import",
-    # commit tracking
-    "add_uncommitted_issues",
-    "commit_tracking_summary",
-    "filter_issue_ids_by_pattern",
-    "find_commit_for_issue",
-    "generate_pr_body",
-    "get_uncommitted_issues",
-    "purge_uncommitted_ids",
-    "record_commit",
-    "suggest_commit_message",
-    # auto-clustering
-    "AUTO_PREFIX",
-    "auto_cluster_issues",
-    # constants + sync
-    "TRIAGE_IDS",
-    "TRIAGE_PREFIX",
-    "TRIAGE_STAGE_IDS",
-    "SYNTHETIC_PREFIXES",
-    "WORKFLOW_CREATE_PLAN_ID",
-    "WORKFLOW_SCORE_CHECKPOINT_ID",
-    "WORKFLOW_PREFIX",
-    "QueueSyncResult",
-    "compute_new_issue_ids",
-    "current_unscored_ids",
-    "is_triage_stale",
-    "sync_communicate_score_needed",
-    "sync_create_plan_needed",
-    "sync_import_scores_needed",
-    "sync_score_checkpoint_needed",
-    "sync_stale_dimensions",
-    "sync_triage_needed",
-    "sync_unscored_dimensions",
-    "open_review_ids",
-    "review_issue_snapshot_hash",
-    "_REVIEW_DETECTORS",
-    # epic triage
-    "TriageInput",
-    "build_triage_prompt",
-    "collect_triage_input",
-    "detect_recurring_patterns",
-    "extract_issue_citations",
-    "TRIAGE_STAGE_DEPENDENCIES",
-    "TRIAGE_STAGE_LABELS",
-    "TRIAGE_CMD_OBSERVE",
-    "TRIAGE_CMD_REFLECT",
-    "TRIAGE_CMD_ORGANIZE",
-    "TRIAGE_CMD_ENRICH",
-    "TRIAGE_CMD_SENSE_CHECK",
-    "TRIAGE_CMD_COMPLETE",
-    "TRIAGE_CMD_COMPLETE_VERBOSE",
-    "TRIAGE_CMD_CONFIRM_EXISTING",
-    "TRIAGE_CMD_CLUSTER_CREATE",
-    "TRIAGE_CMD_CLUSTER_ADD",
-    "TRIAGE_CMD_CLUSTER_ENRICH",
-    "TRIAGE_CMD_CLUSTER_ENRICH_COMPACT",
-    "TRIAGE_CMD_CLUSTER_STEPS",
-    # subjective policy
-    "compute_subjective_visibility",
-    # triage
-    "triage_phase_banner",
-]
+__all__ = PLAN_PUBLIC_EXPORTS
