@@ -145,87 +145,61 @@ def _resolve_import_load_config(
     )
 
 
-def _normalize_issues(payload: dict[str, Any], *, errors: list[str]) -> list[Any]:
-    """Normalize the required ``issues`` key to a list."""
-    issues = payload.get("issues")
-    if isinstance(issues, list):
-        return issues
-    errors.append("issues must be a JSON array")
-    return []
-
-
-def _normalize_optional_mapping(
-    payload: dict[str, Any],
-    *,
-    key: str,
-    errors: list[str],
-    type_error: str,
-) -> dict[str, Any]:
-    """Normalize optional object fields to dict values."""
-    value = payload.get(key)
-    if value is None:
-        return {}
-    if isinstance(value, dict):
-        return value
-    errors.append(type_error)
-    return {}
-
-
-def _normalize_reviewed_files(payload: dict[str, Any], *, errors: list[str]) -> list[str]:
-    """Normalize optional reviewed-files list."""
-    reviewed_files = payload.get("reviewed_files")
-    if reviewed_files is None:
-        return []
-    if not isinstance(reviewed_files, list):
-        errors.append("reviewed_files must be an array when provided")
-        return []
-    return [
-        str(item).strip()
-        for item in reviewed_files
-        if isinstance(item, str) and str(item).strip()
-    ]
-
-
-def _normalize_policy(payload: dict[str, Any]) -> dict[str, Any]:
-    """Normalize optional assessment policy blob."""
-    policy = payload.get(ASSESSMENT_POLICY_KEY)
-    if isinstance(policy, dict):
-        return policy
-    return AssessmentImportPolicyModel().to_dict()
-
-
 def _normalize_import_payload_shape(
     payload: dict[str, Any],
 ) -> tuple[ReviewImportPayload | None, list[str]]:
     """Normalize payload into required-key contract with strict type checks."""
     errors: list[str] = []
-    issues = _normalize_issues(payload, errors=errors)
-    assessments = _normalize_optional_mapping(
-        payload,
-        key="assessments",
-        errors=errors,
-        type_error="assessments must be an object when provided",
+    issues = payload.get("issues")
+    if not isinstance(issues, list):
+        errors.append("issues must be a JSON array")
+        issues = []
+
+    assessments = payload.get("assessments")
+    if assessments is None:
+        assessments = {}
+    elif not isinstance(assessments, dict):
+        errors.append("assessments must be an object when provided")
+        assessments = {}
+
+    reviewed_files = payload.get("reviewed_files")
+    normalized_reviewed_files: list[str] = []
+    if reviewed_files is None:
+        normalized_reviewed_files = []
+    elif isinstance(reviewed_files, list):
+        normalized_reviewed_files = [
+            str(item).strip()
+            for item in reviewed_files
+            if isinstance(item, str) and str(item).strip()
+        ]
+    else:
+        errors.append("reviewed_files must be an array when provided")
+
+    review_scope = payload.get("review_scope")
+    if review_scope is None:
+        review_scope = {}
+    elif not isinstance(review_scope, dict):
+        errors.append("review_scope must be an object when provided")
+        review_scope = {}
+
+    provenance = payload.get("provenance")
+    if provenance is None:
+        provenance = {}
+    elif not isinstance(provenance, dict):
+        errors.append("provenance must be an object when provided")
+        provenance = {}
+
+    dimension_notes = payload.get("dimension_notes")
+    if dimension_notes is None:
+        dimension_notes = {}
+    elif not isinstance(dimension_notes, dict):
+        errors.append("dimension_notes must be an object when provided")
+        dimension_notes = {}
+
+    policy = payload.get(ASSESSMENT_POLICY_KEY)
+    normalized_policy = (
+        policy if isinstance(policy, dict) else AssessmentImportPolicyModel().to_dict()
     )
-    normalized_reviewed_files = _normalize_reviewed_files(payload, errors=errors)
-    review_scope = _normalize_optional_mapping(
-        payload,
-        key="review_scope",
-        errors=errors,
-        type_error="review_scope must be an object when provided",
-    )
-    provenance = _normalize_optional_mapping(
-        payload,
-        key="provenance",
-        errors=errors,
-        type_error="provenance must be an object when provided",
-    )
-    dimension_notes = _normalize_optional_mapping(
-        payload,
-        key="dimension_notes",
-        errors=errors,
-        type_error="dimension_notes must be an object when provided",
-    )
-    normalized_policy = _normalize_policy(payload)
     if errors:
         return None, errors
     return (
@@ -242,61 +216,64 @@ def _normalize_import_payload_shape(
     )
 
 
-def _load_raw_import_payload(import_file: str) -> tuple[Any | None, list[str]]:
-    """Read raw JSON payload from disk."""
+def _parse_and_validate_import(
+    import_file: str,
+    *,
+    config: ImportLoadConfig,
+) -> tuple[ReviewImportPayload | None, list[str]]:
+    """Load, parse, and validate a review import file.
+
+    This helper performs filesystem I/O by reading ``import_file`` before
+    normalizing and validating the payload.
+
+    Returns ``(data, errors)`` where *data* is the normalized payload on
+    success, or ``None`` when errors prevent import.
+    """
+    options = config
     issues_path = Path(import_file)
     if not issues_path.exists():
         return None, [f"file not found: {import_file}"]
     try:
-        return json.loads(issues_path.read_text()), []
+        issues_data = json.loads(issues_path.read_text())
     except (json.JSONDecodeError, OSError) as exc:
         return None, [f"error reading issues: {exc}"]
 
+    if isinstance(issues_data, list):
+        issues_data = {"issues": issues_data}
 
-def _normalize_raw_import_payload(
-    raw_payload: Any,
-) -> tuple[dict[str, Any] | None, list[str]]:
-    """Normalize top-level import document shape."""
-    payload = raw_payload
-    if isinstance(payload, list):
-        payload = {"issues": payload}
-    if not isinstance(payload, dict):
+    if not isinstance(issues_data, dict):
         return None, ["issues file must contain a JSON array or object"]
-    if "issues" not in payload:
+
+    if "issues" not in issues_data:
         return None, ["issues object must contain a 'issues' key"]
-    return payload, []
+    normalized_issues_data, shape_errors = _normalize_import_payload_shape(
+        issues_data
+    )
+    if shape_errors:
+        return None, shape_errors
+    if normalized_issues_data is None:
+        raise ValueError(
+            "normalized import payload missing after successful shape validation"
+        )
 
-
-def _validate_assessment_flag_combo(
-    *,
-    options: ImportLoadConfig,
-    override_enabled: bool,
-) -> str | None:
-    """Return policy-flag validation error, if any."""
+    override_enabled, override_attest = resolve_override_context(
+        manual_override=options.manual_override,
+        manual_attest=options.manual_attest,
+    )
     if options.attested_external and override_enabled:
-        return "--attested-external cannot be combined with --manual-override"
+        return None, [
+            "--attested-external cannot be combined with --manual-override"
+        ]
     if options.attested_external and options.allow_partial:
-        return (
+        return None, [
             "--attested-external cannot be combined with --allow-partial; "
             "attested score imports require fully valid issues payloads"
-        )
+        ]
     if override_enabled and options.allow_partial:
-        return (
+        return None, [
             "--manual-override cannot be combined with --allow-partial; "
             "manual score imports require fully valid issues payloads"
-        )
-    return None
-
-
-def _apply_assessment_policy_checked(
-    *,
-    normalized_issues_data: ReviewImportPayload,
-    import_file: str,
-    options: ImportLoadConfig,
-    override_enabled: bool,
-    override_attest: str | None,
-) -> tuple[ReviewImportPayload | None, list[str]]:
-    """Apply assessment trust policy and propagate policy validation failures."""
+        ]
     issues_data, policy_errors = apply_assessment_import_policy(
         normalized_issues_data,
         import_file=import_file,
@@ -313,218 +290,50 @@ def _apply_assessment_policy_checked(
         raise ValueError(
             "assessment import policy returned no payload without reporting errors"
         )
-    return issues_data, []
 
-
-def _manual_override_attest_errors(
-    *,
-    override_enabled: bool,
-    override_attest: str | None,
-) -> list[str]:
-    """Enforce attestation requirement when manual override is active."""
-    if not override_enabled:
-        return []
-    if isinstance(override_attest, str) and override_attest.strip():
-        return []
-    return ["--manual-override requires --attest"]
-
-
-def _validate_assessment_feedback_requirements(
-    *,
-    issues_data: ReviewImportPayload,
-    override_enabled: bool,
-    override_attest: str | None,
-) -> list[str]:
-    """Validate assessment-to-feedback consistency constraints."""
     missing_feedback, missing_low_score_issues = _validate_assessment_feedback(
         issues_data
     )
     if missing_low_score_issues:
-        attest_errors = _manual_override_attest_errors(
-            override_enabled=override_enabled,
-            override_attest=override_attest,
-        )
-        if attest_errors:
-            return attest_errors
         if override_enabled:
-            return []
-        return [
+            if not isinstance(override_attest, str) or not override_attest.strip():
+                return None, ["--manual-override requires --attest"]
+            return issues_data, []
+        return None, [
             f"assessments below {LOW_SCORE_ISSUE_THRESHOLD:.1f} must include at "
             "least one issue for that same dimension with a concrete suggestion. "
             f"Missing: {', '.join(missing_low_score_issues)}"
         ]
+
     if missing_feedback:
-        attest_errors = _manual_override_attest_errors(
-            override_enabled=override_enabled,
-            override_attest=override_attest,
-        )
-        if attest_errors:
-            return attest_errors
         if override_enabled:
-            return []
-        return [
+            if not isinstance(override_attest, str) or not override_attest.strip():
+                return None, ["--manual-override requires --attest"]
+            return issues_data, []
+        return None, [
             f"assessments below {ASSESSMENT_FEEDBACK_THRESHOLD:.1f} must include explicit feedback "
             "(issue with same dimension and non-empty suggestion, or "
             "dimension_notes evidence for that dimension). "
             f"Missing: {', '.join(missing_feedback)}"
         ]
-    return []
 
-
-def _schema_validation_errors(
-    *,
-    issues_data: ReviewImportPayload,
-    lang_name: str | None,
-    allow_partial: bool,
-) -> list[str]:
-    """Return schema validation errors visible to users."""
     schema_errors = _validate_holistic_issues_schema(
         issues_data,
-        lang_name=lang_name,
-    )
-    if not schema_errors or allow_partial:
-        return []
-    visible_errors = schema_errors[:10]
-    remaining = len(schema_errors) - len(visible_errors)
-    errors = [
-        "issues schema validation failed for holistic import. "
-        "Fix payload or rerun with --allow-partial to continue."
-    ]
-    errors.extend(visible_errors)
-    if remaining > 0:
-        errors.append(f"... {remaining} additional schema error(s) omitted")
-    return errors
-
-
-def _parse_and_validate_import(
-    import_file: str,
-    *,
-    config: ImportLoadConfig,
-) -> tuple[ReviewImportPayload | None, list[str]]:
-    """Load, parse, and validate a review import file."""
-    options = config
-    raw_payload, read_errors = _load_raw_import_payload(import_file)
-    if read_errors:
-        return None, read_errors
-    normalized_payload, payload_errors = _normalize_raw_import_payload(raw_payload)
-    if payload_errors:
-        return None, payload_errors
-    if normalized_payload is None:
-        raise ValueError("import payload normalization failed without validation errors")
-
-    normalized_issues_data, shape_errors = _normalize_import_payload_shape(
-        normalized_payload
-    )
-    if shape_errors:
-        return None, shape_errors
-    if normalized_issues_data is None:
-        raise ValueError(
-            "normalized import payload missing after successful shape validation"
-        )
-
-    override_enabled, override_attest = resolve_override_context(
-        manual_override=options.manual_override,
-        manual_attest=options.manual_attest,
-    )
-    flag_error = _validate_assessment_flag_combo(
-        options=options,
-        override_enabled=override_enabled,
-    )
-    if flag_error:
-        return None, [flag_error]
-
-    issues_data, policy_errors = _apply_assessment_policy_checked(
-        normalized_issues_data=normalized_issues_data,
-        import_file=import_file,
-        options=options,
-        override_enabled=override_enabled,
-        override_attest=override_attest,
-    )
-    if policy_errors:
-        return None, policy_errors
-    if issues_data is None:
-        raise ValueError(
-            "assessment import policy returned no payload without reporting errors"
-        )
-
-    feedback_errors = _validate_assessment_feedback_requirements(
-        issues_data=issues_data,
-        override_enabled=override_enabled,
-        override_attest=override_attest,
-    )
-    if feedback_errors:
-        return None, feedback_errors
-
-    schema_errors = _schema_validation_errors(
-        issues_data=issues_data,
         lang_name=options.lang_name,
-        allow_partial=options.allow_partial,
     )
-    if schema_errors:
-        return None, schema_errors
+    if schema_errors and not options.allow_partial:
+        visible_errors = schema_errors[:10]
+        remaining = len(schema_errors) - len(visible_errors)
+        errors = [
+            "issues schema validation failed for holistic import. "
+            "Fix payload or rerun with --allow-partial to continue."
+        ]
+        errors.extend(visible_errors)
+        if remaining > 0:
+            errors.append(f"... {remaining} additional schema error(s) omitted")
+        return None, errors
+
     return issues_data, []
-
-
-def _legacy_bool(value: object, *, default: bool = False) -> bool:
-    if value is None:
-        return default
-    return bool(value)
-
-
-def _legacy_text(value: object) -> str | None:
-    if value is None:
-        return None
-    return str(value)
-
-
-@dataclass(frozen=True)
-class LegacyImportLoadArgs:
-    lang_name: str | None
-    allow_partial: bool
-    trusted_assessment_source: bool
-    trusted_assessment_label: str | None
-    attested_external: bool
-    manual_override: bool
-    manual_attest: str | None
-
-
-def _coerce_legacy_import_load_kwargs(
-    legacy_kwargs: dict[str, object],
-) -> LegacyImportLoadArgs:
-    """Validate and normalize legacy keyword args for import load config."""
-    allowed_keys = {
-        "lang_name",
-        "allow_partial",
-        "trusted_assessment_source",
-        "trusted_assessment_label",
-        "attested_external",
-        "manual_override",
-        "manual_attest",
-    }
-    unknown = sorted(set(legacy_kwargs) - allowed_keys)
-    if unknown:
-        joined = ", ".join(unknown)
-        raise TypeError(f"Unexpected keyword argument(s): {joined}")
-    return LegacyImportLoadArgs(
-        lang_name=_legacy_text(legacy_kwargs.get("lang_name")),
-        allow_partial=_legacy_bool(legacy_kwargs.get("allow_partial"), default=False),
-        trusted_assessment_source=_legacy_bool(
-            legacy_kwargs.get("trusted_assessment_source"),
-            default=False,
-        ),
-        trusted_assessment_label=_legacy_text(
-            legacy_kwargs.get("trusted_assessment_label")
-        ),
-        attested_external=_legacy_bool(
-            legacy_kwargs.get("attested_external"),
-            default=False,
-        ),
-        manual_override=_legacy_bool(
-            legacy_kwargs.get("manual_override"),
-            default=False,
-        ),
-        manual_attest=_legacy_text(legacy_kwargs.get("manual_attest")),
-    )
 
 
 def load_import_issues_data(
@@ -532,23 +341,28 @@ def load_import_issues_data(
     *,
     config: ImportLoadConfig | None = None,
     colorize_fn=None,
-    **legacy_kwargs,
+    lang_name: str | None = None,
+    allow_partial: bool = False,
+    trusted_assessment_source: bool = False,
+    trusted_assessment_label: str | None = None,
+    attested_external: bool = False,
+    manual_override: bool = False,
+    manual_attest: str | None = None,
 ) -> ReviewImportPayload:
     """Load and normalize review import payload to object format.
 
     Raises ``ImportPayloadLoadError`` when validation fails.
     """
     _ = colorize_fn
-    legacy_values = _coerce_legacy_import_load_kwargs(legacy_kwargs)
     options, conflict_errors = _resolve_import_load_config(
         config=config,
-        lang_name=legacy_values.lang_name,
-        allow_partial=legacy_values.allow_partial,
-        trusted_assessment_source=legacy_values.trusted_assessment_source,
-        trusted_assessment_label=legacy_values.trusted_assessment_label,
-        attested_external=legacy_values.attested_external,
-        manual_override=legacy_values.manual_override,
-        manual_attest=legacy_values.manual_attest,
+        lang_name=lang_name,
+        allow_partial=allow_partial,
+        trusted_assessment_source=trusted_assessment_source,
+        trusted_assessment_label=trusted_assessment_label,
+        attested_external=attested_external,
+        manual_override=manual_override,
+        manual_attest=manual_attest,
     )
     if conflict_errors:
         raise ImportPayloadLoadError(conflict_errors)
@@ -564,115 +378,8 @@ def load_import_issues_data(
     if data is None:
         raise ValueError(
             "import payload missing after parse completed without validation errors"
-    )
+        )
     return data
-
-
-def _print_trusted_notice(*, policy_model: AssessmentImportPolicyModel, colorize_fn) -> None:
-    packet_path = policy_model.provenance.packet_path.strip() or None
-    detail = f" · blind packet {packet_path}" if packet_path else ""
-    print(
-        colorize_fn(
-            f"  Assessment provenance: trusted blind batch artifact{detail}.",
-            "dim",
-        )
-    )
-
-
-def _print_trusted_internal_notice(
-    *,
-    policy_model: AssessmentImportPolicyModel,
-    colorize_fn,
-) -> None:
-    count = int(policy_model.assessment_count or 0)
-    reason_text = policy_model.reason.strip()
-    suffix = f" ({reason_text})" if reason_text else ""
-    print(
-        colorize_fn(
-            f"  Assessment updates applied: {count} dimension(s){suffix}.",
-            "dim",
-        )
-    )
-
-
-def _print_manual_override_notice(
-    *,
-    policy_model: AssessmentImportPolicyModel,
-    reason: str,
-    colorize_fn,
-) -> None:
-    count = int(policy_model.assessment_count or 0)
-    print(
-        colorize_fn(
-            f"  WARNING: applying {count} assessment update(s) via manual override from untrusted provenance.",
-            "yellow",
-        )
-    )
-    if reason:
-        print(colorize_fn(f"  Reason: {reason}", "dim"))
-
-
-def _print_attested_external_notice(
-    *,
-    policy_model: AssessmentImportPolicyModel,
-    reason: str,
-    colorize_fn,
-) -> None:
-    count = int(policy_model.assessment_count or 0)
-    print(
-        colorize_fn(
-            f"  Assessment updates applied via attested external blind review: {count} dimension(s).",
-            "dim",
-        )
-    )
-    if reason:
-        print(colorize_fn(f"  Reason: {reason}", "dim"))
-
-
-def _print_issues_only_notice(
-    *,
-    policy_model: AssessmentImportPolicyModel,
-    reason: str,
-    import_file: str,
-    colorize_fn,
-) -> None:
-    count = int(policy_model.assessment_count or 0)
-    print(
-        colorize_fn(
-            "  WARNING: untrusted assessment source detected. "
-            f"Imported issues only; skipped {count} assessment score update(s).",
-            "yellow",
-        )
-    )
-    if reason:
-        print(colorize_fn(f"  Reason: {reason}", "dim"))
-    print(
-        colorize_fn(
-            "  Assessment scores in state were left unchanged.",
-            "dim",
-        )
-    )
-    print(
-        colorize_fn(
-            "  Happy path: use `desloppify review --run-batches --parallel --scan-after-import`.",
-            "dim",
-        )
-    )
-    print(
-        colorize_fn(
-            "  If you intentionally want manual assessment import, rerun with "
-            f"`desloppify review --import {import_file} --manual-override --attest \"<why this is justified>\"`.",
-            "dim",
-        )
-    )
-    print(
-        colorize_fn(
-            "  Claude cloud path for durable scores: "
-            f"`desloppify review --import {import_file} --attested-external "
-            f"--attest \"{ATTESTED_EXTERNAL_ATTEST_EXAMPLE}\"`",
-            "dim",
-        )
-    )
 
 
 def print_assessment_policy_notice(
@@ -687,36 +394,92 @@ def print_assessment_policy_notice(
         return
     mode = policy_model.mode.strip().lower()
     reason = policy_model.reason.strip()
-    handlers = {
-        "trusted": lambda: _print_trusted_notice(
-            policy_model=policy_model,
-            colorize_fn=colorize_fn,
-        ),
-        "trusted_internal": lambda: _print_trusted_internal_notice(
-            policy_model=policy_model,
-            colorize_fn=colorize_fn,
-        ),
-        "manual_override": lambda: _print_manual_override_notice(
-            policy_model=policy_model,
-            reason=reason,
-            colorize_fn=colorize_fn,
-        ),
-        "attested_external": lambda: _print_attested_external_notice(
-            policy_model=policy_model,
-            reason=reason,
-            colorize_fn=colorize_fn,
-        ),
-        "issues_only": lambda: _print_issues_only_notice(
-            policy_model=policy_model,
-            reason=reason,
-            import_file=import_file,
-            colorize_fn=colorize_fn,
-        ),
-    }
-    handler = handlers.get(mode)
-    if handler is None:
+
+    if mode == "trusted":
+        packet_path = policy_model.provenance.packet_path.strip() or None
+        detail = f" · blind packet {packet_path}" if packet_path else ""
+        print(
+            colorize_fn(
+                f"  Assessment provenance: trusted blind batch artifact{detail}.",
+                "dim",
+            )
+        )
         return
-    handler()
+
+    if mode == "trusted_internal":
+        count = int(policy_model.assessment_count or 0)
+        reason_text = policy_model.reason.strip()
+        suffix = f" ({reason_text})" if reason_text else ""
+        print(
+            colorize_fn(
+                f"  Assessment updates applied: {count} dimension(s){suffix}.",
+                "dim",
+            )
+        )
+        return
+
+    if mode == "manual_override":
+        count = int(policy_model.assessment_count or 0)
+        print(
+            colorize_fn(
+                f"  WARNING: applying {count} assessment update(s) via manual override from untrusted provenance.",
+                "yellow",
+            )
+        )
+        if reason:
+            print(colorize_fn(f"  Reason: {reason}", "dim"))
+        return
+
+    if mode == "attested_external":
+        count = int(policy_model.assessment_count or 0)
+        print(
+            colorize_fn(
+                f"  Assessment updates applied via attested external blind review: {count} dimension(s).",
+                "dim",
+            )
+        )
+        if reason:
+            print(colorize_fn(f"  Reason: {reason}", "dim"))
+        return
+
+    if mode == "issues_only":
+        count = int(policy_model.assessment_count or 0)
+        print(
+            colorize_fn(
+                "  WARNING: untrusted assessment source detected. "
+                f"Imported issues only; skipped {count} assessment score update(s).",
+                "yellow",
+            )
+        )
+        if reason:
+            print(colorize_fn(f"  Reason: {reason}", "dim"))
+        print(
+            colorize_fn(
+                "  Assessment scores in state were left unchanged.",
+                "dim",
+            )
+        )
+        print(
+            colorize_fn(
+                "  Happy path: use `desloppify review --run-batches --parallel --scan-after-import`.",
+                "dim",
+            )
+        )
+        print(
+            colorize_fn(
+                "  If you intentionally want manual assessment import, rerun with "
+                f"`desloppify review --import {import_file} --manual-override --attest \"<why this is justified>\"`.",
+                "dim",
+            )
+        )
+        print(
+            colorize_fn(
+                "  Claude cloud path for durable scores: "
+                f"`desloppify review --import {import_file} --attested-external "
+                f"--attest \"{ATTESTED_EXTERNAL_ATTEST_EXAMPLE}\"`",
+                "dim",
+            )
+        )
 
 
 __all__ = [

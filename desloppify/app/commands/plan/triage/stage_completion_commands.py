@@ -39,99 +39,6 @@ from ._stage_validation import (
 )
 
 
-def _require_and_auto_confirm_stage_for_completion(
-    *,
-    plan: dict,
-    meta: dict,
-    stages: dict,
-    attestation: str | None,
-    save_plan_fn,
-    require_stage_fn,
-    auto_confirm_stage_fn,
-) -> bool:
-    """Run completion stage gate and fold-confirm path for one stage."""
-    if not require_stage_fn(
-        plan=plan,
-        meta=meta,
-        stages=stages,
-    ):
-        return False
-    return auto_confirm_stage_fn(
-        plan=plan,
-        stages=stages,
-        attestation=attestation,
-        save_plan_fn=save_plan_fn,
-    )
-
-
-def _all_completion_stages_ready(
-    *,
-    plan: dict,
-    meta: dict,
-    stages: dict,
-    attestation: str | None,
-    save_plan_fn,
-) -> bool:
-    """Ensure organize/enrich/sense-check stages are gated and confirmed."""
-    stage_gate_pairs = [
-        (
-            _require_organize_stage_for_complete,
-            _auto_confirm_organize_for_complete,
-        ),
-        (
-            _require_enrich_stage_for_complete,
-            _auto_confirm_enrich_for_complete,
-        ),
-        (
-            _require_sense_check_stage_for_complete,
-            _auto_confirm_sense_check_for_complete,
-        ),
-    ]
-    for require_fn, auto_confirm_fn in stage_gate_pairs:
-        if not _require_and_auto_confirm_stage_for_completion(
-            plan=plan,
-            meta=meta,
-            stages=stages,
-            attestation=attestation,
-            save_plan_fn=save_plan_fn,
-            require_stage_fn=require_fn,
-            auto_confirm_stage_fn=auto_confirm_fn,
-        ):
-            return False
-    return True
-
-
-def _warn_or_block_on_unorganized_coverage(*, organized: int, total: int) -> bool:
-    """Render coverage guidance; return False when completion must block."""
-    if total <= 0:
-        return True
-    if organized == 0:
-        print(colorize("  Cannot complete: no issues have been organized into clusters.", "red"))
-        print(colorize(f"  {total} issues are waiting.", "dim"))
-        return False
-    if organized < total:
-        remaining = total - organized
-        print(
-            colorize(
-                f"  Warning: {remaining}/{total} issues are not yet in any cluster.",
-                "yellow",
-            )
-        )
-    return True
-
-
-def _print_triage_revision_guidance() -> None:
-    """Render reminder for revisiting earlier triage stages."""
-    print()
-    print(
-        colorize(
-            "  To revise an earlier stage: desloppify plan triage --stage <observe|reflect|organize|enrich|sense-check>",
-            "dim",
-        )
-    )
-    print(colorize("  Pass --report to update, or omit to keep existing analysis.", "dim"))
-
-
 def _cmd_triage_complete(
     args: argparse.Namespace,
     *,
@@ -153,9 +60,51 @@ def _cmd_triage_complete(
     state = resolved_services.command_runtime(args).state
     review_ids = open_review_ids_from_state(state)
 
-    if not _all_completion_stages_ready(
+    # Require organize stage confirmed
+    if not _require_organize_stage_for_complete(
         plan=plan,
         meta=meta,
+        stages=stages,
+    ):
+        return
+
+    # Fold-confirm: auto-confirm organize if attestation provided
+    if not _auto_confirm_organize_for_complete(
+        plan=plan,
+        stages=stages,
+        attestation=attestation,
+        save_plan_fn=resolved_services.save_plan,
+    ):
+        return
+
+    # Require enrich stage confirmed
+    if not _require_enrich_stage_for_complete(
+        plan=plan,
+        meta=meta,
+        stages=stages,
+    ):
+        return
+
+    # Fold-confirm: auto-confirm enrich if attestation provided
+    if not _auto_confirm_enrich_for_complete(
+        plan=plan,
+        stages=stages,
+        attestation=attestation,
+        save_plan_fn=resolved_services.save_plan,
+    ):
+        return
+
+    # Require sense-check stage confirmed
+    if not _require_sense_check_stage_for_complete(
+        plan=plan,
+        meta=meta,
+        stages=stages,
+    ):
+        return
+
+    # Fold-confirm: auto-confirm sense-check if attestation provided
+    if not _auto_confirm_sense_check_for_complete(
+        plan=plan,
         stages=stages,
         attestation=attestation,
         save_plan_fn=resolved_services.save_plan,
@@ -170,8 +119,19 @@ def _cmd_triage_complete(
     # Verify cluster coverage
     organized, total, _clusters = triage_coverage(plan, open_review_ids=review_ids)
 
-    if not _warn_or_block_on_unorganized_coverage(organized=organized, total=total):
+    if total > 0 and organized == 0:
+        print(colorize("  Cannot complete: no issues have been organized into clusters.", "red"))
+        print(colorize(f"  {total} issues are waiting.", "dim"))
         return
+
+    if total > 0 and organized < total:
+        remaining = total - organized
+        print(
+            colorize(
+                f"  Warning: {remaining}/{total} issues are not yet in any cluster.",
+                "yellow",
+            )
+        )
 
     strategy = _resolve_completion_strategy(strategy, meta=meta)
     if strategy is None:
@@ -184,7 +144,15 @@ def _cmd_triage_complete(
 
     organized, total, _ = triage_coverage(plan, open_review_ids=review_ids)
 
-    _print_triage_revision_guidance()
+    # Jump-back guidance before committing
+    print()
+    print(
+        colorize(
+            "  To revise an earlier stage: desloppify plan triage --stage <observe|reflect|organize|enrich|sense-check>",
+            "dim",
+        )
+    )
+    print(colorize("  Pass --report to update, or omit to keep existing analysis.", "dim"))
 
     resolved_services.append_log_entry(
         plan,

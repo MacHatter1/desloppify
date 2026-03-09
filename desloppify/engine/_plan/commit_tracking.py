@@ -3,10 +3,48 @@
 from __future__ import annotations
 
 import fnmatch
+from dataclasses import dataclass
 from typing import Any
 
 from desloppify.engine._plan.schema import CommitRecord
 from desloppify.engine._state.schema import StateModel, utc_now
+
+
+@dataclass(frozen=True)
+class CommitRecordOptions:
+    """Optional fields attached to a commit record."""
+
+    branch: str | None = None
+    issue_ids: list[str] | None = None
+    note: str | None = None
+    cluster_name: str | None = None
+
+
+def _commit_record_options(
+    *,
+    options: CommitRecordOptions | None,
+    legacy_kwargs: dict[str, object],
+) -> CommitRecordOptions:
+    """Resolve commit record options from modern or legacy kwargs."""
+    allowed_keys = {"branch", "issue_ids", "note", "cluster_name"}
+    unknown = sorted(set(legacy_kwargs) - allowed_keys)
+    if unknown:
+        joined = ", ".join(unknown)
+        raise TypeError(f"Unexpected keyword argument(s): {joined}")
+    if options is not None and legacy_kwargs:
+        raise TypeError("Pass either options=... or legacy keyword args, not both")
+    if options is not None:
+        return options
+    branch = legacy_kwargs.get("branch")
+    issue_ids = legacy_kwargs.get("issue_ids")
+    note = legacy_kwargs.get("note")
+    cluster_name = legacy_kwargs.get("cluster_name")
+    return CommitRecordOptions(
+        branch=None if branch is None else str(branch),
+        issue_ids=list(issue_ids) if isinstance(issue_ids, list) else None,
+        note=None if note is None else str(note),
+        cluster_name=None if cluster_name is None else str(cluster_name),
+    )
 
 
 def add_uncommitted_issues(plan: dict[str, Any], issue_ids: list[str]) -> int:
@@ -39,29 +77,32 @@ def get_uncommitted_issues(plan: dict[str, Any]) -> list[str]:
 def record_commit(
     plan: dict[str, Any],
     sha: str,
-    branch: str | None = None,
-    issue_ids: list[str] | None = None,
-    note: str | None = None,
-    cluster_name: str | None = None,
+    *,
+    options: CommitRecordOptions | None = None,
+    **legacy_kwargs,
 ) -> CommitRecord:
     """Move uncommitted issues into a new CommitRecord.
 
     If *issue_ids* is None, all uncommitted issues are recorded.
     """
+    record_options = _commit_record_options(
+        options=options,
+        legacy_kwargs=legacy_kwargs,
+    )
     uncommitted = plan.get("uncommitted_issues", [])
-    if issue_ids is None:
+    if record_options.issue_ids is None:
         ids_to_record = list(uncommitted)
     else:
-        ids_to_record = list(issue_ids)
+        ids_to_record = list(record_options.issue_ids)
 
     record: CommitRecord = {
         "sha": sha,
-        "branch": branch,
+        "branch": record_options.branch,
         "issue_ids": ids_to_record,
         "recorded_at": utc_now(),
-        "note": note,
+        "note": record_options.note,
     }
-    record["cluster_name"] = cluster_name
+    record["cluster_name"] = record_options.cluster_name
 
     commit_log: list[CommitRecord] = plan.setdefault("commit_log", [])
     commit_log.append(record)
