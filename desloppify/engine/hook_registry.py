@@ -27,10 +27,10 @@ def create_hook_registry_context() -> HookRegistryContext:
     return HookRegistryContext()
 
 
-_STATE = create_hook_registry_context()
+_RUNTIME = create_hook_registry_context()
 _HOOK_CONTEXT: ContextVar[HookRegistryContext] = ContextVar(
     "desloppify_hook_registry_context",
-    default=_STATE,
+    default=_RUNTIME,
 )
 
 
@@ -60,9 +60,10 @@ def register_lang_hooks(
     lang_name: str,
     *,
     test_coverage: object | None = None,
+    context: HookRegistryContext | None = None,
 ) -> None:
     """Register optional detector hook modules for a language."""
-    hooks = _ctx().hooks[lang_name]
+    hooks = _ctx(context).hooks[lang_name]
     if test_coverage is not None:
         hooks["test_coverage"] = test_coverage
 

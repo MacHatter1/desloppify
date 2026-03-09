@@ -2,37 +2,19 @@
 
 from __future__ import annotations
 
+from collections.abc import ItemsView
 from contextlib import contextmanager
 from contextvars import ContextVar
-from collections.abc import ItemsView
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from desloppify.languages._framework.base.types import LangConfig
 
-__all__ = [
-    "RegistryContext",
-    "create_registry_context",
-    "current_registry_context",
-    "registry_context_scope",
-    "register",
-    "get",
-    "all_items",
-    "all_keys",
-    "is_registered",
-    "remove",
-    "clear",
-    "set_load_attempted",
-    "was_load_attempted",
-    "record_load_error",
-    "set_load_errors",
-    "get_load_errors",
-]
 
 @dataclass
 class RegistryContext:
-    """Mutable language-registry state container."""
+    """Mutable language-registry context."""
 
     registry: dict[str, LangConfig] = field(default_factory=dict)
     load_attempted: bool = False
@@ -44,10 +26,10 @@ def create_registry_context() -> RegistryContext:
     return RegistryContext()
 
 
-_STATE = create_registry_context()
+_RUNTIME = create_registry_context()
 _REGISTRY_CONTEXT: ContextVar[RegistryContext] = ContextVar(
     "desloppify_language_registry_context",
-    default=_STATE,
+    default=_RUNTIME,
 )
 
 
@@ -71,8 +53,6 @@ def registry_context_scope(context: RegistryContext | None = None):
 
 def _ctx(context: RegistryContext | None = None) -> RegistryContext:
     return context if context is not None else current_registry_context()
-
-# ── Public API ────────────────────────────────────────────
 
 
 def register(name: str, cfg: LangConfig, *, context: RegistryContext | None = None) -> None:
@@ -107,10 +87,10 @@ def remove(name: str, *, context: RegistryContext | None = None) -> None:
 
 def clear(*, context: RegistryContext | None = None) -> None:
     """Full reset: registrations, load-attempted flag, and load errors."""
-    ctx = _ctx(context)
-    ctx.registry.clear()
-    ctx.load_attempted = False
-    ctx.load_errors.clear()
+    runtime = _ctx(context)
+    runtime.registry.clear()
+    runtime.load_attempted = False
+    runtime.load_errors.clear()
 
 
 def set_load_attempted(value: bool, *, context: RegistryContext | None = None) -> None:
@@ -124,26 +104,41 @@ def was_load_attempted(*, context: RegistryContext | None = None) -> bool:
 
 
 def record_load_error(
-    name: str,
-    error: BaseException,
-    *,
-    context: RegistryContext | None = None,
+    name: str, error: BaseException, *, context: RegistryContext | None = None
 ) -> None:
     """Record an import error for a language module."""
     _ctx(context).load_errors[name] = error
 
 
 def set_load_errors(
-    errors: dict[str, BaseException],
-    *,
-    context: RegistryContext | None = None,
+    errors: dict[str, BaseException], *, context: RegistryContext | None = None
 ) -> None:
     """Replace the full load-errors dict (used by discovery)."""
-    ctx = _ctx(context)
-    ctx.load_errors.clear()
-    ctx.load_errors.update(errors)
+    runtime = _ctx(context)
+    runtime.load_errors.clear()
+    runtime.load_errors.update(errors)
 
 
 def get_load_errors(*, context: RegistryContext | None = None) -> dict[str, BaseException]:
     """Return a copy of the load-errors dict."""
     return dict(_ctx(context).load_errors)
+
+
+__all__ = [
+    "RegistryContext",
+    "all_items",
+    "all_keys",
+    "clear",
+    "create_registry_context",
+    "current_registry_context",
+    "get",
+    "get_load_errors",
+    "is_registered",
+    "record_load_error",
+    "register",
+    "registry_context_scope",
+    "remove",
+    "set_load_attempted",
+    "set_load_errors",
+    "was_load_attempted",
+]
