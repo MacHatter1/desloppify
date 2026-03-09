@@ -221,7 +221,10 @@ def _parse_and_validate_import(
     *,
     config: ImportLoadConfig,
 ) -> tuple[ReviewImportPayload | None, list[str]]:
-    """Parse and validate a review import file (pure function).
+    """Load, parse, and validate a review import file.
+
+    This helper performs filesystem I/O by reading ``import_file`` before
+    normalizing and validating the payload.
 
     Returns ``(data, errors)`` where *data* is the normalized payload on
     success, or ``None`` when errors prevent import.
