@@ -29,7 +29,7 @@ _RAW_BASE = urlunsplit((_RAW_SCHEME, _RAW_HOST, _RAW_REPO_PATH, "", ""))
 def _download(filename: str) -> str:
     """Download a file from the desloppify docs directory on GitHub."""
     url = f"{_RAW_BASE}/{filename}"
-    with urllib.request.urlopen(url, timeout=15) as resp:  # noqa: S310
+    with urllib.request.urlopen(url, timeout=15) as resp:  # nosec B310
         return resp.read().decode("utf-8")
 
 

@@ -98,7 +98,7 @@ def _write_desloppify_cli_helper(run_dir: Path) -> Path:
         f"exec {shlex.quote(sys.executable)} -m desloppify.cli \"$@\"\n"
     )
     safe_write_text(script_path, script)
-    os.chmod(script_path, 0o755)
+    os.chmod(script_path, 0o700)
     return script_path
 
 

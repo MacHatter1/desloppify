@@ -82,7 +82,10 @@ def extract_gdscript_functions(filepath: str) -> list[FunctionInfo]:
         end_line = end_index + 1
         body = "\n".join(lines[start_index : end_index + 1])
         normalized = _normalize_body(body)
-        body_hash = hashlib.md5(normalized.encode("utf-8")).hexdigest()[:12]
+        body_hash = hashlib.md5(
+            normalized.encode("utf-8"),
+            usedforsecurity=False,
+        ).hexdigest()[:12]
         functions.append(
             FunctionInfo(
                 name=name,

@@ -251,7 +251,10 @@ def extract_go_functions(filepath: str) -> list[FunctionInfo]:
         params = _extract_params(content, match.end() - 1)
 
         normalized = normalize_go_body(body)
-        body_hash = hashlib.md5(normalized.encode("utf-8")).hexdigest()[:12]
+        body_hash = hashlib.md5(
+            normalized.encode("utf-8"),
+            usedforsecurity=False,
+        ).hexdigest()[:12]
         functions.append(
             FunctionInfo(
                 name=name,

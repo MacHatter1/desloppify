@@ -145,7 +145,10 @@ def extract_csharp_functions(filepath: str) -> list[FunctionInfo]:
                 loc=loc,
                 body=body,
                 normalized=normalized,
-                body_hash=hashlib.md5(normalized.encode()).hexdigest(),
+                body_hash=hashlib.md5(
+                    normalized.encode(),
+                    usedforsecurity=False,
+                ).hexdigest(),
                 params=params,
             )
         )
