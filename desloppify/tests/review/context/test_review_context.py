@@ -321,7 +321,8 @@ class TestGatherAuthContext:
         assert "rls_coverage" in result
         rls = result["rls_coverage"]
         assert "users" in rls["with_rls"]
-        assert "posts" in rls["with_rls"]
+        assert "posts" in rls["policy_only"]
+        assert "posts" in rls["without_rls"]
         assert "comments" in rls["without_rls"]
 
     def test_rls_case_insensitive(self):
@@ -783,5 +784,4 @@ class TestClassifyErrorStrategy:
         """)
         result = _classify_error_strategy(content)
         assert result == "mixed"
-
 

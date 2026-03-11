@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import replace
 
 from desloppify.base.config import DEFAULT_TARGET_STRICT_SCORE
 from desloppify.engine._state.schema import StateModel
@@ -27,13 +27,6 @@ def _subjective_threshold(state: StateModel, *, default: float = DEFAULT_TARGET_
     return max(0.0, min(100.0, value))
 
 
-@dataclass(frozen=True, slots=True)
-class OpenPlanQueuePolicy:
-    count: int | None = None
-    scan_path: str | None = None
-    include_subjective: bool = True
-
-
 def _queue_shaping_plan_present(plan: dict | None) -> bool:
     if not isinstance(plan, dict):
         return False
@@ -48,24 +41,20 @@ def _queue_plan_from_options(options: QueueBuildOptions) -> dict | None:
 
 def build_open_plan_queue(
     state: StateModel,
-    policy: OpenPlanQueuePolicy | None = None,
+    *,
+    options: QueueBuildOptions | None = None,
 ) -> WorkQueueResult:
     """Build one open-status queue with consistent planning policy defaults."""
-    policy = policy or OpenPlanQueuePolicy()
-    # When policy.scan_path is explicitly set, override the auto-default.
-    # Otherwise let QueueBuildOptions read from state automatically.
-    scan_path_kwarg: dict = (
-        {"scan_path": policy.scan_path} if policy.scan_path is not None else {}
-    )
+    opts = replace(options) if options is not None else QueueBuildOptions(count=None)
+    if options is None:
+        opts = replace(opts, status="open", include_subjective=True)
+    elif opts.status == QueueBuildOptions().status:
+        opts = replace(opts, status="open")
+    if opts.subjective_threshold == QueueBuildOptions().subjective_threshold:
+        opts = replace(opts, subjective_threshold=_subjective_threshold(state))
     return build_work_queue(
         state,
-        options=QueueBuildOptions(
-            count=policy.count,
-            status="open",
-            include_subjective=policy.include_subjective,
-            subjective_threshold=_subjective_threshold(state),
-            **scan_path_kwarg,
-        ),
+        options=opts,
     )
 
 
@@ -102,7 +91,6 @@ def build_backlog_queue(
 
 
 __all__ = [
-    "OpenPlanQueuePolicy",
     "build_backlog_queue",
     "build_execution_queue",
     "build_open_plan_queue",

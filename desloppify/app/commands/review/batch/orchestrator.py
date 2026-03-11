@@ -164,9 +164,17 @@ def _run_followup_scan_with_deps(
 
 def _build_batch_run_deps(*, policy, project_root: Path) -> review_batches_mod.BatchRunDeps:
     """Build the dependency bundle used by prepare/execute/import phases."""
-    from desloppify.engine.plan_state import load_policy, render_policy_block
+    from desloppify.engine.plan_state import load_policy_result, render_policy_block
 
-    policy_block = render_policy_block(load_policy())
+    policy_result = load_policy_result()
+    policy_block = render_policy_block(policy_result.policy)
+    if not policy_result.ok:
+        print(
+            colorize(
+                f"  Warning: ignoring malformed project policy ({policy_result.message or 'unknown error'}).",
+                "yellow",
+            )
+        )
     codex_batch_deps = _build_codex_batch_runner_deps(policy)
     followup_scan_deps = _build_followup_scan_deps(project_root=project_root)
     return review_batches_mod.BatchRunDeps(

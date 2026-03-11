@@ -59,8 +59,6 @@ def _group_clusterable_issues(
 
         detector = issue.get("detector", "")
         meta = DETECTORS.get(detector)
-        if meta and meta.needs_judgment:
-            continue  # judgment-required → review evidence, not auto-task
         key = _grouping_key(issue, meta)
         if key is None:
             continue
@@ -197,7 +195,7 @@ def sync_issue_clusters(
         key_parts = key.split("::")
         subtype = key_parts[2] if len(key_parts) >= 3 else None
 
-        description = _generate_description(cluster_name, members, meta, subtype)
+        description = _generate_description(members, meta)
         action = _generate_action(meta, subtype)
 
         existing_name = existing_by_key.get(key)

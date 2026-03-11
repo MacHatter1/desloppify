@@ -162,6 +162,27 @@ def test_subjective_review_backlog_is_dimension_filtered():
         review_rerun_preflight(state, args)
 
 
+def test_subjective_assessment_queue_items_do_not_block_targeted_rerun():
+    """Visible rerun actions should not fall back to objective backlog counts."""
+    state = _state_with_prior_review()
+    queue = {
+        "items": [
+            {
+                "detector": "subjective_assessment",
+                "detail": {"dimension": "naming_quality"},
+            }
+        ]
+    }
+    with (
+        patch(_QUEUE_CONTEXT, return_value=_mock_queue_context(objective_count=20)),
+        patch(
+            "desloppify.app.commands.review.preflight.build_work_queue",
+            return_value=queue,
+        ),
+    ):
+        review_rerun_preflight(state, _make_args(dimensions="naming_quality"))
+
+
 def test_targeted_dimension_does_not_block_own_preparation():
     """A dimension targeted by --dimensions should not block its own review."""
     state = {

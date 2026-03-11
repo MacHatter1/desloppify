@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import desloppify.app.commands.plan.triage.stages.helpers as stage_helpers_mod
+import desloppify.app.commands.plan.triage.stages.flow_helpers as flow_stage_helpers_mod
 from desloppify.app.commands.plan.triage.helpers import inject_triage_stages
 from desloppify.engine._plan.constants import TRIAGE_STAGE_IDS
 
@@ -172,3 +173,29 @@ def test_inject_triage_stages_keeps_workflow_prefix_ahead_of_triage() -> None:
         "workflow::create-plan",
     ]
     assert plan["queue_order"][2: 2 + len(TRIAGE_STAGE_IDS)] == list(TRIAGE_STAGE_IDS)
+
+
+def test_validate_stage_report_length_accepts_short_report_for_small_issue_count(capsys) -> None:
+    ok = flow_stage_helpers_mod.validate_stage_report_length(
+        report="x" * 50,
+        issue_count=3,
+        guidance="Add more detail.",
+    )
+
+    assert ok is True
+    assert capsys.readouterr().out == ""
+
+
+def test_validate_stage_report_length_requires_longer_report_for_larger_issue_count(
+    capsys,
+) -> None:
+    ok = flow_stage_helpers_mod.validate_stage_report_length(
+        report="x" * 80,
+        issue_count=4,
+        guidance="Add concrete evidence.",
+    )
+
+    assert ok is False
+    out = capsys.readouterr().out
+    assert "minimum 100" in out
+    assert "Add concrete evidence." in out

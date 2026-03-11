@@ -269,8 +269,17 @@ def _build_claude_launch_prompt(
         "3. Do not include provenance metadata (CLI injects canonical provenance).\n"
     )
 
-    from desloppify.engine.plan_state import load_policy, render_policy_block
-    policy_text = render_policy_block(load_policy())
+    from desloppify.engine.plan_state import load_policy_result, render_policy_block
+
+    policy_result = load_policy_result()
+    policy_text = render_policy_block(policy_result.policy)
+    if not policy_result.ok:
+        print(
+            colorize(
+                f"  Warning: ignoring malformed project policy ({policy_result.message or 'unknown error'}).",
+                "yellow",
+            )
+        )
 
     return join_non_empty_sections(
         header,

@@ -11,7 +11,7 @@ from desloppify.base.discovery.file_paths import safe_write_text
 from desloppify.base.exception_sets import PLAN_LOAD_EXCEPTIONS
 from desloppify.base.output.terminal import colorize
 from desloppify.engine.plan_state import (
-    load_policy,
+    load_policy_result,
     render_policy_block,
 )
 
@@ -268,8 +268,15 @@ def run_sense_check(
     total = total_content + 1
     _print_sense_header(total_content, apply_updates=apply_updates, log=_log)
 
-    policy = load_policy()
-    policy_text = render_policy_block(policy)
+    policy_result = load_policy_result()
+    policy_text = render_policy_block(policy_result.policy)
+    if not policy_result.ok:
+        print(
+            colorize(
+                f"  Warning: ignoring malformed project policy ({policy_result.message or 'unknown error'}).",
+                "yellow",
+            )
+        )
     content_mode, structure_mode = _sense_modes(apply_updates=apply_updates)
     content_tasks, batch_meta = _content_tasks_and_meta(
         clusters=clusters,

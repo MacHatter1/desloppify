@@ -56,6 +56,26 @@ def _filter_open_or_cluster_targets(
     }
 
 
+def _front_planned_issue_ids(
+    queue_order: list[str],
+    *,
+    issues: dict,
+    depth: int,
+) -> set[str]:
+    """Return the first N live issue IDs from the persisted queue order."""
+    if depth <= 0:
+        return set()
+    front: list[str] = []
+    for issue_id in queue_order:
+        issue = issues.get(issue_id)
+        if not isinstance(issue, dict) or issue.get("status") != "open":
+            continue
+        front.append(issue_id)
+        if len(front) >= depth:
+            break
+    return set(front)
+
+
 def _prune_front_covered_clusters(
     out_of_order: set[str],
     *,
@@ -138,6 +158,16 @@ def _check_queue_order_guard(
     )
     if not resolved_ids:
         return False
+
+    resolved_issue_ids = {issue_id for issue_id in resolved_ids if issue_id in issues}
+    if resolved_issue_ids == resolved_ids:
+        planned_front_ids = _front_planned_issue_ids(
+            queue_order,
+            issues=issues,
+            depth=max(len(resolved_issue_ids), 1),
+        )
+        if resolved_issue_ids <= planned_front_ids:
+            return False
 
     # Collect IDs from the first N queue positions where N is the
     # number of items being resolved.  This allows batch-resolving

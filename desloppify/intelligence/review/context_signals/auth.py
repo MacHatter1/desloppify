@@ -56,8 +56,11 @@ _RLS_TABLE_RE = re.compile(
     re.IGNORECASE,
 )
 _RLS_ENABLE_RE = re.compile(
-    rf"ALTER\s+TABLE\s+{_SCHEMA_QUALIFIED_IDENT}\s+ENABLE\s+ROW\s+LEVEL\s+SECURITY"
-    rf"|CREATE\s+POLICY\s+{_SQL_IDENT}\s+ON\s+{_SCHEMA_QUALIFIED_IDENT}",
+    rf"ALTER\s+TABLE\s+{_SCHEMA_QUALIFIED_IDENT}\s+ENABLE\s+ROW\s+LEVEL\s+SECURITY",
+    re.IGNORECASE,
+)
+_RLS_POLICY_RE = re.compile(
+    rf"CREATE\s+POLICY\s+{_SQL_IDENT}\s+ON\s+{_SCHEMA_QUALIFIED_IDENT}",
     re.IGNORECASE,
 )
 _SUPABASE_CLIENT_RE = re.compile(r"\bcreateClient\b")
@@ -96,6 +99,7 @@ class AuthorizationSignals:
     route_auth_coverage: dict[str, RouteAuthCoverage] = field(default_factory=dict)
     rls_with: list[str] = field(default_factory=list)
     rls_without: list[str] = field(default_factory=list)
+    rls_policy_only: list[str] = field(default_factory=list)
     rls_files: dict[str, list[str]] = field(default_factory=dict)
     service_role_usage: list[str] = field(default_factory=list)
     auth_patterns: dict[str, int] = field(default_factory=dict)
@@ -109,11 +113,13 @@ class AuthorizationSignals:
                 path: coverage.as_dict()
                 for path, coverage in sorted(self.route_auth_coverage.items())
             }
-        if self.rls_with or self.rls_without:
+        if self.rls_with or self.rls_without or self.rls_policy_only:
             rls_payload: dict[str, object] = {
                 "with_rls": self.rls_with,
                 "without_rls": self.rls_without,
             }
+            if self.rls_policy_only:
+                rls_payload["policy_only"] = self.rls_policy_only
             if self.rls_files:
                 rls_payload["files"] = self.rls_files
             payload["rls_coverage"] = rls_payload
@@ -140,6 +146,7 @@ def gather_auth_context(
     route_auth: dict[str, RouteAuthCoverage] = {}
     rls_tables: set[str] = set()
     rls_enabled: set[str] = set()
+    rls_policy_tables: set[str] = set()
     rls_table_files: dict[str, list[str]] = {}
     service_role_files: set[str] = set()
     auth_patterns: dict[str, int] = {}
@@ -175,9 +182,13 @@ def gather_auth_context(
             rls_tables.add(table)
             rls_table_files.setdefault(table, []).append(rpath)
         for match in _RLS_ENABLE_RE.finditer(content):
-            table = match.group(1) or match.group(2)
+            table = match.group(1)
             if table:
                 rls_enabled.add(_normalize_sql_ident(table))
+        for match in _RLS_POLICY_RE.finditer(content):
+            table = match.group(1)
+            if table:
+                rls_policy_tables.add(_normalize_sql_ident(table))
 
         # Service role usage
         if (
@@ -208,6 +219,7 @@ def gather_auth_context(
         route_auth_coverage=route_auth,
         rls_with=sorted(rls_tables & rls_enabled),
         rls_without=sorted(tables_without_rls),
+        rls_policy_only=sorted((rls_policy_tables & rls_tables) - rls_enabled),
         rls_files=rls_files,
         service_role_usage=sorted(service_role_files),
         auth_patterns=auth_patterns,

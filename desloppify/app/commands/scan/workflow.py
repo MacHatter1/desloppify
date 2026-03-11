@@ -46,9 +46,8 @@ from desloppify.base.discovery.source import (
     get_exclusions,
 )
 from desloppify.base.discovery.paths import get_project_root
-from desloppify.engine import planning as plan_mod
 from desloppify.engine._work_queue.issues import mark_stale_holistic
-from desloppify.engine.planning.scan import PlanScanOptions
+from desloppify.engine.planning.scan import PlanScanOptions, generate_issues as generate_plan_issues
 from desloppify.intelligence.review.dimensions.metadata import (
     resettable_default_dimensions,
 )
@@ -343,7 +342,7 @@ def run_scan_generation(
     enable_file_cache()
     enable_parse_cache()
     try:
-        issues, potentials = plan_mod.generate_issues(
+        issues, potentials = generate_plan_issues(
             runtime.path,
             lang=runtime.lang,
             options=PlanScanOptions(

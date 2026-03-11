@@ -208,3 +208,43 @@ def test_build_and_render_backlog_queue_hides_execution_prompt(capsys) -> None:
     assert written[0]["command"] == "backlog"
     assert written[0]["queue"]["mode"] == "backlog"
     assert "plan" not in written[0]
+
+
+def test_build_and_render_queue_respects_explicit_view_flags(capsys) -> None:
+    written: list[dict] = []
+    item = {
+        "id": "smells::b.py::y",
+        "detector": "smells",
+        "file": "b.py",
+        "summary": "Custom backlog item",
+        "primary_command": 'desloppify plan resolve "smells::b.py::y" --note "fixed" --confirm',
+    }
+
+    queue_flow_mod.build_and_render_queue(
+        _args(),
+        state={
+            "issues": {"y": {"status": "open"}},
+            "dimension_scores": {},
+            "scan_path": ".",
+            "potentials": {},
+            "scan_count": 0,
+        },
+        config={},
+        resolve_lang_fn=lambda _args: SimpleNamespace(name="python"),
+        load_plan_fn=lambda: {"queue_order": ["smells::planned"]},
+        build_work_queue_fn=lambda _state, *, options: {
+            "items": [item],
+            "total": 1,
+        },
+        write_query_fn=lambda payload: written.append(payload),
+        command_name="custom-backlog",
+        show_plan_context=False,
+        collapse_plan_clusters=False,
+        show_execution_prompt=False,
+    )
+
+    out = capsys.readouterr().out
+    assert "Custom backlog item" in out
+    assert "Start working on the task above." not in out
+    assert written[0]["command"] == "custom-backlog"
+    assert "plan" not in written[0]

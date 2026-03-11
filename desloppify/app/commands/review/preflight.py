@@ -154,9 +154,14 @@ def _objective_and_subjective_backlog(
     objective_total = 0
     subjective_total = 0
     saw_scoped_objective = False
+    saw_review_phase_item = False
     for item in queue.get("items", []):
         detector = str(item.get("detector", ""))
         dim_key = _item_dimension_key(item)
+        if detector in {"subjective_assessment", "subjective_review"}:
+            if dim_key is None or dim_key in normalized_blocking_dims:
+                saw_review_phase_item = True
+            continue
         if detector in {"review", "concerns"}:
             if not dim_key or dim_key not in normalized_blocking_dims:
                 continue
@@ -169,7 +174,7 @@ def _objective_and_subjective_backlog(
             continue
         objective_total += 1
 
-    if not saw_scoped_objective:
+    if not saw_scoped_objective and not saw_review_phase_item:
         objective_total = ctx.policy.objective_count
 
     return objective_total, subjective_total

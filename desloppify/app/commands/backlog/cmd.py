@@ -15,9 +15,6 @@ from desloppify.engine.planning.queue_policy import build_backlog_queue
 
 from desloppify.app.commands.next.queue_flow import build_and_render_backlog_queue
 
-# Backward-compatible test seam for the backlog flow.
-build_and_render_queue = build_and_render_backlog_queue
-
 
 def cmd_backlog(args: argparse.Namespace) -> None:
     """Show backlog items that are not currently part of the execution queue."""
@@ -31,7 +28,7 @@ def cmd_backlog(args: argparse.Namespace) -> None:
     if config_warning:
         print(colorize(f"  {config_warning}", "yellow"))
 
-    build_and_render_queue(
+    build_and_render_backlog_queue(
         args,
         state,
         config,
@@ -42,4 +39,4 @@ def cmd_backlog(args: argparse.Namespace) -> None:
     )
 
 
-__all__ = ["build_and_render_queue", "cmd_backlog"]
+__all__ = ["build_and_render_backlog_queue", "cmd_backlog"]

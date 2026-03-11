@@ -14,6 +14,57 @@ import desloppify.app.commands.review.importing.results as results_mod
 import desloppify.engine.plan_queue as plan_queue_mod
 
 
+def _empty_visibility_policy() -> SimpleNamespace:
+    return SimpleNamespace(
+        has_objective_backlog=False,
+        unscored_ids=frozenset(),
+        stale_ids=frozenset(),
+        under_target_ids=frozenset(),
+    )
+
+
+def _score_snapshot(**kwargs) -> SimpleNamespace:
+    return SimpleNamespace(**kwargs)
+
+
+def _no_changes(**kwargs) -> SimpleNamespace:
+    return SimpleNamespace(changes=False, **kwargs)
+
+
+def _patch_basic_plan_sync_runtime(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    plan: dict,
+    policy: SimpleNamespace | None = None,
+) -> None:
+    effective_policy = policy or _empty_visibility_policy()
+    monkeypatch.setattr(plan_queue_mod, "has_living_plan", lambda _path=None: True)
+    monkeypatch.setattr(plan_queue_mod, "load_plan", lambda _path=None: plan)
+    monkeypatch.setattr(plan_queue_mod, "save_plan", lambda _plan, _path=None: None)
+    monkeypatch.setattr(
+        plan_queue_mod,
+        "compute_subjective_visibility",
+        lambda *_a, **_k: effective_policy,
+    )
+    monkeypatch.setattr(plan_queue_mod, "ScoreSnapshot", _score_snapshot)
+    monkeypatch.setattr(
+        plan_queue_mod,
+        "sync_communicate_score_needed",
+        lambda _plan, _state, **_kwargs: _no_changes(),
+    )
+    monkeypatch.setattr(
+        plan_queue_mod,
+        "sync_import_scores_needed",
+        lambda _plan, _state, assessment_mode, **_kwargs: _no_changes(),
+    )
+    monkeypatch.setattr(
+        plan_queue_mod,
+        "sync_create_plan_needed",
+        lambda _plan, _state, policy=None: _no_changes(),
+    )
+    monkeypatch.setattr(plan_queue_mod, "append_log_entry", lambda *_a, **_k: None)
+
+
 def test_plan_sync_uses_narrow_plan_facades() -> None:
     src = inspect.getsource(plan_sync_mod)
     assert "from desloppify.engine.plan import" not in src
@@ -144,37 +195,9 @@ def test_sync_plan_after_import_runs_review_sync_for_auto_resolved_deltas(monkey
     plan: dict = {"queue_order": []}
     seen = {"import_called": False, "stale_called": False}
 
-    monkeypatch.setattr(plan_queue_mod, "has_living_plan", lambda _path=None: True)
-    monkeypatch.setattr(plan_queue_mod, "load_plan", lambda _path=None: plan)
-    monkeypatch.setattr(plan_queue_mod, "save_plan", lambda _plan, _path=None: None)
+    _patch_basic_plan_sync_runtime(monkeypatch, plan=plan)
     monkeypatch.setattr(plan_queue_mod, "current_unscored_ids", lambda _state: set())
     monkeypatch.setattr(plan_queue_mod, "purge_ids", lambda _plan, _ids: None)
-    monkeypatch.setattr(
-        plan_queue_mod,
-        "compute_subjective_visibility",
-        lambda *_a, **_k: SimpleNamespace(
-            has_objective_backlog=False,
-            unscored_ids=frozenset(),
-            stale_ids=frozenset(),
-            under_target_ids=frozenset(),
-        ),
-    )
-    monkeypatch.setattr(plan_queue_mod, "ScoreSnapshot", lambda **kwargs: SimpleNamespace(**kwargs))
-    monkeypatch.setattr(
-        plan_queue_mod,
-        "sync_communicate_score_needed",
-        lambda _plan, _state, **_kwargs: SimpleNamespace(changes=False),
-    )
-    monkeypatch.setattr(
-        plan_queue_mod,
-        "sync_import_scores_needed",
-        lambda _plan, _state, assessment_mode, **_kwargs: SimpleNamespace(changes=False),
-    )
-    monkeypatch.setattr(
-        plan_queue_mod,
-        "sync_create_plan_needed",
-        lambda _plan, _state, policy=None: SimpleNamespace(changes=False),
-    )
 
     def fake_import_sync(_plan, _state, policy=None):
         seen["import_called"] = True
@@ -186,7 +209,6 @@ def test_sync_plan_after_import_runs_review_sync_for_auto_resolved_deltas(monkey
 
     monkeypatch.setattr(plan_queue_mod, "sync_plan_after_review_import", fake_import_sync)
     monkeypatch.setattr(plan_queue_mod, "sync_subjective_dimensions", fake_stale_sync)
-    monkeypatch.setattr(plan_queue_mod, "append_log_entry", lambda *_a, **_k: None)
 
     plan_sync_mod.sync_plan_after_import(
         state={},
@@ -202,9 +224,7 @@ def test_sync_plan_after_import_logs_triage_provenance(monkeypatch) -> None:
     plan: dict = {"queue_order": []}
     entries: list[tuple[str, dict]] = []
 
-    monkeypatch.setattr(plan_queue_mod, "has_living_plan", lambda _path=None: True)
-    monkeypatch.setattr(plan_queue_mod, "load_plan", lambda _path=None: plan)
-    monkeypatch.setattr(plan_queue_mod, "save_plan", lambda _plan, _path=None: None)
+    _patch_basic_plan_sync_runtime(monkeypatch, plan=plan)
     monkeypatch.setattr(plan_queue_mod, "current_unscored_ids", lambda _state: set())
     monkeypatch.setattr(plan_queue_mod, "purge_ids", lambda _plan, _ids: None)
     monkeypatch.setattr(
@@ -227,32 +247,6 @@ def test_sync_plan_after_import_logs_triage_provenance(monkeypatch) -> None:
             triage_injected_ids=["triage::observe", "triage::reflect"],
             triage_deferred=False,
         ),
-    )
-    monkeypatch.setattr(plan_queue_mod, "ScoreSnapshot", lambda **kwargs: SimpleNamespace(**kwargs))
-    monkeypatch.setattr(
-        plan_queue_mod,
-        "sync_communicate_score_needed",
-        lambda _plan, _state, **_kwargs: SimpleNamespace(changes=False),
-    )
-    monkeypatch.setattr(
-        plan_queue_mod,
-        "sync_import_scores_needed",
-        lambda _plan, _state, assessment_mode, **_kwargs: SimpleNamespace(changes=False),
-    )
-    monkeypatch.setattr(
-        plan_queue_mod,
-        "compute_subjective_visibility",
-        lambda *_a, **_k: SimpleNamespace(
-            has_objective_backlog=False,
-            unscored_ids=frozenset(),
-            stale_ids=frozenset(),
-            under_target_ids=frozenset(),
-        ),
-    )
-    monkeypatch.setattr(
-        plan_queue_mod,
-        "sync_create_plan_needed",
-        lambda _plan, _state, policy=None: SimpleNamespace(changes=False),
     )
     monkeypatch.setattr(
         plan_queue_mod,
@@ -377,35 +371,9 @@ def test_sync_plan_after_import_reuses_plan_aware_policy(monkeypatch) -> None:
     )
     seen: dict[str, object] = {}
 
-    monkeypatch.setattr(plan_queue_mod, "has_living_plan", lambda _path=None: True)
-    monkeypatch.setattr(plan_queue_mod, "load_plan", lambda _path=None: plan)
-    monkeypatch.setattr(plan_queue_mod, "save_plan", lambda _plan, _path=None: None)
+    _patch_basic_plan_sync_runtime(monkeypatch, plan=plan, policy=policy)
     monkeypatch.setattr(plan_queue_mod, "current_unscored_ids", lambda _state: set())
     monkeypatch.setattr(plan_queue_mod, "purge_ids", lambda _plan, _ids: None)
-    monkeypatch.setattr(
-        plan_queue_mod,
-        "sync_subjective_dimensions",
-        lambda _plan, _state, policy=None, **_kw: SimpleNamespace(
-            changes=False,
-            injected=[],
-            pruned=[],
-        ),
-    )
-    monkeypatch.setattr(
-        plan_queue_mod,
-        "ScoreSnapshot",
-        lambda **kwargs: SimpleNamespace(**kwargs),
-    )
-    monkeypatch.setattr(
-        plan_queue_mod,
-        "sync_communicate_score_needed",
-        lambda _plan, _state, **_kwargs: SimpleNamespace(changes=False),
-    )
-    monkeypatch.setattr(
-        plan_queue_mod,
-        "sync_import_scores_needed",
-        lambda _plan, _state, assessment_mode, **_kwargs: SimpleNamespace(changes=False),
-    )
 
     def fake_compute_policy(_state, *, target_strict, plan):
         seen["target_strict"] = target_strict
@@ -447,39 +415,7 @@ def test_sync_plan_after_import_does_not_purge_subjective_ids(monkeypatch) -> No
     plan: dict = {"queue_order": ["subjective::naming_quality", "review::existing"]}
     purge_calls: list[list[str]] = []
 
-    monkeypatch.setattr(plan_queue_mod, "has_living_plan", lambda _path=None: True)
-    monkeypatch.setattr(plan_queue_mod, "load_plan", lambda _path=None: plan)
-    monkeypatch.setattr(plan_queue_mod, "save_plan", lambda _plan, _path=None: None)
-    monkeypatch.setattr(
-        plan_queue_mod,
-        "compute_subjective_visibility",
-        lambda *_a, **_k: SimpleNamespace(
-            has_objective_backlog=False,
-            unscored_ids=frozenset(),
-            stale_ids=frozenset(),
-            under_target_ids=frozenset(),
-        ),
-    )
-    monkeypatch.setattr(
-        plan_queue_mod,
-        "ScoreSnapshot",
-        lambda **kwargs: SimpleNamespace(**kwargs),
-    )
-    monkeypatch.setattr(
-        plan_queue_mod,
-        "sync_communicate_score_needed",
-        lambda _plan, _state, **_kwargs: SimpleNamespace(changes=False),
-    )
-    monkeypatch.setattr(
-        plan_queue_mod,
-        "sync_import_scores_needed",
-        lambda _plan, _state, assessment_mode, **_kwargs: SimpleNamespace(changes=False),
-    )
-    monkeypatch.setattr(
-        plan_queue_mod,
-        "sync_create_plan_needed",
-        lambda _plan, _state, policy=None: SimpleNamespace(changes=False),
-    )
+    _patch_basic_plan_sync_runtime(monkeypatch, plan=plan)
     monkeypatch.setattr(
         plan_queue_mod,
         "sync_plan_after_review_import",
@@ -495,21 +431,12 @@ def test_sync_plan_after_import_does_not_purge_subjective_ids(monkeypatch) -> No
     monkeypatch.setattr(
         plan_queue_mod,
         "sync_subjective_dimensions",
-        lambda _plan, _state, policy=None, **_kw: SimpleNamespace(
-            changes=False,
-            injected=[],
-            pruned=[],
-        ),
+        lambda _plan, _state, policy=None, **_kw: _no_changes(injected=[], pruned=[]),
     )
     monkeypatch.setattr(
         plan_queue_mod,
         "purge_ids",
         lambda _plan, ids: purge_calls.append(list(ids)),
-    )
-    monkeypatch.setattr(
-        plan_queue_mod,
-        "append_log_entry",
-        lambda *_a, **_k: None,
     )
 
     plan_sync_mod.sync_plan_after_import(
@@ -608,34 +535,7 @@ def test_sync_plan_after_import_rebuilds_subjective_clusters_for_assessment_only
         under_target_ids=frozenset(),
     )
 
-    monkeypatch.setattr(plan_queue_mod, "has_living_plan", lambda _path=None: True)
-    monkeypatch.setattr(plan_queue_mod, "load_plan", lambda _path=None: plan)
-    monkeypatch.setattr(plan_queue_mod, "save_plan", lambda _plan, _path=None: None)
-    monkeypatch.setattr(
-        plan_queue_mod,
-        "compute_subjective_visibility",
-        lambda *_a, **_k: policy,
-    )
-    monkeypatch.setattr(
-        plan_queue_mod,
-        "ScoreSnapshot",
-        lambda **kwargs: SimpleNamespace(**kwargs),
-    )
-    monkeypatch.setattr(
-        plan_queue_mod,
-        "sync_communicate_score_needed",
-        lambda _plan, _state, **_kwargs: SimpleNamespace(changes=False),
-    )
-    monkeypatch.setattr(
-        plan_queue_mod,
-        "sync_import_scores_needed",
-        lambda _plan, _state, assessment_mode, **_kwargs: SimpleNamespace(changes=False),
-    )
-    monkeypatch.setattr(
-        plan_queue_mod,
-        "sync_create_plan_needed",
-        lambda _plan, _state, policy=None: SimpleNamespace(changes=False),
-    )
+    _patch_basic_plan_sync_runtime(monkeypatch, plan=plan, policy=policy)
     monkeypatch.setattr(
         plan_queue_mod,
         "append_log_entry",

@@ -509,25 +509,8 @@ def build_and_render_queue(
     collapse_plan_clusters: bool = True,
     show_execution_prompt: bool = True,
 ) -> None:
-    """Backward-compatible alias for the execution queue flow."""
-    if command_name == "backlog":
-        _build_and_render_queue_view(
-            args,
-            state,
-            config,
-            resolve_lang_fn=resolve_lang_fn,
-            load_plan_fn=load_plan_fn,
-            build_work_queue_fn=build_work_queue_fn,
-            write_query_fn=write_query_fn,
-            view=QueueViewConfig(
-                command_name=command_name,
-                show_plan_context=show_plan_context,
-                collapse_plan_clusters=collapse_plan_clusters,
-                show_execution_prompt=show_execution_prompt,
-            ),
-        )
-        return
-    build_and_render_execution_queue(
+    """Compatibility wrapper that respects the provided queue view settings."""
+    _build_and_render_queue_view(
         args,
         state,
         config,
@@ -535,6 +518,12 @@ def build_and_render_queue(
         load_plan_fn=load_plan_fn,
         build_work_queue_fn=build_work_queue_fn,
         write_query_fn=write_query_fn,
+        view=QueueViewConfig(
+            command_name=command_name,
+            show_plan_context=show_plan_context,
+            collapse_plan_clusters=collapse_plan_clusters,
+            show_execution_prompt=show_execution_prompt,
+        ),
     )
 
 

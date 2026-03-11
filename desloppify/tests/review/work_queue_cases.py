@@ -313,6 +313,17 @@ def test_subjective_review_issue_points_to_review_triage():
     assert item["primary_command"] == "desloppify review --prepare --dimensions naming_quality"
 
 
+def test_subjective_review_issue_is_marked_subjective():
+    issue = _issue(
+        "subjective_review::.::naming_quality",
+        detector="subjective_review",
+        detail={"dimension": "naming_quality"},
+    )
+    queue = build_work_queue(_state([issue]), count=None, include_subjective=False)
+    by_id = {item["id"]: item for item in queue["items"]}
+    assert by_id[issue["id"]]["is_subjective"] is True
+
+
 def test_holistic_subjective_review_issue_points_to_holistic_refresh():
     holistic = _issue(
         "subjective_review::.::holistic_unreviewed",
@@ -823,5 +834,4 @@ def test_registry_standalone_threshold_count():
     assert sorted(threshold_detectors) == sorted([
         "props", "patterns", "naming", "react", "smells", "dupes", "dict_keys",
     ])
-
 

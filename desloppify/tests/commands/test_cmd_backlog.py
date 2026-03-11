@@ -42,7 +42,7 @@ def test_cmd_backlog_uses_backlog_queue(monkeypatch) -> None:
     def _build_and_render(*_args, **kwargs):
         captured["build_work_queue_fn"] = kwargs["build_work_queue_fn"]
 
-    monkeypatch.setattr(backlog_mod, "build_and_render_queue", _build_and_render)
+    monkeypatch.setattr(backlog_mod, "build_and_render_backlog_queue", _build_and_render)
 
     backlog_mod.cmd_backlog(_args())
 

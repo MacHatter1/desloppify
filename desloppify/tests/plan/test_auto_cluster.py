@@ -73,20 +73,20 @@ def test_grouping_key_review():
     assert key == "review::abstraction_fitness"
 
 
-def test_grouping_key_needs_judgment_with_kind():
+def test_grouping_key_judgment_required_returns_none():
     from desloppify.base.registry import DETECTORS
+    # needs_judgment=True detectors return None (flow through review, not auto-task)
     f = _issue("a", "dict_keys", detail={"kind": "phantom_read"})
     meta = DETECTORS.get("dict_keys")
-    key = grouping_key(f, meta)
-    assert key == "typed::dict_keys::phantom_read"
+    assert grouping_key(f, meta) is None
 
+    f2 = _issue("a", "structural", file="src/big_file.py")
+    meta2 = DETECTORS.get("structural")
+    assert grouping_key(f2, meta2) is None
 
-def test_grouping_key_structural():
-    from desloppify.base.registry import DETECTORS
-    f = _issue("a", "structural", file="src/big_file.py")
-    meta = DETECTORS.get("structural")
-    key = grouping_key(f, meta)
-    assert key == "file::structural::big_file.py"
+    f3 = _issue("a", "smells")
+    meta3 = DETECTORS.get("smells")
+    assert grouping_key(f3, meta3) is None
 
 
 def test_grouping_key_unknown_detector():

@@ -40,6 +40,7 @@ def get_next_item(
     state: PlanState,
     scan_path: str | None = None,
 ) -> PlanItem | None:
+    """Return the next issue-shaped execution item from the living plan queue."""
     from desloppify.engine.planning.select import get_next_item as _get_next_item
 
     if scan_path is None:
@@ -52,6 +53,7 @@ def get_next_items(
     count: int = 1,
     scan_path: str | None = None,
 ) -> list[PlanItem]:
+    """Return issue-shaped execution items from the living plan queue."""
     from desloppify.engine.planning.select import get_next_items as _get_next_items
 
     if count == 1 and scan_path is None:
