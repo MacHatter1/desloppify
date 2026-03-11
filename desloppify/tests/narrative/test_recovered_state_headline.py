@@ -25,8 +25,6 @@ def test_compute_narrative_does_not_claim_first_scan_for_reconstructed_state() -
     }
     state["scan_metadata"] = {
         "source": "plan_reconstruction",
-        "inventory_available": True,
-        "metrics_available": False,
         "plan_queue_available": True,
         "reconstructed_issue_count": 2,
     }

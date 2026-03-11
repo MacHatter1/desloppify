@@ -125,7 +125,12 @@ def test_sync_plan_after_import_runs_review_sync_for_auto_resolved_deltas(monkey
     monkeypatch.setattr(
         plan_queue_mod,
         "compute_subjective_visibility",
-        lambda *_a, **_k: SimpleNamespace(has_objective_backlog=False),
+        lambda *_a, **_k: SimpleNamespace(
+            has_objective_backlog=False,
+            unscored_ids=frozenset(),
+            stale_ids=frozenset(),
+            under_target_ids=frozenset(),
+        ),
     )
     monkeypatch.setattr(plan_queue_mod, "ScoreSnapshot", lambda **kwargs: SimpleNamespace(**kwargs))
     monkeypatch.setattr(
@@ -210,7 +215,12 @@ def test_sync_plan_after_import_logs_triage_provenance(monkeypatch) -> None:
     monkeypatch.setattr(
         plan_queue_mod,
         "compute_subjective_visibility",
-        lambda *_a, **_k: SimpleNamespace(has_objective_backlog=False),
+        lambda *_a, **_k: SimpleNamespace(
+            has_objective_backlog=False,
+            unscored_ids=frozenset(),
+            stale_ids=frozenset(),
+            under_target_ids=frozenset(),
+        ),
     )
     monkeypatch.setattr(
         plan_queue_mod,
@@ -295,7 +305,12 @@ def test_sync_plan_after_import_keeps_workflow_before_triage(monkeypatch) -> Non
     monkeypatch.setattr(
         plan_queue_mod,
         "compute_subjective_visibility",
-        lambda *_a, **_k: SimpleNamespace(has_objective_backlog=False),
+        lambda *_a, **_k: SimpleNamespace(
+            has_objective_backlog=False,
+            unscored_ids=frozenset(),
+            stale_ids=frozenset(),
+            under_target_ids=frozenset(),
+        ),
     )
     monkeypatch.setattr(plan_queue_mod, "sync_create_plan_needed", fake_create_plan)
     monkeypatch.setattr(plan_queue_mod, "sync_plan_after_review_import", fake_review_import)
@@ -327,7 +342,12 @@ def test_sync_plan_after_import_keeps_workflow_before_triage(monkeypatch) -> Non
 
 def test_sync_plan_after_import_reuses_plan_aware_policy(monkeypatch) -> None:
     plan: dict = {"queue_order": []}
-    policy = SimpleNamespace(has_objective_backlog=False)
+    policy = SimpleNamespace(
+        has_objective_backlog=False,
+        unscored_ids=frozenset(),
+        stale_ids=frozenset(),
+        under_target_ids=frozenset(),
+    )
     seen: dict[str, object] = {}
 
     monkeypatch.setattr(plan_queue_mod, "has_living_plan", lambda _path=None: True)
@@ -406,7 +426,12 @@ def test_sync_plan_after_import_does_not_purge_subjective_ids(monkeypatch) -> No
     monkeypatch.setattr(
         plan_queue_mod,
         "compute_subjective_visibility",
-        lambda *_a, **_k: SimpleNamespace(has_objective_backlog=False),
+        lambda *_a, **_k: SimpleNamespace(
+            has_objective_backlog=False,
+            unscored_ids=frozenset(),
+            stale_ids=frozenset(),
+            under_target_ids=frozenset(),
+        ),
     )
     monkeypatch.setattr(
         plan_queue_mod,
@@ -468,6 +493,147 @@ def test_sync_plan_after_import_does_not_purge_subjective_ids(monkeypatch) -> No
 
     assert purge_calls == []
     assert "subjective::naming_quality" in plan["queue_order"]
+
+
+def test_sync_plan_after_import_rebuilds_subjective_clusters_for_assessment_only_import(
+    monkeypatch,
+) -> None:
+    plan: dict = {
+        "queue_order": [
+            "subjective::design_coherence",
+            "subjective::naming_quality",
+        ],
+        "clusters": {
+            "auto/initial-review": {
+                "name": "auto/initial-review",
+                "description": "Initial review of 2 unscored subjective dimensions",
+                "issue_ids": [
+                    "subjective::design_coherence",
+                    "subjective::naming_quality",
+                ],
+                "created_at": "old",
+                "updated_at": "old",
+                "auto": True,
+                "cluster_key": "subjective::unscored",
+                "action": (
+                    "desloppify review --prepare --dimensions "
+                    "design_coherence,naming_quality"
+                ),
+                "user_modified": False,
+            }
+        },
+        "overrides": {
+            "subjective::design_coherence": {
+                "issue_id": "subjective::design_coherence",
+                "cluster": "auto/initial-review",
+                "created_at": "old",
+                "updated_at": "old",
+            },
+            "subjective::naming_quality": {
+                "issue_id": "subjective::naming_quality",
+                "cluster": "auto/initial-review",
+                "created_at": "old",
+                "updated_at": "old",
+            },
+        },
+    }
+    state = {
+        "issues": {},
+        "scan_count": 2,
+        "dimension_scores": {
+            "Design coherence": {
+                "score": 80.0,
+                "strict": 80.0,
+                "checks": 1,
+                "failing": 0,
+                "detectors": {
+                    "subjective_assessment": {
+                        "dimension_key": "design_coherence",
+                        "placeholder": False,
+                    }
+                },
+            },
+            "Naming quality": {
+                "score": 78.0,
+                "strict": 78.0,
+                "checks": 1,
+                "failing": 0,
+                "detectors": {
+                    "subjective_assessment": {
+                        "dimension_key": "naming_quality",
+                        "placeholder": False,
+                    }
+                },
+            },
+        },
+        "subjective_assessments": {
+            "design_coherence": {"score": 80.0, "needs_review_refresh": True},
+            "naming_quality": {"score": 78.0, "needs_review_refresh": True},
+        },
+    }
+    policy = SimpleNamespace(
+        has_objective_backlog=False,
+        objective_count=0,
+        unscored_ids=frozenset(),
+        stale_ids=frozenset(
+            {"subjective::design_coherence", "subjective::naming_quality"}
+        ),
+        under_target_ids=frozenset(),
+    )
+
+    monkeypatch.setattr(plan_queue_mod, "has_living_plan", lambda _path=None: True)
+    monkeypatch.setattr(plan_queue_mod, "load_plan", lambda _path=None: plan)
+    monkeypatch.setattr(plan_queue_mod, "save_plan", lambda _plan, _path=None: None)
+    monkeypatch.setattr(
+        plan_queue_mod,
+        "compute_subjective_visibility",
+        lambda *_a, **_k: policy,
+    )
+    monkeypatch.setattr(
+        plan_queue_mod,
+        "ScoreSnapshot",
+        lambda **kwargs: SimpleNamespace(**kwargs),
+    )
+    monkeypatch.setattr(
+        plan_queue_mod,
+        "sync_communicate_score_needed",
+        lambda _plan, _state, **_kwargs: SimpleNamespace(changes=False),
+    )
+    monkeypatch.setattr(
+        plan_queue_mod,
+        "sync_import_scores_needed",
+        lambda _plan, _state, assessment_mode, **_kwargs: SimpleNamespace(changes=False),
+    )
+    monkeypatch.setattr(
+        plan_queue_mod,
+        "sync_create_plan_needed",
+        lambda _plan, _state, policy=None: SimpleNamespace(changes=False),
+    )
+    monkeypatch.setattr(
+        plan_queue_mod,
+        "append_log_entry",
+        lambda *_a, **_k: None,
+    )
+
+    plan_sync_mod.sync_plan_after_import(
+        state=state,
+        diff={"new": 0, "reopened": 0, "auto_resolved": 0},
+        assessment_mode="trusted_internal",
+        import_payload={
+            "assessments": {
+                "Design coherence": 80,
+                "Naming quality": 78,
+            },
+            "issues": [],
+        },
+    )
+
+    assert "auto/initial-review" not in plan["clusters"]
+    assert "auto/stale-review" in plan["clusters"]
+    assert set(plan["clusters"]["auto/stale-review"]["issue_ids"]) == {
+        "subjective::design_coherence",
+        "subjective::naming_quality",
+    }
 
 
 def test_refresh_scorecard_after_import_only_for_trusted_assessments(monkeypatch) -> None:

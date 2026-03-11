@@ -5,13 +5,14 @@ from __future__ import annotations
 import argparse
 import json
 
-from desloppify import state as state_mod
 from desloppify.app.commands.helpers.runtime import command_runtime
 from desloppify.app.commands.helpers.state import require_issue_inventory
+from desloppify.engine._state.filtering import open_scope_breakdown
 from desloppify.engine._scoring.results.core import compute_health_breakdown
 from desloppify.engine.planning.scorecard_projection import (
     scorecard_dimensions_payload,
 )
+from desloppify.state_scoring import score_snapshot, suppression_metrics
 
 from .flow import render_terminal_status
 
@@ -26,7 +27,7 @@ def cmd_status(args: argparse.Namespace) -> None:
     dim_scores = state.get("dimension_scores", {}) or {}
     scorecard_dims = scorecard_dimensions_payload(state, dim_scores=dim_scores)
     subjective_measures = [row for row in scorecard_dims if row.get("subjective")]
-    suppression = state_mod.suppression_metrics(state)
+    suppression = suppression_metrics(state)
 
     if getattr(args, "json", False):
         print(
@@ -67,10 +68,10 @@ def _status_json_payload(
     subjective_measures: list[dict],
     suppression: dict,
 ) -> dict:
-    scores = state_mod.score_snapshot(state)
+    scores = score_snapshot(state)
     issues = state.get("issues", {})
     open_scope = (
-        state_mod.open_scope_breakdown(issues, state.get("scan_path"))
+        open_scope_breakdown(issues, state.get("scan_path"))
         if isinstance(issues, dict)
         else None
     )

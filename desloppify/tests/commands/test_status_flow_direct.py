@@ -37,7 +37,7 @@ def test_render_terminal_status_writes_query_payload(monkeypatch) -> None:
     monkeypatch.setattr(flow_mod, "check_skill_version", lambda: None)
     monkeypatch.setattr(flow_mod, "check_config_staleness", lambda _cfg: None)
     monkeypatch.setattr(
-        flow_mod.state_mod,
+        flow_mod,
         "score_snapshot",
         lambda _state: SimpleNamespace(overall=90.0, objective=92.0, strict=88.0, verified=87.5),
     )

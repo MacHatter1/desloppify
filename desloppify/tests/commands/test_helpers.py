@@ -238,8 +238,6 @@ def test_require_issue_inventory_with_plan_reconstructed_inventory():
             "last_scan": None,
             "scan_metadata": {
                 "source": "plan_reconstruction",
-                "inventory_available": True,
-                "metrics_available": False,
                 "reconstructed_issue_count": 1,
             },
         }

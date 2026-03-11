@@ -7,6 +7,7 @@ from pathlib import Path
 import desloppify.engine.plan_queue as plan_queue_mod
 from desloppify import state as state_mod
 from desloppify.app.commands.helpers.display import short_issue_id
+from desloppify.app.commands.review.importing.flags import imported_assessment_keys
 from desloppify.base.config import target_strict_score_from_config
 from desloppify.base.exception_sets import PLAN_LOAD_EXCEPTIONS
 from desloppify.base.output.terminal import colorize
@@ -77,6 +78,7 @@ def sync_plan_after_import(
     """Apply issue/workflow syncs after import in one load/save cycle."""
     try:
         plan_path = None
+        target_strict = target_strict_score_from_config(config)
         if state_file is not None:
             plan_path = plan_queue_mod.plan_path_for_state(Path(state_file))
         if not plan_queue_mod.has_living_plan(plan_path):
@@ -87,7 +89,7 @@ def sync_plan_after_import(
         workflow_injected_ids: list[str] = []
         policy = plan_queue_mod.compute_subjective_visibility(
             state,
-            target_strict=target_strict_score_from_config(config),
+            target_strict=target_strict,
             plan=plan,
         )
 
@@ -116,9 +118,18 @@ def sync_plan_after_import(
             or int(diff.get("reopened", 0) or 0) > 0
             or int(diff.get("auto_resolved", 0) or 0) > 0
         )
+        assessment_keys = (
+            imported_assessment_keys(import_payload)
+            if isinstance(import_payload, dict)
+            else set()
+        )
         import_result = None
-        covered_ids: list[str] = []
+        covered_ids = [
+            f"subjective::{dim_key}"
+            for dim_key in sorted(assessment_keys)
+        ]
         stale_sync_result = None
+        auto_cluster_changes = 0
 
         injected_parts: list[str] = []
         if communicate_result.changes:
@@ -156,15 +167,25 @@ def sync_plan_after_import(
             if import_result is not None:
                 dirty = True
 
-            # Keep stale/under-target subjective queue entries aligned with the
-            # latest imported assessments/issues. Importing review findings for
-            # one dimension must not globally evict other subjective dimensions.
+        if has_review_issue_delta or assessment_keys:
+            # Assessment-bearing imports can change subjective queue semantics
+            # even when they add no review findings. Keep queue_order aligned
+            # first, then rebuild the derived auto-clusters from that queue.
             stale_sync_result = plan_queue_mod.sync_stale_dimensions(
                 plan,
                 state,
                 policy=policy,
             )
             if stale_sync_result.changes:
+                dirty = True
+
+            auto_cluster_changes = int(plan_queue_mod.auto_cluster_issues(
+                plan,
+                state,
+                target_strict=target_strict,
+                policy=policy,
+            ))
+            if auto_cluster_changes:
                 dirty = True
 
         if dirty:
@@ -229,6 +250,7 @@ def sync_plan_after_import(
                             sorted(stale_sync_result.pruned)
                             if stale_sync_result is not None else []
                         ),
+                        "auto_cluster_changes": auto_cluster_changes,
                     },
                 )
             plan_queue_mod.save_plan(plan, plan_path)

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from desloppify import state as state_mod
 from desloppify.app.commands.helpers.query import write_query
 from desloppify.base.output.terminal import colorize, print_table
+from desloppify.engine._state.filtering import open_scope_breakdown
 from desloppify.engine._scoring.results.core import compute_health_breakdown
 
 
@@ -105,7 +105,7 @@ def write_status_query(request: StatusQueryRequest) -> None:
 
     issues = state.get("issues", {})
     open_scope = (
-        state_mod.open_scope_breakdown(issues, state.get("scan_path"))
+        open_scope_breakdown(issues, state.get("scan_path"))
         if isinstance(issues, dict)
         else None
     )

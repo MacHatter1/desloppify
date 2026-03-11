@@ -36,8 +36,11 @@ def test_load_state_recovers_runtime_state_from_saved_plan(tmp_path: Path) -> No
     state = load_state(tmp_path / "state-typescript.json")
 
     assert "review::src/foo.ts::abcd1234" in state["issues"]
-    assert state["scan_metadata"]["source"] == "plan_reconstruction"
-    assert state["scan_metadata"]["reconstructed_issue_count"] == 1
+    assert state["scan_metadata"] == {
+        "source": "plan_reconstruction",
+        "plan_queue_available": True,
+        "reconstructed_issue_count": 1,
+    }
 
 
 def test_load_state_drops_stale_reconstructed_state_without_live_plan(tmp_path: Path) -> None:
@@ -52,8 +55,6 @@ def test_load_state_drops_stale_reconstructed_state_without_live_plan(tmp_path: 
     }
     state["scan_metadata"] = {
         "source": "plan_reconstruction",
-        "inventory_available": True,
-        "metrics_available": False,
         "plan_queue_available": True,
         "reconstructed_issue_count": 1,
     }
@@ -90,8 +91,6 @@ def test_cmd_plan_queue_uses_recovered_runtime_state(monkeypatch, capsys) -> Non
         "last_scan": None,
         "scan_metadata": {
             "source": "plan_reconstruction",
-            "inventory_available": True,
-            "metrics_available": False,
             "plan_queue_available": True,
             "reconstructed_issue_count": 1,
         },
@@ -140,8 +139,6 @@ def test_run_triage_workflow_uses_recovered_runtime_state(monkeypatch, capsys) -
         "last_scan": None,
         "scan_metadata": {
             "source": "plan_reconstruction",
-            "inventory_available": True,
-            "metrics_available": False,
             "plan_queue_available": True,
             "reconstructed_issue_count": 1,
         },
@@ -207,7 +204,10 @@ def test_cmd_plan_repair_state_rebuilds_persisted_state(
     repair_state_mod.cmd_plan_repair_state(argparse.Namespace())
 
     repaired = json.loads((tmp_path / "state-typescript.json").read_text())
-    assert repaired["scan_metadata"]["source"] == "plan_reconstruction"
-    assert repaired["scan_metadata"]["reconstructed_issue_count"] == 1
+    assert repaired["scan_metadata"] == {
+        "source": "plan_reconstruction",
+        "plan_queue_available": True,
+        "reconstructed_issue_count": 1,
+    }
     assert "review::src/foo.ts::abcd1234" in repaired["issues"]
     assert "Rebuilt state-typescript.json from plan.json" in capsys.readouterr().out

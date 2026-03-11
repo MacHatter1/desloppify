@@ -13,13 +13,14 @@ from desloppify.engine._state.recovery import (
     has_saved_plan_without_scan,
     reconstruct_state_from_saved_plan,
 )
-from desloppify.engine._state.schema import (
+from desloppify.state_io import (
     StateModel,
     empty_state,
     get_state_file,
-    scan_metadata,
+    save_state,
+    scan_reconstructed_issue_count,
+    scan_source,
 )
-from desloppify.state_io import save_state
 
 
 def _resolved_state_file(runtime) -> Path:
@@ -32,8 +33,7 @@ def _resolved_state_file(runtime) -> Path:
 def cmd_plan_repair_state(args: argparse.Namespace) -> None:
     """Rebuild persisted state from live plan metadata when scan data is gone."""
     runtime = command_runtime(args)
-    metadata = scan_metadata(runtime.state)
-    if metadata.get("source") == "scan":
+    if scan_source(runtime.state) == "scan":
         print(colorize("  State already has scan-backed data. No repair needed.", "green"))
         return
 
@@ -47,8 +47,7 @@ def cmd_plan_repair_state(args: argparse.Namespace) -> None:
     repaired = reconstruct_state_from_saved_plan(empty_state(), plan)
     save_state(cast(StateModel, repaired), state_file)
 
-    repaired_meta = scan_metadata(repaired)
-    reconstructed_count = int(repaired_meta.get("reconstructed_issue_count", 0) or 0)
+    reconstructed_count = scan_reconstructed_issue_count(repaired)
     print(
         colorize(
             f"  Rebuilt {state_file.name} from {plan_path.name} "

@@ -59,9 +59,11 @@ __all__ = [
     "utc_now",
     "empty_state",
     "ensure_state_defaults",
+    "scan_source",
     "scan_metadata",
     "scan_inventory_available",
     "scan_metrics_available",
+    "scan_reconstructed_issue_count",
     "validate_state_invariants",
     "json_default",
     "migrate_state_keys",
@@ -106,11 +108,7 @@ def empty_state() -> StateModel:
         "issues": {},
         "scan_coverage": {},
         "score_confidence": {},
-        "scan_metadata": {
-            "source": "empty",
-            "inventory_available": False,
-            "metrics_available": False,
-        },
+        "scan_metadata": {"source": "empty"},
         "subjective_integrity": {},
         "subjective_assessments": {},
     }
@@ -157,18 +155,8 @@ def _normalize_scan_metadata(state: StateModel | dict[str, Any]) -> None:
     raw_metadata = state.get("scan_metadata")
     metadata = raw_metadata if isinstance(raw_metadata, dict) else {}
 
-    raw_source = metadata.get("source")
-    source = raw_source if isinstance(raw_source, str) else ""
-    if state.get("last_scan"):
-        source = "scan"
-    elif source != "plan_reconstruction":
-        source = "empty"
-
-    normalized: ScanMetadataModel = {
-        "source": source,
-        "inventory_available": source in {"scan", "plan_reconstruction"},
-        "metrics_available": source == "scan",
-    }
+    source = _coerce_scan_source(state, metadata)
+    normalized: ScanMetadataModel = {"source": source}
     if source == "plan_reconstruction":
         normalized["plan_queue_available"] = bool(metadata.get("plan_queue_available"))
         issue_count = metadata.get("reconstructed_issue_count", 0)
@@ -258,10 +246,6 @@ def validate_state_invariants(state: StateModel) -> None:
     source = metadata.get("source")
     if source not in _SCAN_METADATA_SOURCES:
         raise ValueError(f"state.scan_metadata.source has invalid value {source!r}")
-    if not isinstance(metadata.get("inventory_available"), bool):
-        raise ValueError("state.scan_metadata.inventory_available must be a bool")
-    if not isinstance(metadata.get("metrics_available"), bool):
-        raise ValueError("state.scan_metadata.metrics_available must be a bool")
     if source == "plan_reconstruction":
         issue_count = metadata.get("reconstructed_issue_count", 0)
         if not isinstance(issue_count, int) or isinstance(issue_count, bool) or issue_count < 0:
@@ -291,25 +275,53 @@ def validate_state_invariants(state: StateModel) -> None:
             )
 
 
+def _coerce_scan_source(
+    state: StateModel | dict[str, Any],
+    metadata: dict[str, Any] | None = None,
+) -> str:
+    raw_metadata = metadata if isinstance(metadata, dict) else state.get("scan_metadata")
+    metadata_dict = raw_metadata if isinstance(raw_metadata, dict) else {}
+    raw_source = metadata_dict.get("source")
+    source = raw_source if isinstance(raw_source, str) else ""
+    if state.get("last_scan"):
+        return "scan"
+    if source == "plan_reconstruction":
+        return source
+    return "empty"
+
+
+def scan_source(state: StateModel | dict[str, Any]) -> str:
+    """Return the normalized source that backs the current runtime state."""
+    metadata = state.get("scan_metadata")
+    return _coerce_scan_source(state, metadata if isinstance(metadata, dict) else None)
+
+
 def scan_metadata(state: StateModel | dict[str, Any]) -> ScanMetadataModel:
     """Return normalized scan metadata for capability-aware command logic."""
     raw = state.get("scan_metadata")
     if isinstance(raw, dict):
         return cast(ScanMetadataModel, raw)
     if state.get("last_scan"):
-        return {
-            "source": "scan",
-            "inventory_available": True,
-            "metrics_available": True,
-        }
+        return {"source": "scan"}
     return empty_state()["scan_metadata"]
 
 
 def scan_inventory_available(state: StateModel | dict[str, Any]) -> bool:
     """Whether command consumers can rely on the current issue inventory."""
-    return bool(scan_metadata(state).get("inventory_available"))
+    return scan_source(state) in {"scan", "plan_reconstruction"}
 
 
 def scan_metrics_available(state: StateModel | dict[str, Any]) -> bool:
     """Whether scan-derived metrics/timestamps are present."""
-    return bool(scan_metadata(state).get("metrics_available"))
+    return scan_source(state) == "scan"
+
+
+def scan_reconstructed_issue_count(state: StateModel | dict[str, Any]) -> int:
+    """Return the number of issues reconstructed from a saved plan, if any."""
+    if scan_source(state) != "plan_reconstruction":
+        return 0
+    metadata = scan_metadata(state)
+    value = metadata.get("reconstructed_issue_count", 0)
+    if isinstance(value, int) and not isinstance(value, bool):
+        return max(0, value)
+    return 0

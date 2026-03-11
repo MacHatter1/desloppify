@@ -35,7 +35,7 @@ from desloppify.engine._state.schema import (
     ensure_state_defaults,
     get_state_file,
     json_default,
-    scan_metadata,
+    scan_source,
     validate_state_invariants,
 )
 
@@ -81,13 +81,13 @@ def _reconstruct_from_saved_plan_if_available(
     try:
         plan = load_plan_state(plan_path_for_state(state_path))
     except Exception:
-        if scan_metadata(state).get("source") == "plan_reconstruction":
+        if scan_source(state) == "plan_reconstruction":
             return cast(StateModel, _normalize_loaded_state(empty_state()))
         return state
     if has_saved_plan_without_scan(state, plan):
         reconstructed = reconstruct_state_from_saved_plan(empty_state(), plan)
         return cast(StateModel, _normalize_loaded_state(reconstructed))
-    if scan_metadata(state).get("source") == "plan_reconstruction":
+    if scan_source(state) == "plan_reconstruction":
         return cast(StateModel, _normalize_loaded_state(empty_state()))
     return state
 

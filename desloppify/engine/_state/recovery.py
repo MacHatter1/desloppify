@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from desloppify.engine._state.schema import ensure_state_defaults
+from desloppify.engine._state.schema import ensure_state_defaults, scan_source
 
 
 def _append_review_id(
@@ -74,8 +74,7 @@ def saved_plan_open_review_ids(plan: dict | None) -> list[str]:
 
 def has_saved_plan_without_scan(state: dict, plan: dict | None) -> bool:
     """Whether a saved plan can be resumed without a current scan state."""
-    metadata = state.get("scan_metadata")
-    if isinstance(metadata, dict) and metadata.get("source") == "scan":
+    if scan_source(state) == "scan":
         return False
     if not isinstance(plan, dict):
         return False
@@ -119,8 +118,6 @@ def _hydrate_saved_issue_ids(
     recovered["issues"] = recovered_issues
     recovered["scan_metadata"] = {
         "source": "plan_reconstruction",
-        "inventory_available": True,
-        "metrics_available": False,
         "plan_queue_available": bool(issue_ids),
         "reconstructed_issue_count": len(issue_ids),
     }

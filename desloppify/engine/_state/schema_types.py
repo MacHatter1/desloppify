@@ -29,8 +29,10 @@ from desloppify.languages.framework import ScanCoverageRecord
 
 class ScanMetadataModel(TypedDict, total=False):
     source: Required[str]
-    inventory_available: Required[bool]
-    metrics_available: Required[bool]
+    # Legacy persisted inputs may still include these derived flags. Canonical
+    # normalized payloads derive capabilities from ``source`` instead.
+    inventory_available: NotRequired[bool]
+    metrics_available: NotRequired[bool]
     plan_queue_available: bool
     reconstructed_issue_count: int
 
