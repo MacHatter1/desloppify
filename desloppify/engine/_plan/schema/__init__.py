@@ -112,6 +112,23 @@ class PlanStartScores(TypedDict, total=False):
     reset: bool
 
 
+class ReflectDisposition(TypedDict, total=False):
+    """One issue's disposition as declared by the reflect stage."""
+
+    issue_id: Required[str]
+    decision: Required[str]  # "cluster" | "permanent_skip"
+    target: Required[str]  # cluster name or skip reason tag
+
+
+class ReflectClusterBlueprint(TypedDict, total=False):
+    """A cluster definition declared by the reflect stage."""
+
+    name: Required[str]
+    description: str
+    priority_order: int
+    depends_on: list[str]
+
+
 class TriageStagePayload(TypedDict, total=False):
     """Persisted payload for one triage stage checkpoint."""
 
@@ -123,6 +140,9 @@ class TriageStagePayload(TypedDict, total=False):
     recurring_dims: list[str]
     confirmed_at: str
     confirmed_text: str
+    # Structured reflect contract (populated only for reflect stage)
+    disposition_ledger: list[ReflectDisposition]
+    cluster_blueprint: list[ReflectClusterBlueprint]
 
 
 class LastTriageSnapshot(TypedDict, total=False):

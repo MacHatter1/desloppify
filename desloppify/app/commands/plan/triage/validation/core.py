@@ -6,6 +6,7 @@ import argparse
 import re
 from collections import Counter
 from dataclasses import dataclass
+from typing import Literal
 
 from desloppify.app.commands.helpers.runtime import command_runtime
 from desloppify.base.output.terminal import colorize
@@ -17,6 +18,13 @@ from desloppify.engine.plan_triage import (
 )
 from desloppify.state_io import utc_now
 
+from ..confirmations.basic import MIN_ATTESTATION_LEN, validate_attestation
+from ..helpers import (
+    cluster_issue_ids,
+    manual_clusters_with_issues,
+    observe_dimension_breakdown,
+)
+from ..stages.helpers import unclustered_review_issues, unenriched_clusters
 from .completion_policy import (
     _completion_clusters_valid,
     _completion_strategy_valid,
@@ -49,13 +57,6 @@ from .enrich_checks import (
     _steps_without_effort,
     _underspecified_steps,
 )
-from ..confirmations.basic import MIN_ATTESTATION_LEN, validate_attestation
-from ..helpers import (
-    cluster_issue_ids,
-    manual_clusters_with_issues,
-    observe_dimension_breakdown,
-)
-from ..stages.helpers import unclustered_review_issues, unenriched_clusters
 
 
 @dataclass(frozen=True)
@@ -241,12 +242,84 @@ def _validate_recurring_dimension_mentions(
     return False
 
 
-def _analyze_reflect_issue_accounting(
-    *,
-    report: str,
+# ---------------------------------------------------------------------------
+# Disposition types
+# ---------------------------------------------------------------------------
+
+DecisionKind = Literal["cluster", "permanent_skip"]
+
+
+@dataclass(frozen=True)
+class ReflectDisposition:
+    """One issue's intended disposition as declared by the reflect stage."""
+
+    issue_id: str
+    decision: DecisionKind
+    target: str  # cluster name or skip reason tag
+
+    def to_dict(self) -> dict:
+        """Serialize for JSON persistence in plan.json."""
+        return {"issue_id": self.issue_id, "decision": self.decision, "target": self.target}
+
+    @classmethod
+    def from_dict(cls, d: dict | ReflectDisposition) -> ReflectDisposition:
+        """Deserialize from persisted plan.json dict, or pass through if already typed."""
+        if isinstance(d, cls):
+            return d
+        return cls(
+            issue_id=d.get("issue_id", ""),
+            decision=d.get("decision", "cluster"),  # type: ignore[arg-type]
+            target=d.get("target", ""),
+        )
+
+
+@dataclass(frozen=True)
+class ActualDisposition:
+    """What actually happened to an issue in plan state."""
+
+    kind: Literal["clustered", "skipped", "unplaced"]
+    cluster_name: str = ""  # non-empty when kind == "clustered"
+
+    def describe(self, intended: ReflectDisposition | None = None) -> str:
+        """Human-readable description for error messages."""
+        if self.kind == "skipped":
+            return "permanently skipped"
+        if self.kind == "clustered":
+            if intended and intended.decision == "cluster" and self.cluster_name != intended.target:
+                return f'in cluster "{self.cluster_name}" (expected "{intended.target}")'
+            return f'clustered in "{self.cluster_name}"'
+        if self.kind == "unplaced":
+            if intended and intended.decision == "cluster":
+                return "not in any cluster"
+            return "not skipped, not clustered"
+        return "unknown state"
+
+
+def _build_actual_disposition_index(plan: dict) -> dict[str, ActualDisposition]:
+    """Build a lookup from issue ID to its actual disposition in plan state."""
+    index: dict[str, ActualDisposition] = {}
+
+    for cluster_name, cluster in plan.get("clusters", {}).items():
+        if cluster.get("auto"):
+            continue
+        for fid in cluster_issue_ids(cluster):
+            index[fid] = ActualDisposition(kind="clustered", cluster_name=cluster_name)
+
+    for fid in (plan.get("skipped", {}) or {}):
+        if isinstance(fid, str):
+            index[fid] = ActualDisposition(kind="skipped")
+
+    return index
+
+
+# ---------------------------------------------------------------------------
+# Coverage Ledger parsing — shared infrastructure
+# ---------------------------------------------------------------------------
+
+def _build_id_resolution_maps(
     valid_ids: set[str],
-) -> tuple[set[str], list[str], list[str]]:
-    """Return cited, missing, and duplicate issue IDs referenced by reflect."""
+) -> tuple[dict[str, list[str]], dict[str, str]]:
+    """Build short-ID lookup structures from a set of full issue IDs."""
     short_id_buckets: dict[str, list[str]] = {}
     short_hex_map: dict[str, str] = {}
     for issue_id in sorted(valid_ids):
@@ -257,55 +330,194 @@ def _analyze_reflect_issue_accounting(
             if existing is None:
                 short_hex_map[short_id] = issue_id
             elif existing != issue_id:
-                # Ambiguous hex short IDs cannot be resolved safely.
                 short_hex_map.pop(short_id, None)
+    return short_id_buckets, short_hex_map
 
-    def _extract_ledger_key(line: str) -> str | None:
-        match = re.match(r"-\s*(.+?)\s*->", line)
-        if not match:
-            return None
-        token = match.group(1).strip().strip("`").strip()
-        if token.startswith("[") and token.endswith("]"):
-            token = token[1:-1].strip()
-        return token or None
 
-    ledger_hits: Counter[str] | None = None
+def _clean_ledger_token(raw: str) -> str:
+    """Strip backticks, brackets, and whitespace from a ledger token."""
+    token = raw.strip().strip("`").strip()
+    if token.startswith("[") and token.endswith("]"):
+        token = token[1:-1].strip()
+    return token
+
+
+def _extract_ledger_entry(line: str) -> tuple[str, str | None, str | None]:
+    """Parse a ledger line into (token, decision, target).
+
+    Always extracts the token (issue key) when a ``->`` is present.
+    Decision and target are None when the right-hand side doesn't match
+    the ``decision "target"`` pattern (e.g. ``-> TODO``).
+    Returns ``("", None, None)`` when the line has no ``->``.
+    """
+    # Try full structured form: - token -> decision "target"
+    match = re.match(r"-\s*(.+?)\s*->\s*(\w+)\s+[\"']([^\"']+)[\"']", line)
+    if match:
+        token = _clean_ledger_token(match.group(1))
+        return token, match.group(2).strip().lower(), match.group(3).strip()
+
+    # Try unquoted: - token -> decision target-slug
+    match = re.match(r"-\s*(.+?)\s*->\s*(\w+)\s+(\S+.*)", line)
+    if match:
+        token = _clean_ledger_token(match.group(1))
+        target = match.group(3).strip().strip("\"'")
+        return token, match.group(2).strip().lower(), target
+
+    # Bare arrow: - token -> (anything or nothing)
+    match = re.match(r"-\s*(.+?)\s*->", line)
+    if match:
+        token = _clean_ledger_token(match.group(1))
+        return token, None, None
+
+    return "", None, None
+
+
+def _resolve_token_to_id(
+    token: str,
+    valid_ids: set[str],
+    short_id_buckets: dict[str, list[str]],
+    short_hex_map: dict[str, str],
+    short_id_usage: Counter[str],
+) -> str | None:
+    """Resolve a ledger token to a full issue ID, or None."""
+    if token in valid_ids:
+        return token
+    bucket = short_id_buckets.get(token)
+    if bucket:
+        bucket_index = short_id_usage[token]
+        issue_id = bucket[bucket_index] if bucket_index < len(bucket) else bucket[-1]
+        short_id_usage[token] += 1
+        return issue_id
+    # Hex-substring fallback
+    for hex_token in re.findall(r"[0-9a-f]{8,}", token):
+        resolved = short_hex_map.get(hex_token)
+        if resolved:
+            return resolved
+    return None
+
+
+# Canonical decision values for dispositions
+_CLUSTER_DECISIONS = frozenset({"cluster"})
+_SKIP_DECISIONS = frozenset({"skip", "dismiss", "defer", "drop", "remove"})
+
+
+def _normalize_decision(raw: str) -> str:
+    """Normalize a ledger decision to 'cluster' or 'permanent_skip'."""
+    lower = raw.lower()
+    if lower in _CLUSTER_DECISIONS:
+        return "cluster"
+    if lower in _SKIP_DECISIONS:
+        return "permanent_skip"
+    return lower
+
+
+# ---------------------------------------------------------------------------
+# Single-pass ledger walker — produces both accounting and dispositions
+# ---------------------------------------------------------------------------
+
+@dataclass
+class _LedgerParseResult:
+    """Combined output of a single pass over the Coverage Ledger section."""
+
+    hits: Counter[str]  # issue_id -> mention count (for accounting)
+    dispositions: list[ReflectDisposition]  # structured dispositions
+    found_section: bool  # True if ## Coverage Ledger was present
+
+
+def _walk_coverage_ledger(
+    report: str,
+    valid_ids: set[str],
+) -> _LedgerParseResult:
+    """Single-pass parse of the Coverage Ledger section.
+
+    Extracts both hit counts (for accounting validation) and structured
+    dispositions (for the execution contract) in one walk.
+    """
+    short_id_buckets, short_hex_map = _build_id_resolution_maps(valid_ids)
+    hits: Counter[str] = Counter()
+    dispositions: list[dict] = []
     short_id_usage: Counter[str] = Counter()
     in_ledger = False
+    found_section = False
+
     for raw_line in report.splitlines():
         line = raw_line.strip()
         if re.fullmatch(r"##\s+Coverage Ledger", line, re.IGNORECASE):
             in_ledger = True
-            ledger_hits = Counter()
+            found_section = True
             continue
         if in_ledger and re.match(r"##\s+", line):
             break
         if not in_ledger:
             continue
-        token = _extract_ledger_key(line)
-        if token:
-            if token in valid_ids:
-                ledger_hits[token] += 1
-                continue
-            bucket = short_id_buckets.get(token)
-            if bucket:
-                bucket_index = short_id_usage[token]
-                issue_id = bucket[bucket_index] if bucket_index < len(bucket) else bucket[-1]
-                short_id_usage[token] += 1
-                ledger_hits[issue_id] += 1
-                continue
-        for hex_token in re.findall(r"[0-9a-f]{8,}", line):
-            issue_id = short_hex_map.get(hex_token)
-            if issue_id:
-                ledger_hits[issue_id] += 1
-    if ledger_hits is not None and ledger_hits:
-        cited = set(ledger_hits)
-        duplicates = sorted(issue_id for issue_id, count in ledger_hits.items() if count > 1)
+
+        token, decision, target = _extract_ledger_entry(line)
+        if not token:
+            continue
+
+        issue_id = _resolve_token_to_id(
+            token, valid_ids, short_id_buckets, short_hex_map, short_id_usage,
+        )
+        if not issue_id:
+            # Last resort: scan entire line for hex IDs
+            for hex_token in re.findall(r"[0-9a-f]{8,}", line):
+                resolved = short_hex_map.get(hex_token)
+                if resolved:
+                    issue_id = resolved
+                    break
+
+        if issue_id:
+            hits[issue_id] += 1
+            if decision and target:
+                normalized = _normalize_decision(decision)
+                if normalized in ("cluster", "permanent_skip"):
+                    dispositions.append(ReflectDisposition(
+                        issue_id=issue_id,
+                        decision=normalized,  # type: ignore[arg-type]
+                        target=target,
+                    ))
+
+    return _LedgerParseResult(
+        hits=hits,
+        dispositions=dispositions,
+        found_section=found_section,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Public API — thin wrappers over the shared walker
+# ---------------------------------------------------------------------------
+
+def parse_reflect_dispositions(
+    report: str,
+    valid_ids: set[str],
+) -> list[ReflectDisposition]:
+    """Parse the Coverage Ledger into structured dispositions.
+
+    Returns an empty list if no Coverage Ledger section is found.
+    """
+    return _walk_coverage_ledger(report, valid_ids).dispositions
+
+
+def _analyze_reflect_issue_accounting(
+    *,
+    report: str,
+    valid_ids: set[str],
+) -> tuple[set[str], list[str], list[str]]:
+    """Return cited, missing, and duplicate issue IDs referenced by reflect."""
+    result = _walk_coverage_ledger(report, valid_ids)
+
+    if result.found_section and result.hits:
+        cited = set(result.hits)
+        duplicates = sorted(
+            issue_id for issue_id, count in result.hits.items() if count > 1
+        )
         missing = sorted(valid_ids - cited)
         return cited, missing, duplicates
+
+    # Fallback for reports without a Coverage Ledger section
+    short_id_buckets, short_hex_map = _build_id_resolution_maps(valid_ids)
     cited = extract_issue_citations(report, valid_ids)
-    # Also match valid IDs that appear literally in the report
-    # (handles non-hex IDs like test fixtures).
     for issue_id in valid_ids:
         if issue_id in report:
             cited.add(issue_id)
@@ -314,7 +526,9 @@ def _analyze_reflect_issue_accounting(
         for token in re.findall(r"[0-9a-f]{8,}", report)
         if token in short_hex_map
     )
-    duplicates = sorted(issue_id for issue_id, count in short_hits.items() if count > 1)
+    duplicates = sorted(
+        issue_id for issue_id, count in short_hits.items() if count > 1
+    )
     missing = sorted(valid_ids - cited)
     return cited, missing, duplicates
 
@@ -491,6 +705,105 @@ def _organize_report_or_error(report: str | None) -> str | None:
     return report
 
 
+@dataclass(frozen=True)
+class LedgerMismatch:
+    """One issue where plan state diverges from the reflect disposition."""
+
+    intended: ReflectDisposition
+    actual: ActualDisposition
+
+    @property
+    def issue_id(self) -> str:
+        return self.intended.issue_id
+
+    @property
+    def expected_decision(self) -> str:
+        return self.intended.decision
+
+    @property
+    def expected_target(self) -> str:
+        return self.intended.target
+
+    @property
+    def actual_state(self) -> str:
+        return self.actual.describe(self.intended)
+
+
+def _disposition_matches(intended: ReflectDisposition, actual: ActualDisposition) -> bool:
+    """True when the actual plan state satisfies the intended disposition."""
+    if intended.decision == "permanent_skip":
+        return actual.kind == "skipped"
+    if intended.decision == "cluster":
+        return actual.kind == "clustered" and actual.cluster_name == intended.target
+    return False
+
+
+def validate_organize_against_reflect_ledger(
+    *,
+    plan: dict,
+    stages: dict,
+) -> list[LedgerMismatch]:
+    """Check that plan mutations match the reflect disposition ledger.
+
+    Returns an empty list when all dispositions are faithfully materialized,
+    or a list of mismatches when organize diverged from the reflect plan.
+
+    Silently returns [] for legacy runs without a disposition_ledger.
+    """
+    raw_ledger = stages.get("reflect", {}).get("disposition_ledger")
+    if not raw_ledger:
+        return []
+
+    ledger = [ReflectDisposition.from_dict(d) for d in raw_ledger]
+    actuals = _build_actual_disposition_index(plan)
+    unplaced = ActualDisposition(kind="unplaced")
+
+    return [
+        LedgerMismatch(intended=d, actual=actuals.get(d.issue_id, unplaced))
+        for d in ledger
+        if not _disposition_matches(d, actuals.get(d.issue_id, unplaced))
+    ]
+
+
+def _validate_organize_against_ledger_or_error(
+    *,
+    plan: dict,
+    stages: dict,
+) -> bool:
+    """Block organize if plan state diverges from the reflect disposition ledger."""
+    mismatches = validate_organize_against_reflect_ledger(
+        plan=plan, stages=stages,
+    )
+    if not mismatches:
+        return True
+
+    print(
+        colorize(
+            f"  Cannot organize: {len(mismatches)} issue(s) diverge from the reflect plan.",
+            "red",
+        )
+    )
+    for m in mismatches[:10]:
+        short_id = m.issue_id.rsplit("::", 1)[-1]
+        print(
+            colorize(
+                f"    {short_id}: reflect said {m.expected_decision} "
+                f'"{m.expected_target}", but {m.actual_state}',
+                "yellow",
+            )
+        )
+    if len(mismatches) > 10:
+        print(colorize(f"    ... and {len(mismatches) - 10} more", "yellow"))
+    print()
+    print(
+        colorize(
+            "  Fix the plan to match the reflect ledger, or re-run reflect to update dispositions.",
+            "dim",
+        )
+    )
+    return False
+
+
 __all__ = [
     "_auto_confirm_enrich_for_complete",
     "_auto_confirm_observe_if_attested",
@@ -528,6 +841,11 @@ __all__ = [
     "_steps_with_bad_paths",
     "_steps_with_vague_detail",
     "_steps_without_effort",
+    "_validate_organize_against_ledger_or_error",
     "_validate_recurring_dimension_mentions",
+    "LedgerMismatch",
+    "ReflectDisposition",
+    "parse_reflect_dispositions",
     "require_stage_prerequisite",
+    "validate_organize_against_reflect_ledger",
 ]

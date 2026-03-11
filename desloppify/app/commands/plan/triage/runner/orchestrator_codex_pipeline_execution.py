@@ -15,14 +15,15 @@ from desloppify.base.output.terminal import colorize
 from ..services import TriageServices
 from ..validation.core import (
     _analyze_reflect_issue_accounting,
+    _missing_stage_prerequisite,
     _validate_reflect_issue_accounting,
+    validate_organize_against_reflect_ledger,
 )
 from .codex_runner import TriageStageRunResult, run_triage_stage
 from .orchestrator_codex_observe import run_observe
 from .orchestrator_codex_pipeline_context import StageRunContext
 from .orchestrator_codex_sense import run_sense_check
 from .stage_prompts import build_stage_prompt
-from ..validation.core import _missing_stage_prerequisite
 from .stage_prompts_instruction_shared import PromptMode
 
 
@@ -193,28 +194,37 @@ def preflight_stage(
 
     if stage != "organize":
         return True, None
-    reflect_report = str(
-        plan.get("epic_triage_meta", {})
-        .get("triage_stages", {})
-        .get("reflect", {})
-        .get("report", "")
-    )
+    stages = plan.get("epic_triage_meta", {}).get("triage_stages", {})
+    reflect_report = str(stages.get("reflect", {}).get("report", ""))
     accounting_ok, _cited, missing_ids, duplicate_ids = validate_reflect_issue_accounting(
         report=reflect_report,
         valid_ids=set(getattr(triage_input, "open_issues", {}).keys()),
     )
-    if accounting_ok:
-        return True, None
-    reason_parts: list[str] = []
-    if missing_ids:
-        reason_parts.append(f"missing={len(missing_ids)}")
-    if duplicate_ids:
-        reason_parts.append(f"duplicates={len(duplicate_ids)}")
-    reason = "reflect_accounting_invalid"
-    if reason_parts:
-        reason = f"{reason}({' '.join(reason_parts)})"
-    append_run_log(f"stage-preflight-failed stage={stage} reason={reason}")
-    return False, reason
+    if not accounting_ok:
+        reason_parts: list[str] = []
+        if missing_ids:
+            reason_parts.append(f"missing={len(missing_ids)}")
+        if duplicate_ids:
+            reason_parts.append(f"duplicates={len(duplicate_ids)}")
+        reason = "reflect_accounting_invalid"
+        if reason_parts:
+            reason = f"{reason}({' '.join(reason_parts)})"
+        append_run_log(f"stage-preflight-failed stage={stage} reason={reason}")
+        return False, reason
+
+    # Validate plan state matches reflect disposition ledger
+    ledger_mismatches = validate_organize_against_reflect_ledger(
+        plan=dict(plan), stages=stages,
+    )
+    if ledger_mismatches:
+        mismatch_types = set()
+        for m in ledger_mismatches:
+            mismatch_types.add(m.expected_decision)
+        reason = f"reflect_ledger_mismatch(count={len(ledger_mismatches)} types={','.join(sorted(mismatch_types))})"
+        append_run_log(f"stage-preflight-failed stage={stage} reason={reason}")
+        return False, reason
+
+    return True, None
 
 
 def build_reflect_repair_prompt(

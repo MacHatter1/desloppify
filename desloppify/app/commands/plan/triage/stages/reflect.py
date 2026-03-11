@@ -11,9 +11,11 @@ from ..display.dashboard import print_reflect_result
 from ..helpers import cascade_clear_later_confirmations, has_triage_in_queue
 from ..services import TriageServices, default_triage_services
 from ..validation.core import (
+    ReflectDisposition,
     _auto_confirm_observe_if_attested,
     _validate_recurring_dimension_mentions,
     _validate_reflect_issue_accounting,
+    parse_reflect_dispositions,
 )
 from .flow_helpers import validate_stage_report_length
 from .records import resolve_reusable_report
@@ -28,7 +30,7 @@ def _validate_reflect_submission(
     stages: dict,
     attestation: str | None,
     services: TriageServices,
-) -> tuple[object, int, dict, list[str], set[str], list[str], list[str]] | None:
+) -> tuple[object, int, dict, list[str], set[str], list[str], list[str], list[ReflectDisposition]] | None:
     if "observe" not in stages:
         print(colorize("  Cannot reflect: observe stage not complete.", "red"))
         print(colorize('  Run: desloppify plan triage --stage observe --report "..."', "dim"))
@@ -64,14 +66,18 @@ def _validate_reflect_submission(
     ):
         return None
 
+    valid_ids = set(triage_input.open_issues.keys())
     accounting_ok, cited_ids, missing_ids, duplicate_ids = _validate_reflect_issue_accounting(
         report=report,
-        valid_ids=set(triage_input.open_issues.keys()),
+        valid_ids=valid_ids,
     )
     if not accounting_ok:
         return None
 
-    from .evidence_parsing import format_evidence_failures, validate_reflect_skip_evidence
+    from .evidence_parsing import (
+        format_evidence_failures,
+        validate_reflect_skip_evidence,
+    )
 
     blocking_skips = [
         failure
@@ -82,6 +88,9 @@ def _validate_reflect_submission(
         print(colorize(format_evidence_failures(blocking_skips, stage_label="reflect"), "red"))
         return None
 
+    # Parse structured disposition ledger from Coverage Ledger section
+    disposition_ledger = parse_reflect_dispositions(report, valid_ids)
+
     return (
         triage_input,
         issue_count,
@@ -90,6 +99,7 @@ def _validate_reflect_submission(
         cited_ids,
         missing_ids,
         duplicate_ids,
+        disposition_ledger,
     )
 
 
@@ -104,12 +114,13 @@ def _persist_reflect_stage(
     missing_ids: list[str],
     duplicate_ids: list[str],
     recurring_dims: list[str],
+    disposition_ledger: list[ReflectDisposition],
     existing_stage: dict | None,
     is_reuse: bool,
     services: TriageServices,
 ) -> tuple[dict, list[str]]:
     stages = meta.setdefault("triage_stages", {})
-    reflect_stage = {
+    reflect_stage: dict = {
         "stage": "reflect",
         "report": report,
         "cited_ids": sorted(cited_ids),
@@ -119,6 +130,8 @@ def _persist_reflect_stage(
         "duplicate_issue_ids": duplicate_ids,
         "recurring_dims": recurring_dims,
     }
+    if disposition_ledger:
+        reflect_stage["disposition_ledger"] = [d.to_dict() for d in disposition_ledger]
     stages["reflect"] = reflect_stage
     if is_reuse and existing_stage and existing_stage.get("confirmed_at"):
         reflect_stage["confirmed_at"] = existing_stage["confirmed_at"]
@@ -173,7 +186,10 @@ def _cmd_stage_reflect(
     )
     if submission is None:
         return
-    triage_input, issue_count, recurring, recurring_dims, cited_ids, missing_ids, duplicate_ids = submission
+    (
+        triage_input, issue_count, recurring, recurring_dims,
+        cited_ids, missing_ids, duplicate_ids, disposition_ledger,
+    ) = submission
     reflect_stage, cleared = _persist_reflect_stage(
         plan=plan,
         meta=meta,
@@ -184,6 +200,7 @@ def _cmd_stage_reflect(
         missing_ids=missing_ids,
         duplicate_ids=duplicate_ids,
         recurring_dims=recurring_dims,
+        disposition_ledger=disposition_ledger,
         existing_stage=existing_stage,
         is_reuse=is_reuse,
         services=resolved_services,

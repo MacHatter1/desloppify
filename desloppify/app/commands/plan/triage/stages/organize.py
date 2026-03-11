@@ -21,6 +21,7 @@ from ..validation.core import (
     _organize_report_or_error,
     _require_reflect_stage_for_organize,
     _unclustered_review_issues_or_error,
+    _validate_organize_against_ledger_or_error,
 )
 from .records import record_organize_stage
 
@@ -113,6 +114,10 @@ def _validate_organize_submission(
         return None
     if not _unclustered_review_issues_or_error(plan, state):
         return None
+    if not _validate_organize_against_ledger_or_error(
+        plan=plan, stages=stages,
+    ):
+        return None
     if not _enforce_cluster_activity_for_organize(
         plan=plan,
         stages=stages,
@@ -127,7 +132,10 @@ def _validate_organize_submission(
     if normalized_report is None:
         return None
 
-    from .evidence_parsing import format_evidence_failures, validate_report_references_clusters
+    from .evidence_parsing import (
+        format_evidence_failures,
+        validate_report_references_clusters,
+    )
 
     cluster_ref_failures = validate_report_references_clusters(normalized_report, manual_clusters)
     if cluster_ref_failures:
