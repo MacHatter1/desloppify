@@ -8,6 +8,7 @@ from types import SimpleNamespace
 import pytest
 
 import desloppify.app.commands.next.queue_flow as queue_flow_mod
+from desloppify.engine._plan.schema import empty_plan
 
 
 def _args(**overrides):
@@ -24,6 +25,25 @@ def _args(**overrides):
     }
     base.update(overrides)
     return argparse.Namespace(**base)
+
+
+def _issue(
+    issue_id: str,
+    *,
+    detector: str = "smells",
+    file: str = "src/a.py",
+    summary: str | None = None,
+) -> dict:
+    return {
+        "id": issue_id,
+        "detector": detector,
+        "file": file,
+        "tier": 3,
+        "confidence": "medium",
+        "summary": summary or issue_id,
+        "status": "open",
+        "detail": {},
+    }
 
 
 def test_build_next_payload_includes_scores_and_subjective_rows(monkeypatch) -> None:
@@ -172,6 +192,91 @@ def test_build_and_render_execution_queue_renders_real_issue_and_payload(capsys)
     assert written[0]["queue"]["mode"] == "execution"
     assert written[0]["items"][0]["summary"] == "Fix x"
     assert written[0]["items"][0]["file"] == "a.py"
+
+
+def test_build_and_render_execution_queue_uses_real_execution_policy(capsys) -> None:
+    written: list[dict] = []
+    planned = _issue(
+        "smells::src/a.py::planned",
+        summary="Planned issue",
+    )
+    unplanned = _issue(
+        "smells::src/b.py::unplanned",
+        file="src/b.py",
+        summary="Unplanned issue",
+    )
+    plan = empty_plan()
+    plan["queue_order"] = [planned["id"]]
+
+    queue_flow_mod.build_and_render_execution_queue(
+        _args(),
+        state={
+            "issues": {
+                planned["id"]: planned,
+                unplanned["id"]: unplanned,
+            },
+            "dimension_scores": {},
+            "scan_path": ".",
+            "potentials": {},
+            "scan_count": 0,
+        },
+        config={},
+        deps=queue_flow_mod.QueueRenderDeps(
+            resolve_lang_fn=lambda _args: SimpleNamespace(name="python"),
+            load_plan_fn=lambda: plan,
+            write_query_fn=lambda payload: written.append(payload),
+        ),
+    )
+
+    out = capsys.readouterr().out
+    assert "Planned issue" in out
+    assert "Unplanned issue" not in out
+    assert written[0]["items"][0]["id"] == planned["id"]
+    assert written[0]["items"][0]["summary"] == "Planned issue"
+    assert written[0]["plan"]["active"] is True
+    assert written[0]["plan"]["total_ordered"] == 1
+
+
+def test_build_and_render_backlog_queue_uses_real_backlog_policy(capsys) -> None:
+    written: list[dict] = []
+    planned = _issue(
+        "smells::src/a.py::planned",
+        summary="Planned issue",
+    )
+    unplanned = _issue(
+        "smells::src/b.py::unplanned",
+        file="src/b.py",
+        summary="Unplanned issue",
+    )
+    plan = empty_plan()
+    plan["queue_order"] = [planned["id"]]
+
+    queue_flow_mod.build_and_render_backlog_queue(
+        _args(),
+        state={
+            "issues": {
+                planned["id"]: planned,
+                unplanned["id"]: unplanned,
+            },
+            "dimension_scores": {},
+            "scan_path": ".",
+            "potentials": {},
+            "scan_count": 0,
+        },
+        config={},
+        deps=queue_flow_mod.QueueRenderDeps(
+            resolve_lang_fn=lambda _args: SimpleNamespace(name="python"),
+            load_plan_fn=lambda: plan,
+            build_work_queue_fn=queue_flow_mod.build_backlog_queue,
+            write_query_fn=lambda payload: written.append(payload),
+        ),
+    )
+
+    out = capsys.readouterr().out
+    assert "Run post-flight scan" in out
+    assert "Planned issue" not in out
+    assert "Unplanned issue" not in out
+    assert written[0]["items"][0]["id"] == "workflow::run-scan"
 
 
 def test_build_and_render_backlog_queue_hides_execution_prompt(capsys) -> None:
