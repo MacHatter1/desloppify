@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import desloppify.base.config_migration as migration_mod
+import desloppify.base.config.migration as migration_mod
 
 
 def test_merge_config_value_deduplicates_lists_and_keeps_existing_dict_keys() -> None:

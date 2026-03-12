@@ -1,8 +1,8 @@
-"""Direct coverage tests for base.config_schema helpers."""
+"""Direct coverage tests for base.config.schema helpers."""
 
 from __future__ import annotations
 
-import desloppify.base.config_schema as config_schema
+import desloppify.base.config.schema as config_schema
 
 
 def test_default_config_returns_deep_copied_mutables() -> None:

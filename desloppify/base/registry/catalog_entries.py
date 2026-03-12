@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from desloppify.base.registry_catalog_models import DetectorMeta
+from .catalog_models import DetectorMeta
 
 DETECTORS: dict[str, DetectorMeta] = {
     # ── Auto-fixable ──────────────────────────────────────

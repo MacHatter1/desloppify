@@ -3,7 +3,7 @@
 from typing import Any
 
 from desloppify.languages._framework.base.types import FixResult
-from desloppify.languages.typescript.detectors._smell_helpers import scan_code
+from desloppify.languages.typescript.detectors.smells.helpers import scan_code
 from desloppify.languages.typescript.fixers.fixer_io import apply_fixer
 from desloppify.languages.typescript.fixers.syntax_scan import collapse_blank_lines
 

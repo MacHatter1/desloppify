@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import re
 
-from desloppify.languages.typescript.detectors._smell_detectors_core import (
+from .detector_core import (
     _CATCH_DEFAULT_FIELD_THRESHOLD,
     _MAX_CATCH_BODY,
     _MAX_SWITCH_BODY_SCAN,
     _SWITCH_CASE_MINIMUM,
     _emit,
 )
-from desloppify.languages.typescript.detectors._smell_helpers import (
+from .helpers import (
     _content_line_info,
     _extract_block_body,
     _strip_ts_comments,

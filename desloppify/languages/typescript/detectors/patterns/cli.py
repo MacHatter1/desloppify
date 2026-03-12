@@ -7,11 +7,11 @@ import json
 from pathlib import Path
 
 from desloppify.base.output.terminal import colorize, print_table
-from desloppify.languages.typescript.detectors.patterns_analysis import (
+from .analysis import (
     _build_census,
     detect_pattern_anomalies,
 )
-from desloppify.languages.typescript.detectors.patterns_catalog import PATTERN_FAMILIES
+from .catalog import PATTERN_FAMILIES
 
 
 def cmd_patterns(args: argparse.Namespace) -> None:

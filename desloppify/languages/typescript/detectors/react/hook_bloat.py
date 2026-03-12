@@ -8,7 +8,7 @@ from pathlib import Path
 
 from desloppify.base.discovery.paths import get_project_root
 from desloppify.base.discovery.source import find_tsx_files
-from desloppify.languages.typescript.detectors._smell_helpers import scan_code
+from desloppify.languages.typescript.detectors.smells.helpers import scan_code
 
 MAX_FUNC_SCAN = 2000
 logger = logging.getLogger(__name__)

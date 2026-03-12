@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import re
 
-from desloppify.languages.typescript.detectors._smell_detectors_core import (
+from .detector_core import (
     _ARROW_RE,
     _ELSE_CONT,
     _ERROR_HANDLER_BASENAMES,
@@ -29,7 +29,7 @@ from desloppify.languages.typescript.detectors._smell_detectors_core import (
     _find_function_start,
     _find_opening_brace_line,
 )
-from desloppify.languages.typescript.detectors._smell_helpers import (
+from .helpers import (
     _code_text,
     _strip_ts_comments,
     _track_brace_body,

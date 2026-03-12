@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from desloppify.languages.typescript.detectors._smell_helpers import scan_code
+from desloppify.languages.typescript.detectors.smells.helpers import scan_code
 
 _CHAR_DEPTH_DELTA: dict[str, tuple[str, int]] = {
     "(": ("parens", 1),

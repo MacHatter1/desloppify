@@ -23,7 +23,7 @@ from desloppify.languages._framework.issue_factories import (
 )
 import desloppify.languages.typescript.detectors.deps as deps_detector_mod
 import desloppify.languages.typescript.detectors.facade as facade_detector_mod
-import desloppify.languages.typescript.detectors.patterns_analysis as patterns_detector_mod
+import desloppify.languages.typescript.detectors.patterns.analysis as patterns_detector_mod
 from desloppify.languages.typescript.phases_config import TS_SKIP_DIRS, TS_SKIP_NAMES
 from desloppify.state_io import Issue
 

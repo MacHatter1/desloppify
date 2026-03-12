@@ -10,10 +10,10 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from desloppify.base.config_migration import (
+from .migration import (
     _migrate_from_state_files as _migrate_from_state_files_impl,
 )
-from desloppify.base.config_schema import (
+from .schema import (
     CONFIG_SCHEMA,
     DEFAULT_TARGET_STRICT_SCORE,
     MAX_TARGET_STRICT_SCORE,

@@ -12,8 +12,8 @@ from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import Any
 
-from desloppify.base.registry_catalog_entries import DETECTORS as _CATALOG_DETECTORS
-from desloppify.base.registry_catalog_models import (
+from .catalog_entries import DETECTORS as _CATALOG_DETECTORS
+from .catalog_models import (
     DISPLAY_ORDER as _CATALOG_DISPLAY_ORDER,
     DetectorMeta,
 )

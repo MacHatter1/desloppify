@@ -40,9 +40,9 @@ from desloppify.languages.typescript.detectors.deprecated import cmd_deprecated
 from desloppify.languages.typescript.detectors.deps import cmd_cycles, cmd_deps
 from desloppify.languages.typescript.detectors.exports import cmd_exports
 from desloppify.languages.typescript.detectors.logs import cmd_logs
-from desloppify.languages.typescript.detectors.patterns_cli import cmd_patterns
+from desloppify.languages.typescript.detectors.patterns.cli import cmd_patterns
 from desloppify.languages.typescript.detectors.props import cmd_props
-from desloppify.languages.typescript.detectors.react_cli import cmd_react
+from desloppify.languages.typescript.detectors.react.cli import cmd_react
 from desloppify.languages.typescript.detectors.unused import cmd_unused
 from desloppify.languages.typescript.extractors_components import (
     detect_passthrough_components,

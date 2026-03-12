@@ -8,7 +8,7 @@ from pathlib import Path
 
 from desloppify.base.discovery.file_paths import rel
 from desloppify.base.output.terminal import colorize, print_table
-from desloppify.languages.typescript.detectors.react_state_sync import detect_state_sync
+from .state_sync import detect_state_sync
 
 
 def cmd_react(args: argparse.Namespace) -> None:

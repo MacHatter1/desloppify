@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from desloppify.languages.typescript.detectors._smell_helpers import (
+from .helpers import (
     _code_text,
     _strip_ts_comments,
     _track_brace_body,

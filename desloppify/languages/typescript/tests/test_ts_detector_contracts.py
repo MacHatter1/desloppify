@@ -11,7 +11,7 @@ from desloppify.languages.typescript.detectors.deprecated import (
     detect_deprecated_result,
 )
 from desloppify.languages.typescript.detectors.logs import detect_logs
-from desloppify.languages.typescript.detectors.patterns_analysis import (
+from desloppify.languages.typescript.detectors.patterns.analysis import (
     detect_pattern_anomalies,
 )
 from desloppify.languages.typescript.detectors.security.detector import detect_ts_security

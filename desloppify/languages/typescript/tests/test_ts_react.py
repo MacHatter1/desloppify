@@ -4,14 +4,14 @@ from pathlib import Path
 
 import pytest
 
-from desloppify.languages.typescript.detectors.react_context import (
+from desloppify.languages.typescript.detectors.react.context import (
     detect_context_nesting,
 )
-from desloppify.languages.typescript.detectors.react_hook_bloat import (
+from desloppify.languages.typescript.detectors.react.hook_bloat import (
     _count_return_fields,
     detect_hook_return_bloat,
 )
-from desloppify.languages.typescript.detectors.react_state_sync import (
+from desloppify.languages.typescript.detectors.react.state_sync import (
     detect_state_sync,
 )
 

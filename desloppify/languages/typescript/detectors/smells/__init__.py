@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 
 from desloppify.base.output.fallbacks import log_best_effort_failure
-from desloppify.languages.typescript.detectors._smell_detectors_flow import (
+from .detector_flow import (
     _detect_async_no_await,
     _detect_empty_if_chains,
     _detect_error_no_throw,
@@ -16,22 +16,22 @@ from desloppify.languages.typescript.detectors._smell_detectors_flow import (
     _detect_nested_closures,
     _detect_stub_functions,
 )
-from desloppify.languages.typescript.detectors._smell_detectors_safety import (
+from .detector_safety import (
     _detect_catch_return_default,
     _detect_dead_useeffects,
     _detect_swallowed_errors,
     _detect_switch_no_default,
     _detect_window_globals,
 )
-from desloppify.languages.typescript.detectors._smell_helpers import (
+from .helpers import (
     _FileContext,
     _build_ts_line_state,
     _ts_match_is_in_string,
 )
-from desloppify.languages.typescript.detectors.smells_assets import (
+from .assets import (
     detect_non_ts_asset_smells,
 )
-from desloppify.languages.typescript.detectors.smells_catalog import (
+from .catalog import (
     SEVERITY_ORDER,
     TS_SMELL_CHECKS,
 )
