@@ -26,9 +26,7 @@ classifiers = [
     "Topic :: Software Development :: Testing",
     "Typing :: Typed",
 ]
-dependencies = [
-    "defusedxml>=0.7.0",
-]
+dependencies = []
 
 [project.urls]
 Homepage = "https://github.com/peteromallet/desloppify"
@@ -40,10 +38,12 @@ treesitter = [
   "tree-sitter>=0.21",
   "tree-sitter-language-pack>=0.3",
 ]
+csharp-xml = ["defusedxml>=0.7.0"]
 python-security = ["bandit>=1.7.8"]
 scorecard = ["Pillow>=9.0.0"]
 plan-yaml = ["PyYAML>=6.0"]
 full = [
+  "defusedxml>=0.7.0",
   "tree-sitter>=0.21",
   "tree-sitter-language-pack>=0.3",
   "bandit>=1.7.8",

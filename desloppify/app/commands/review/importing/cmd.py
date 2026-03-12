@@ -19,7 +19,7 @@ from desloppify.engine._plan.persistence import (
     load_plan,
     plan_path_for_state,
 )
-from desloppify.engine._plan.sync.workflow import (
+from desloppify.engine._plan.sync.workflow_gates import (
     import_scores_meta_matches,
     pending_import_scores_meta,
 )

@@ -28,7 +28,7 @@ from desloppify.engine._plan.refresh_lifecycle import (
 from desloppify.engine._plan.sync.context import is_mid_cycle
 from desloppify.engine._plan.sync.dimensions import sync_subjective_dimensions
 from desloppify.engine._plan.sync.triage import sync_triage_needed
-from desloppify.engine._plan.sync.workflow import (
+from desloppify.engine._plan.sync.workflow_gates import (
     ScoreSnapshot,
     sync_communicate_score_needed,
     sync_create_plan_needed,

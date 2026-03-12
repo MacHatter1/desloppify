@@ -24,7 +24,7 @@ from desloppify.engine._plan.reconcile_review_import import (
 )
 from desloppify.engine._plan.refresh_lifecycle import sync_lifecycle_phase
 from desloppify.engine._plan.sync.dimensions import sync_subjective_dimensions
-from desloppify.engine._plan.sync.workflow import (
+from desloppify.engine._plan.sync.workflow_gates import (
     ScoreSnapshot,
     sync_communicate_score_needed,
     sync_create_plan_needed,
