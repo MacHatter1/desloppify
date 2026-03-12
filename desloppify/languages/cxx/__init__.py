@@ -10,7 +10,11 @@ from desloppify.languages._framework.base.phase_builders import (
     detector_phase_test_coverage,
     shared_subjective_duplicates_tail,
 )
-from desloppify.languages._framework.base.types import DetectorPhase, LangConfig
+from desloppify.languages._framework.base.types import (
+    DetectorPhase,
+    LangConfig,
+    LangSecurityResult,
+)
 from desloppify.languages._framework.generic import make_tool_phase
 from desloppify.languages._framework.registration import register_full_plugin
 from desloppify.languages._framework.treesitter.phases import all_treesitter_phases
@@ -18,6 +22,7 @@ from desloppify.languages.cxx import test_coverage as cxx_test_coverage_hooks
 from desloppify.languages.cxx._helpers import build_cxx_dep_graph
 from desloppify.languages.cxx._zones import CXX_ENTRY_PATTERNS, CXX_ZONE_RULES
 from desloppify.languages.cxx.commands import get_detect_commands
+from desloppify.languages.cxx.detectors.security import detect_cxx_security
 from desloppify.languages.cxx.extractors import (
     CXX_FILE_EXCLUSIONS,
     extract_all_cxx_functions,
@@ -37,6 +42,9 @@ from desloppify.languages.cxx.review import (
 
 class CxxConfig(LangConfig):
     """C/C++ language configuration."""
+
+    def detect_lang_security_detailed(self, files, zone_map) -> LangSecurityResult:
+        return detect_cxx_security(files, zone_map)
 
     def __init__(self):
         super().__init__(

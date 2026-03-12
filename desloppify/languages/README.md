@@ -11,7 +11,7 @@ These have custom detectors, language-specific smell analysis, subjective review
 | **Python** | `python/` | AST smell detection, ruff/bandit adapters, import-linter, unused detection, security, auto-fix |
 | **TypeScript** | `typescript/` | React-aware detectors, knip adapter, 7 auto-fixers, props/exports/concerns analysis |
 | **C#/.NET** | `csharp/` | Structural + coupling + security, dotnet-based dep analysis |
-| **C/C++** | `cxx/` | `compile_commands.json`-aware dep analysis, cppcheck phase, tree-sitter structural signals |
+| **C/C++** | `cxx/` | `compile_commands.json` primary dep analysis, `Makefile` best-effort fallback, cppcheck/clang-tidy surfaces, tree-sitter structural signals |
 | **Dart** | `dart/` | Flutter-aware, pubspec integration, test coverage mapping |
 | **GDScript** | `gdscript/` | Godot scene-aware, tree-sitter phases, shared framework helpers |
 | **Go** | `go/` | golangci-lint + go vet adapters, regex function extraction, test coverage mapping |
